@@ -51,9 +51,6 @@ LayoutParent::Val LayoutParent::calcVal( Val target, Val parent ) {
 			int v = getVal(parent) * getVal(target) / 100;
 			return makeVal(v, MM_FIX);
 		}
-		//else if (getModel(parent) == MM_WRAP_CONTENT) {
-		//	return makeVal(getVal(parent), MM_WRAP_CONTENT, 0);
-		//}
 	} else if (getModel(target) ==  MM_WRAP_CONTENT) {
 		return target;
 	} else if (getModel(target) ==  MM_ATMOST) {
@@ -218,26 +215,24 @@ void LayoutManager::layout(int width, int height) {
 
 void LayoutManager::draw( HDC hdc ) {
 	int sp = SaveDC(hdc);
-	HBRUSH cs [3];
+	HBRUSH cs [2];
 	cs[0] = CreateSolidBrush(RGB(255, 0, 0));
-	cs[1] = CreateSolidBrush(RGB(0, 255, 0));
-	cs[2] = CreateSolidBrush(RGB(0, 0, 255));
-	drawLayout(mLayout, hdc, cs, 0);
+	cs[1] = CreateSolidBrush(RGB(0, 0, 255));
+	drawLayout(mLayout, hdc, cs);
 	RestoreDC(hdc, sp);
 }
 
-void LayoutManager::drawLayout(LayoutParent* lay, HDC hdc, HBRUSH *br, int brIdx) {
+void LayoutManager::drawLayout(LayoutParent* lay, HDC hdc, HBRUSH *br) {
 	if (lay == NULL) return;
 	Layout *chs = dynamic_cast<Layout*>(lay);
-	if (!chs) {
-		int x = lay->getXToTop();
-		int y = lay->getYToTop();
-		RECT r = {x, y, x + lay->getLayoutWidth() - 1, y + lay->getLayoutHeight() - 1};
-		FrameRect(hdc, &r, br[brIdx % 3]);
-		return;
-	}
-	for (int i = 0; i < chs->mChildNum; ++i, ++brIdx) {
-		drawLayout(chs->mChild[i], hdc, br, brIdx);
+	
+	int x = lay->getXToTop();
+	int y = lay->getYToTop();
+	RECT r = {x, y, x + lay->getLayoutWidth() - 1, y + lay->getLayoutHeight() - 1};
+	FrameRect(hdc, &r, br[chs ? 0 : 1]);
+	
+	for (int i = 0; chs && i < chs->mChildNum; ++i) {
+		drawLayout(chs->mChild[i], hdc, br);
 	}
 }
 
@@ -247,9 +242,10 @@ WndLayout::WndLayout(HWND wnd, int x, int y, Val width, Val height) : LayoutPare
 void WndLayout::layout(int x, int y, int width, int height) {
 	LayoutParent::layout(x, y, width, height);
 	if (mWnd) {
-		x = getXToTop();
-		y = getYToTop();
-		MoveWindow(mWnd, x, y, width, height, TRUE);
+		x = getXToTop() + mPadLeft;
+		y = getYToTop() + mPadTop;
+		MoveWindow(mWnd, x, y, width - mPadLeft - mPadRight, 
+			height - mPadTop - mPadBottom, TRUE);
 	}
 }
 
@@ -393,6 +389,14 @@ void HLineLayout::measure( Val width, Val height ) {
 		}
 	}
 
+	if (getModel(vh) == MM_ATMOST || getModel(vh) == MM_WRAP_CONTENT) {
+		int mv = 0;
+		for (int i = 0, j = 0; i < mChildNum; ++i) {
+			mv = max(mv, mChild[i]->getMeasureHeight());
+		}
+		vh = makeVal(mv, getModel(vh));
+	}
+
 	mMeasureWidth = getVal(vw);
 	mMeasureHeight = getVal(vh);
 	mMeasured = TRUE;
@@ -401,3 +405,74 @@ void HLineLayout::measure( Val width, Val height ) {
 void HLineLayout::setSpace( int space ) {
 	mSpace = space;
 }
+
+
+VLineLayout::VLineLayout( int x, int y, Val width, Val height ) : 
+	Layout(x, y, width, height), mSpace(0) {
+}
+
+void VLineLayout::layout( int x, int y, int width, int height ) {
+	Layout::layout(x, y, width, height);
+	int cx = 0, cy = 0;
+	for (int i = 0; i < mChildNum; ++i) {
+		int cw = min(mMeasureHeight - cy, mChild[i]->getMeasureHeight());
+		if (cw < 0) cw = 0;
+		mChild[i]->layout(cx, cy, mChild[i]->getMeasureWidth(), cw);
+		cy += mSpace + mChild[i]->getMeasureHeight();
+	}
+}
+
+void VLineLayout::measure( Val width, Val height ) {
+	// measure self
+	Val vw = calcVal(mWidth, width);
+	Val vh = calcVal(mHeight, height);
+
+	if (getModel(vw) == MM_UNKNOW || getModel(vh) == MM_UNKNOW) {
+		// Error
+		mMeasured = TRUE;
+		return;
+	}
+	// measure child
+	for (int i = 0; i < mChildNum; ++i) {
+		LayoutParent *child = mChild[i];
+		child->measure(makeVal(getVal(vw), MM_ATMOST), makeVal(getVal(vh), MM_ATMOST));
+	}
+
+	if (getModel(vw) == MM_FIX) {
+		LayoutParent* wchild[30] = {0};
+		int weight = 0, less = getVal(vh);
+		for (int i = 0, j = 0; i < mChildNum; ++i) {
+			less -= mChild[i]->getMeasureHeight();
+			if (getWeight(mChild[i]->getHeightVal()) > 0) {
+				wchild[j++] = mChild[i];
+				weight += getWeight(mChild[i]->getHeightVal());
+			}
+		}
+		less -= (mChildNum - 1) * mSpace;
+		if (less > 0 && weight > 0) {
+			for (int i = 0; wchild[i]; ++i) {
+				int chwe = getWeight(wchild[i]->getHeightVal());
+				int lw = less * chwe / weight;
+				lw += wchild[i]->getMeasureHeight();
+				wchild[i]->measure(makeVal(vw, MM_ATMOST), makeVal(getVal(lw), MM_FIX));
+			}
+		}
+	}
+
+	if (getModel(vw) == MM_ATMOST || getModel(vw) == MM_WRAP_CONTENT) {
+		int mv = 0;
+		for (int i = 0, j = 0; i < mChildNum; ++i) {
+			mv = max(mv, mChild[i]->getMeasureHeight());
+		}
+		vh = makeVal(mv, getModel(vh));
+	}
+
+	mMeasureWidth = getVal(vw);
+	mMeasureHeight = getVal(vh);
+	mMeasured = TRUE;
+}
+
+void VLineLayout::setSpace( int space ) {
+	mSpace = space;
+}
+

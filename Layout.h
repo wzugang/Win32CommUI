@@ -75,7 +75,7 @@ public:
 	void draw(HDC hdc);
 private:
 	static LRESULT CALLBACK LMWndProc(HWND, UINT, WPARAM, LPARAM);
-	void drawLayout(LayoutParent* lay, HDC hdc, HBRUSH *br, int brIdx);
+	void drawLayout(LayoutParent* lay, HDC hdc, HBRUSH *br);
 	HWND mTargetWnd;
 	Layout *mLayout;
 	WNDPROC mWndProc;
@@ -113,6 +113,16 @@ public:
 class HLineLayout : public Layout {
 public:
 	HLineLayout(int x, int y, Val width, Val height);
+	virtual void layout(int x, int y, int width, int height);
+	virtual void measure(Val width, Val height);
+	void setSpace(int space);
+protected:
+	int mSpace;
+};
+
+class VLineLayout : public Layout {
+public:
+	VLineLayout(int x, int y, Val width, Val height);
 	virtual void layout(int x, int y, int width, int height);
 	virtual void measure(Val width, Val height);
 	void setSpace(int space);
