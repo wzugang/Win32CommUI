@@ -177,6 +177,13 @@ int Layout::getChildNum() {
 	return mChildNum;
 }
 
+void Layout::setVisible( BOOL visible ) {
+	LayoutParent::setVisible(visible);
+	for (int i = 0; i < mChildNum; ++i) {
+		mChild[i]->setVisible(visible);
+	}
+}
+
 LRESULT CALLBACK LayoutManager::LMWndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	LayoutManager *mgr = (LayoutManager*)GetWindowLong(wnd, 0);
 	if (msg == WM_SIZE && !IsIconic(wnd)) {
@@ -257,13 +264,22 @@ void WndLayout::measure(Val width, Val height) {
 	mMeasured = TRUE;
 }
 
+void WndLayout::setVisible( BOOL visible ) {
+	LayoutParent::setVisible(visible);
+	if (mWnd == NULL) return;
+	LONG sty = GetWindowLong(mWnd, GWL_STYLE);
+	if (visible) sty = sty | WS_VISIBLE;
+	else sty = sty & ~WS_VISIBLE;
+	SetWindowLong(mWnd, GWL_STYLE, sty);
+}
+
 BorderLayout::BorderLayout( int x, int y, Val width, Val height ) : Layout(x, y, width, height) {
+	memset(mAnchors, 0, sizeof mAnchors);
 }
 
 void BorderLayout::addChild(LayoutParent *child, Anchor a) {
-	mChild[a] = child;
-	child->setParent(this);
-	mChildNum = A_NUM;
+	Layout::addChild(child);
+	mAnchors[a] = child;
 }
 
 void BorderLayout::measure(Val width, Val height) {
@@ -278,28 +294,28 @@ void BorderLayout::measure(Val width, Val height) {
 	}
 	// measure child
 	LayoutParent *child = NULL;
-	if ((child = mChild[A_TOP]) != NULL) {
+	if ((child = mAnchors[A_TOP]) != NULL) {
 		child->measure(makeVal(getVal(vw), MM_FIX), makeVal(getVal(vh), MM_ATMOST));
 	}
-	if ((child = mChild[A_BOTTOM]) != NULL) {
+	if ((child = mAnchors[A_BOTTOM]) != NULL) {
 		child->measure(makeVal(getVal(vw), MM_FIX), makeVal(getVal(vh), MM_ATMOST, 0));
 	}
-	if ((child = mChild[A_LEFT]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
-		int bp = mChild[A_BOTTOM] ? mChild[A_BOTTOM]->getMeasureHeight() : 0;
+	if ((child = mAnchors[A_LEFT]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
+		int bp = mAnchors[A_BOTTOM] ? mAnchors[A_BOTTOM]->getMeasureHeight() : 0;
 		child->measure(makeVal(getVal(vw), MM_ATMOST), makeVal(getVal(vh) - tp - bp, MM_FIX));
 	}
-	if ((child = mChild[A_RIGHT]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
-		int bp = mChild[A_BOTTOM] ? mChild[A_BOTTOM]->getMeasureHeight() : 0;
+	if ((child = mAnchors[A_RIGHT]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
+		int bp = mAnchors[A_BOTTOM] ? mAnchors[A_BOTTOM]->getMeasureHeight() : 0;
 		child->measure(makeVal(getVal(vw), MM_ATMOST), makeVal(getVal(vh) - tp - bp, MM_FIX));
 	}
 	
-	if ((child = mChild[A_CENTER]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
-		int bp = mChild[A_BOTTOM] ? mChild[A_BOTTOM]->getMeasureHeight() : 0;
-		int lw = mChild[A_LEFT] ? mChild[A_LEFT]->getMeasureWidth() : 0;
-		int rw = mChild[A_RIGHT] ? mChild[A_RIGHT]->getMeasureWidth() : 0;
+	if ((child = mAnchors[A_CENTER]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
+		int bp = mAnchors[A_BOTTOM] ? mAnchors[A_BOTTOM]->getMeasureHeight() : 0;
+		int lw = mAnchors[A_LEFT] ? mAnchors[A_LEFT]->getMeasureWidth() : 0;
+		int rw = mAnchors[A_RIGHT] ? mAnchors[A_RIGHT]->getMeasureWidth() : 0;
 		child->measure(makeVal(getVal(vw) - lw - rw, MM_FIX),
 			makeVal(getVal(vh) - tp - bp, MM_FIX));
 	}
@@ -312,26 +328,26 @@ void BorderLayout::layout( int x, int y, int width, int height ) {
 	Layout::layout(x, y, width, height);
 	LayoutParent *child = NULL;
 
-	if ((child = mChild[A_TOP]) != NULL) {
+	if ((child = mAnchors[A_TOP]) != NULL) {
 		child->layout(0, 0, child->getMeasureWidth(), child->getMeasureHeight());
 	}
-	if ((child = mChild[A_BOTTOM]) != NULL) {
+	if ((child = mAnchors[A_BOTTOM]) != NULL) {
 		child->layout(0, height - child->getMeasureHeight(),
 			child->getMeasureWidth(), child->getMeasureHeight());
 	}
-	if ((child = mChild[A_LEFT]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
+	if ((child = mAnchors[A_LEFT]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
 		child->layout(0, tp, child->getMeasureWidth(), child->getMeasureHeight());
 	}
-	if ((child = mChild[A_RIGHT]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
-		int bp = mChild[A_BOTTOM] ? mChild[A_BOTTOM]->getMeasureHeight() : 0;
+	if ((child = mAnchors[A_RIGHT]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
+		int bp = mAnchors[A_BOTTOM] ? mAnchors[A_BOTTOM]->getMeasureHeight() : 0;
 		child->layout(width - child->getMeasureWidth(), tp,
 			child->getMeasureWidth(), child->getMeasureHeight());
 	}
-	if ((child = mChild[A_CENTER]) != NULL) {
-		int tp = mChild[A_TOP] ? mChild[A_TOP]->getMeasureHeight() : 0;
-		int lw = mChild[A_LEFT] ? mChild[A_LEFT]->getMeasureWidth() : 0;
+	if ((child = mAnchors[A_CENTER]) != NULL) {
+		int tp = mAnchors[A_TOP] ? mAnchors[A_TOP]->getMeasureHeight() : 0;
+		int lw = mAnchors[A_LEFT] ? mAnchors[A_LEFT]->getMeasureWidth() : 0;
 		child->layout(lw, tp,
 			child->getMeasureWidth(), child->getMeasureHeight());
 	}
@@ -476,3 +492,41 @@ void VLineLayout::setSpace( int space ) {
 	mSpace = space;
 }
 
+CardLayout::CardLayout( int x, int y, Val width, Val height ) : 
+	Layout(x, y, width, height) {
+}
+
+void CardLayout::layout( int x, int y, int width, int height ) {
+	Layout::layout(x, y, width, height);
+	for (int i = 0; i < mChildNum; ++i) {
+		if (! mChild[i]) continue;
+		mChild[i]->layout(0, 0, mChild[i]->getMeasureWidth(), mChild[i]->getMeasureHeight());
+	}
+}
+
+void CardLayout::measure( Val width, Val height ) {
+	// measure self
+	Val vw = calcVal(mWidth, width);
+	Val vh = calcVal(mHeight, height);
+
+	if (getModel(vw) == MM_UNKNOW || getModel(vh) == MM_UNKNOW) {
+		// Error
+		mMeasured = TRUE;
+		return;
+	}
+	// measure child
+	for (int i = 0; i < mChildNum; ++i) {
+		LayoutParent *child = mChild[i];
+		child->measure(makeVal(getVal(vw), MM_ATMOST), makeVal(getVal(vh), MM_ATMOST));
+	}
+
+	mMeasureWidth = getVal(vw);
+	mMeasureHeight = getVal(vh);
+	mMeasured = TRUE;
+}
+
+void CardLayout::show( int idx ) {
+	for (int i = 0; i < mChildNum; ++i) {
+		mChild[i]->setVisible(i == idx);
+	}
+}

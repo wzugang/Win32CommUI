@@ -41,6 +41,7 @@ public:
 	Val getHeightVal();
 	int getLayoutWidth();
 	int getLayoutHeight();
+	virtual void setVisible(BOOL visible) {}
 protected:
 	int mX, mY;
 	Val mWidth, mHeight;
@@ -59,6 +60,7 @@ public:
 	virtual BOOL isMeasured();
 	virtual void clearMeasured();
 	int getChildNum();
+	virtual void setVisible(BOOL visible);
 protected:
 	LayoutParent *mChild[50];
 	int mChildNum;
@@ -86,6 +88,7 @@ public:
 	WndLayout(HWND wnd, int x, int y, Val width, Val height);
 	virtual void layout(int x, int y, int width, int height);
 	virtual void measure(Val width, Val height);
+	virtual void setVisible(BOOL visible);
 protected:
 	HWND mWnd;
 };
@@ -108,6 +111,8 @@ public:
 	void addChild(LayoutParent *child, Anchor a);
 	virtual void layout(int x, int y, int width, int height);
 	virtual void measure(Val width, Val height);
+protected:
+	LayoutParent *mAnchors[A_NUM];
 };
 
 class HLineLayout : public Layout {
@@ -128,4 +133,12 @@ public:
 	void setSpace(int space);
 protected:
 	int mSpace;
+};
+
+class CardLayout : public Layout {
+public:
+	CardLayout(int x, int y, Val width, Val height);
+	virtual void layout(int x, int y, int width, int height);
+	virtual void measure(Val width, Val height);
+	virtual void show(int idx);
 };
