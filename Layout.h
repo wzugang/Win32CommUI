@@ -39,10 +39,13 @@ public:
 	void setParent(LayoutParent *parent);
 	Val getWidthVal();
 	Val getHeightVal();
+	int getLayoutWidth();
+	int getLayoutHeight();
 protected:
 	int mX, mY;
 	Val mWidth, mHeight;
 	int mMeasureWidth, mMeasureHeight;
+	int mLayoutWidth, mLayoutHeight;
 	int mPadLeft, mPadTop, mPadRight, mPadBottom;
 	LayoutParent *mParent;
 	BOOL mMeasured;

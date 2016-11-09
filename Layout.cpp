@@ -4,11 +4,15 @@
 
 LayoutParent::LayoutParent(int x, int y, Val width, Val height) : 
 	mX(x), mY(y), mWidth(width), mHeight(height),
-	mMeasureWidth(0), mMeasureHeight(0),
+	mMeasureWidth(0), mMeasureHeight(0), mLayoutWidth(0), mLayoutHeight(0),
 	mPadLeft(0), mPadTop(0), mPadRight(0), mPadBottom(0), mParent(0), mMeasured(FALSE) {
 }
 
 LayoutParent::Val LayoutParent::makeVal( int val, Model model, int weight) {
+	if (val < 0) val = 0;
+	if (val > 0xfff) val = 0xfff;
+	if (weight < 0) weight = 0;
+	if (weight > 100) weight = 100;
 	return val | model | (weight << 20);
 }
 
@@ -25,10 +29,13 @@ int LayoutParent::getVal( Val v ) {
 }
 
 int LayoutParent::getWeight( Val v ) {
-	return v & MW_MASK;
+	return (v & MW_MASK) >> 20;
 }
 
 LayoutParent::Val LayoutParent::calcVal( Val target, Val parent ) {
+	if (getModel(parent) == MM_FIX) {
+		return parent;
+	}
 	if (getModel(target) == MM_UNKNOW) {
 		return parent;
 	} else if (getModel(target) ==  MM_FIX) {
@@ -102,6 +109,8 @@ void LayoutParent::clearMeasured() {
 void LayoutParent::layout( int x, int y, int width, int height ) {
 	mX = x;
 	mY = y;
+	mLayoutWidth = width;
+	mLayoutHeight = height;
 }
 
 int LayoutParent::getX() {
@@ -122,6 +131,14 @@ LayoutParent::Val LayoutParent::getWidthVal() {
 
 LayoutParent::Val LayoutParent::getHeightVal() {
 	return mHeight;
+}
+
+int LayoutParent::getLayoutWidth() {
+	return mLayoutWidth;
+}
+
+int LayoutParent::getLayoutHeight() {
+	return mLayoutHeight;
 }
 
 Layout::Layout( int x, int y, Val width, Val height ) : LayoutParent(x, y, width, height), mChildNum(0) {
@@ -215,7 +232,7 @@ void LayoutManager::drawLayout(LayoutParent* lay, HDC hdc, HBRUSH *br, int brIdx
 	if (!chs) {
 		int x = lay->getXToTop();
 		int y = lay->getYToTop();
-		RECT r = {x, y, x + lay->getMeasureWidth(), y + lay->getMeasureHeight()};
+		RECT r = {x, y, x + lay->getLayoutWidth() - 1, y + lay->getLayoutHeight() - 1};
 		FrameRect(hdc, &r, br[brIdx % 3]);
 		return;
 	}
@@ -229,9 +246,9 @@ WndLayout::WndLayout(HWND wnd, int x, int y, Val width, Val height) : LayoutPare
 
 void WndLayout::layout(int x, int y, int width, int height) {
 	LayoutParent::layout(x, y, width, height);
-	x = getXToTop();
-	y = getYToTop();
 	if (mWnd) {
+		x = getXToTop();
+		y = getYToTop();
 		MoveWindow(mWnd, x, y, width, height, TRUE);
 	}
 }
@@ -332,7 +349,9 @@ void HLineLayout::layout( int x, int y, int width, int height ) {
 	Layout::layout(x, y, width, height);
 	int cx = 0, cy = 0;
 	for (int i = 0; i < mChildNum; ++i) {
-		mChild[i]->layout(cx, cy, mChild[i]->getMeasureWidth(), mChild[i]->getMeasureHeight());
+		int cw = min(mMeasureWidth - cx, mChild[i]->getMeasureWidth());
+		if (cw < 0) cw = 0;
+		mChild[i]->layout(cx, cy, cw, mChild[i]->getMeasureHeight());
 		cx += mSpace + mChild[i]->getMeasureWidth();
 	}
 }
@@ -357,7 +376,7 @@ void HLineLayout::measure( Val width, Val height ) {
 		LayoutParent* wchild[30] = {0};
 		int weight = 0, less = getVal(vw);
 		for (int i = 0, j = 0; i < mChildNum; ++i) {
-			vw -= mChild[i]->getMeasureWidth();
+			less -= mChild[i]->getMeasureWidth();
 			if (getWeight(mChild[i]->getWidthVal()) > 0) {
 				wchild[j++] = mChild[i];
 				weight += getWeight(mChild[i]->getWidthVal());
@@ -366,7 +385,8 @@ void HLineLayout::measure( Val width, Val height ) {
 		less -= (mChildNum - 1) * mSpace;
 		if (less > 0 && weight > 0) {
 			for (int i = 0; wchild[i]; ++i) {
-				int lw = less * getWeight(mChild[i]->getWidthVal()) / weight;
+				int chwe = getWeight(wchild[i]->getWidthVal());
+				int lw = less * chwe / weight;
 				lw += wchild[i]->getMeasureWidth();
 				wchild[i]->measure(makeVal(lw, MM_FIX), makeVal(getVal(vh), MM_ATMOST));
 			}
