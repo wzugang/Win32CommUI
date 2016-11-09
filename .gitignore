@@ -1,0 +1,10 @@
+*.ico
+*.vcxpro*
+Debug/
+Release/
+ReadMe.*
+targetver.h
+stdafx.*
+CommUI.*
+Resource*
+
