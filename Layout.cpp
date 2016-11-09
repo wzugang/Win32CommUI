@@ -158,7 +158,7 @@ void Layout::addChild( LayoutParent *child ) {
 BOOL Layout::isMeasured() {
 	if (! mMeasured) return FALSE;
 	for (int i = 0; i < mChildNum; ++i) {
-		if (mChild[i] && !mChild[i]->isMeasured())
+		if (! mChild[i]->isMeasured())
 			return FALSE;
 	}
 	return TRUE;
@@ -167,9 +167,7 @@ BOOL Layout::isMeasured() {
 void Layout::clearMeasured() {
 	LayoutParent::clearMeasured();
 	for (int i = 0; i < mChildNum; ++i) {
-		if (mChild[i]) {
-			mChild[i]->clearMeasured();
-		}
+		mChild[i]->clearMeasured();
 	}
 }
 
