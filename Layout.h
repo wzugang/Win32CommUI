@@ -142,3 +142,13 @@ public:
 	virtual void measure(Val width, Val height);
 	virtual void show(int idx);
 };
+
+// it has only one child 
+class VScrollLayout : public Layout {
+public:
+	VScrollLayout(HWND wnd, int x, int y, Val width, Val height);
+	virtual void layout(int x, int y, int width, int height);
+	virtual void measure(Val width, Val height);
+protected:
+	HWND mWnd;
+};

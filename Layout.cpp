@@ -476,9 +476,9 @@ void VLineLayout::measure( Val width, Val height ) {
 	if (getModel(vw) == MM_ATMOST || getModel(vw) == MM_WRAP_CONTENT) {
 		int mv = 0;
 		for (int i = 0, j = 0; i < mChildNum; ++i) {
-			mv = max(mv, mChild[i]->getMeasureHeight());
+			mv = max(mv, mChild[i]->getMeasureWidth());
 		}
-		vh = makeVal(mv, getModel(vh));
+		vw = makeVal(mv, getModel(vw));
 	}
 
 	mMeasureWidth = getVal(vw);
