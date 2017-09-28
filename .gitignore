@@ -7,4 +7,5 @@ targetver.h
 stdafx.*
 CommUI.*
 Resource*
-
+*.rc
+*.aps
