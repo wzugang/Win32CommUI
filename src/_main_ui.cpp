@@ -59,10 +59,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	return 0;
 }
 
-class MyTable : public XExtTable {
+class MyTable : public XTableModel {
 public:
-	MyTable(XTable *tab) : XExtTable(tab) {
-	}
 	virtual int getColumnCount() {
 		return 3;
 	}
@@ -80,15 +78,15 @@ public:
 	}
 	virtual void getItem(int row, int col, LVITEM *item) {
 		static char v[128];
-		XExtTable::getItem(row, col, item);
+		XTableModel::getItem(row, col, item);
 		sprintf(v, "%d  %d", row, col);
 		item->pszText = v;
 	}
 };
 
 void InitMyTable() {
-	MyTable *t = new MyTable((XTable*) win->findById("tab"));
-	t->apply();
+	MyTable *t = new MyTable();
+	t->apply((XTable*) win->findById("tab"));
 }
 
 void InitMyTree() {

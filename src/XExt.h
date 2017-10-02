@@ -1,12 +1,11 @@
 #pragma once
-#include "XComponent.h"
+#include <windows.h>
 #include <CommCtrl.h>
+class XTable;
 
-class XExtTable {
+class XTableModel {
 public:
-	XExtTable(XTable *table);
-	void apply();
-	~XExtTable();
+	void apply(HWND tableWnd);
 protected:
 	virtual int getColumnCount() = 0;
 	virtual int getRowCount() = 0;
@@ -15,7 +14,20 @@ protected:
 
 	virtual void getColumn(int col, LVCOLUMN *lvc);
 	virtual void getItem(int row, int col, LVITEM *item);
+};
+
+class XImage {
+public:
+	XImage(HBITMAP bmp);
+	static XImage *loadFromFile(const char *path);
+	static XImage *loadFromResource(int resId);
+	static XImage *loadFromResource(const char * resName);
+	static XImage *create(int width, int height);
+	~XImage();
 protected:
-	XTable *mTable;
+	void *mBits;
+	HBITMAP mHBitmap;
+	int mWidth;
+	int mHeight;
 };
 
