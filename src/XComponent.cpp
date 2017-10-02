@@ -10,13 +10,20 @@
 
 HINSTANCE XComponent::mInstance;
 
-static LRESULT CALLBACK XComponent_WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	XComponent *cc = (XComponent *)GetWindowLong(wnd, GWL_USERDATA);
-	DWORD id = GetWindowLong(wnd, GWL_ID);
+LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	XComponent* cc = NULL;
+	if (msg == WM_NCCREATE) {
+		LPCREATESTRUCT lpcs = reinterpret_cast<LPCREATESTRUCT>(lParam);
+		cc = static_cast<XComponent*>(lpcs->lpCreateParams);
+		cc->mWnd = wnd;
+		SetWindowLongPtr(wnd, GWLP_USERDATA, reinterpret_cast<LPARAM>(cc));
+	} else {
+		cc = (XComponent *)GetWindowLong(wnd, GWL_USERDATA);
+	}
 	if (cc != NULL) {
-		if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam))
-			return 0;
 		LRESULT ret = 0;
+		if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam, &ret))
+			return ret;
 		if (cc->wndProc(msg, wParam, lParam, &ret))
 			return ret;
 	}
@@ -185,14 +192,13 @@ void XComponent::parseAttrs() {
 	bool ok = false;
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
 		XmlNode::Attr *attr = mNode->getAttr(i);
-		if (strcmp(attr->mName, "x") == 0) {
-			mAttrX = parseSize(attr->mValue);
-		} else if (strcmp(attr->mName, "y") == 0) {
-			mAttrY = parseSize(attr->mValue);
-		} else if (strcmp(attr->mName, "width") == 0) {
-			mAttrWidth = parseSize(attr->mValue);
-		} else if (strcmp(attr->mName, "height") == 0) {
-			mAttrHeight = parseSize(attr->mValue);
+		if (strcmp(attr->mName, "rect") == 0) {
+			int rect[4] = {0};
+			parseArraySize(attr->mValue, rect);
+			mAttrX = rect[0];
+			mAttrY = rect[1];
+			mAttrWidth = rect[2];
+			mAttrHeight = rect[3];
 		} else if (strcmp(attr->mName, "padding") == 0) {
 			parseArraySize(attr->mValue, mAttrPadding);
 		} else if (strcmp(attr->mName, "margin") == 0) {
@@ -209,23 +215,23 @@ void XComponent::parseAttrs() {
 			COLORREF cc = parseColor(color, &ok);
 			if (ok) {
 				mAttrBgColor = cc;
-				mAttrFlags |= AF_BGCOLOR;
+				mAttrFlags |= AF_BG_COLOR;
 			}
 		}
 	}
 }
 
-int XComponent::getSize( int sizeSpec ) {
+int XComponent::getSpecSize( int sizeSpec ) {
 	return sizeSpec & ~(MS_ATMOST | MS_AUTO | MS_FIX | MS_PERCENT);
 }
 
 int XComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
 	if (selfSizeSpec & MS_FIX) {
-		return getSize(selfSizeSpec);
+		return getSpecSize(selfSizeSpec);
 	}
 	if (selfSizeSpec & MS_PERCENT) {
 		if ((parentSizeSpec & MS_FIX) || (parentSizeSpec & MS_ATMOST)) {
-			return getSize(selfSizeSpec) * getSize(parentSizeSpec) / 100;
+			return getSpecSize(selfSizeSpec) * getSpecSize(parentSizeSpec) / 100;
 		}
 	}
 	return 0;
@@ -303,13 +309,13 @@ DWORD XComponent::generateWndId() {
 bool XComponent::onColor( HDC dc, LRESULT *result ) {
 	if (mAttrFlags & AF_COLOR) 
 		SetTextColor(dc, mAttrColor);
-	if (mAttrFlags & AF_BGCOLOR) {
+	if (mAttrFlags & AF_BG_COLOR) {
 		SetBkColor(dc, mAttrBgColor); // onlyÎÄ×Ö±³¾°É«
 		if (mBgColorBrush == NULL) 
 			mBgColorBrush = CreateSolidBrush(mAttrBgColor); // ¿Ø¼þ±³¾°
 		*result = (LRESULT)mBgColorBrush;
 	}
-	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BGCOLOR);
+	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BG_COLOR);
 }
 
 HFONT XComponent::getFont() {
@@ -334,11 +340,20 @@ void XComponent::setAttrRect( int x, int y, int width, int height ) {
 	mAttrHeight = height;
 }
 
+void XComponent::init( HINSTANCE instance ) {
+	InitCommonControls();
+	mInstance = instance;
+}
+
+HINSTANCE XComponent::getInstance() {
+	return mInstance;
+}
+
 static void MyRegisterClass(HINSTANCE ins, const char *className) {
 	WNDCLASSEX wcex = {0};
 	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= XComponent_WndProc;
+	wcex.lpfnWndProc	= XComponent::__WndProc;
 	wcex.cbClsExtra		= 0;
 	wcex.cbWndExtra		= 0;
 	wcex.hInstance		= ins;
@@ -357,7 +372,7 @@ XContainer::XContainer( XmlNode *node ) : XComponent(node) {
 
 bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
 	if (msg == WM_ERASEBKGND) {
-		if (mAttrFlags & AF_BGCOLOR) {
+		if (mAttrFlags & AF_BG_COLOR) {
 			HDC dc = (HDC)wParam;
 			HBRUSH brush = CreateSolidBrush(mAttrBgColor);
 			RECT rc = {0};
@@ -371,6 +386,20 @@ bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
 			return c->onColor((HDC)wParam, result);
+		}
+	} else if (msg == WM_COMMAND && lParam != 0) {
+		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
+		XComponent *c = getChildById(id);
+		if (c != NULL) {
+			*result = SendMessage((HWND)lParam, WM_COMMAND, 0, 0);
+			return true;
+		}
+	} else if (msg == WM_NOTIFY && lParam != 0) {
+		NMHDR *nmh = (NMHDR*)lParam;
+		XComponent *c = getChildById(nmh->idFrom);
+		if (c != NULL) {
+			*result = SendMessage(nmh->hwndFrom, WM_NOTIFY, wParam, lParam);
+			return true;
 		}
 	}
 	return false;
@@ -398,7 +427,7 @@ void XAbsLayout::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("XAbsLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
 		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, NULL);
+		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XContainer::createWnd();
 }
@@ -414,7 +443,7 @@ bool XBasicWnd::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) 
 }
 
 void XBasicWnd::createWnd() {
-	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)XComponent_WndProc);
+	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)__WndProc);
 	XComponent::createWnd();
 }
 
@@ -427,7 +456,7 @@ void XButton::createWnd() {
 	char *txt = mNode->getAttrValue("text");
 	mID = generateWndId();
 	mWnd = CreateWindow("BUTTON", txt, WS_VISIBLE | WS_CHILD, mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, NULL);
+		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
 }
@@ -441,7 +470,7 @@ void XLabel::createWnd() {
 	char *txt = mNode->getAttrValue("text");
 	mID = generateWndId();
 	mWnd = CreateWindow("STATIC", txt, WS_VISIBLE | WS_CHILD, mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, NULL);
+		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
 }
@@ -449,13 +478,13 @@ void XLabel::createWnd() {
 bool XLabel::onColor( HDC dc, LRESULT *result ) {
 	if (mAttrFlags & AF_COLOR)
 		SetTextColor(dc, mAttrColor);
-	if (mAttrFlags & AF_BGCOLOR) {
+	if (mAttrFlags & AF_BG_COLOR) {
   		SetBkColor(dc, mAttrBgColor); // onlyÎÄ×Ö±³¾°É«
   		if (mBgColorBrush == NULL) 
 			mBgColorBrush = CreateSolidBrush(mAttrBgColor); // ¿Ø¼þ±³¾°
   		*result = (LRESULT)mBgColorBrush;
 	}
-	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BGCOLOR);
+	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BG_COLOR);
 }
 
 //--------------------------XCheckBox----------------------------
@@ -500,7 +529,7 @@ void XEdit::createWnd() {
 	}
 	mID = generateWndId();
 	mWnd = CreateWindow("EDIT", txt, style, mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, NULL);
+		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
 }
@@ -530,7 +559,7 @@ static std::vector<char*> splitBy( char *data, char splitChar) {
 void XComboBox::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("ComboBox", NULL,  WS_VISIBLE | WS_CHILD | WS_VSCROLL | CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | CBS_NOINTEGRALHEIGHT, 
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 
 	std::vector<char*> arr = splitBy(mNode->getAttrValue("data"), ';');
@@ -547,7 +576,7 @@ XTable::XTable( XmlNode *node ) : XBasicWnd(node) {
 void XTable::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("SysListView32", NULL,  WS_VISIBLE | WS_CHILD | LVS_REPORT | LVS_SINGLESEL,
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	ListView_SetExtendedListViewStyle(mWnd, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES); // LVS_EX_SUBITEMIMAGES
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
@@ -559,17 +588,19 @@ XTree::XTree( XmlNode *node ) : XBasicWnd(node) {
 void XTree::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("SysTreeView32", NULL,  WS_VISIBLE | WS_CHILD | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT,
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
 }
-XTab::XTab( XmlNode *node ) : XBasicWnd(node) {
+
+XTab::XTab(XmlNode *node) : XContainer(node) {
+	mOldWndProc = NULL;
 	parseAttrs();
 }
 void XTab::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("SysTabControl32", NULL,  WS_VISIBLE | WS_CHILD | TCS_FIXEDWIDTH,
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	std::vector<char*> titles = splitBy(mNode->getAttrValue("data"), ';');
 
@@ -579,37 +610,33 @@ void XTab::createWnd() {
 		it.pszText = titles.at(i);
 		TabCtrl_InsertItem(mWnd, i, &it);
 	}
-	XBasicWnd::createWnd();
-}
-XTab2::XTab2(XmlNode *node) : XContainer(node) {
-	mOldWndProc = NULL;
-	parseAttrs();
-}
-void XTab2::createWnd() {
-	mID = generateWndId();
-	mWnd = CreateWindow("SysTabControl32", NULL,  WS_VISIBLE | WS_CHILD | TCS_FIXEDWIDTH,
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	std::vector<char*> titles = splitBy(mNode->getAttrValue("data"), ';');
-
-	for (int i = 0; i < titles.size(); ++i) {
-		TC_ITEM it = {0};
-		it.mask = TCIF_TEXT;
-		it.pszText = titles.at(i);
-		TabCtrl_InsertItem(mWnd, i, &it);
-	}
-	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)XComponent_WndProc);
+	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)__WndProc);
 	XComponent::createWnd();
 }
-bool XTab2::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
+bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
 	if (XContainer::wndProc(msg, wParam, lParam, res)) {
 		return true;
+	}
+	if (msg == WM_NOTIFY) {
+		NMHDR *hd = (NMHDR *)lParam;
+		if (hd->idFrom == mID) {
+			if (hd->code == TCN_SELCHANGING) { //Tab before change
+				int sel = TabCtrl_GetCurSel(mWnd);
+				ShowWindow(getChild(sel)->getWnd(), SW_HIDE);
+				return true;
+			} else if (hd->code == TCN_SELCHANGE) { //Tab after change
+				int sel = TabCtrl_GetCurSel(mWnd);
+				ShowWindow(getChild(sel)->getWnd(), SW_SHOW);
+				return true;
+			}
+			return true;
+		}
 	}
 	*res = CallWindowProc(mOldWndProc, mWnd, msg, wParam, lParam);
 	return true;
 }
 
-void XTab2::onMeasure( int widthSpec, int heightSpec ) {
+void XTab::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 
@@ -629,7 +656,7 @@ XListBox::XListBox( XmlNode *node ) : XBasicWnd(node) {
 void XListBox::createWnd() {
 	mID = generateWndId();
 	mWnd = CreateWindow("ListBox", NULL,  WS_VISIBLE | WS_CHILD | LBS_HASSTRINGS | LBS_MULTIPLESEL | WS_VSCROLL,
-		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, NULL);
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	std::vector<char*> items = splitBy(mNode->getAttrValue("data"), ';');
 
@@ -638,4 +665,147 @@ void XListBox::createWnd() {
 	}
 	SendMessage(mWnd, LB_SETTOPINDEX, items.size(), 0); // auto scroll
 	XBasicWnd::createWnd();
+}
+XDateTimePicker::XDateTimePicker( XmlNode *node ) : XBasicWnd(node) {
+	parseAttrs();
+}
+void XDateTimePicker::createWnd() {
+	mID = generateWndId();
+	mWnd = CreateWindow("SysDateTimePick32", NULL,  WS_VISIBLE | WS_CHILD,
+		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	DateTime_SetFormat(mWnd, "yyyy-MM-dd");
+	XBasicWnd::createWnd();
+}
+
+XWindow::XWindow( XmlNode *node ) : XContainer(node) {
+	parseAttrs();
+}
+
+void XWindow::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XWindow");
+	}
+	mID = generateWndId();
+	mWnd = CreateWindow("XWindow", mNode->getAttrValue("text"), WS_OVERLAPPEDWINDOW,
+		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
+		getParentWnd(), NULL, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (XContainer::wndProc(msg, wParam, lParam, result))
+		return true;
+	if (msg == WM_SIZE && lParam > 0) {
+		layout(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		return true;
+	} else if (msg == WM_DESTROY) {
+		PostQuitMessage(0);
+		return true;
+	}
+	return false;
+}
+
+int XWindow::messageLoop() {
+	MSG msg;
+	HACCEL hAccelTable = NULL;
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (! TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+	return (int) msg.wParam;
+}
+
+void XWindow::show(int nCmdShow) {
+	HWND desk = GetDesktopWindow();
+	RECT rect = {0};
+	GetClientRect(desk, &rect);
+	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0) {
+		int x = (rect.right - getSpecSize(mAttrWidth)) / 2;
+		int y = (rect.bottom - getSpecSize(mAttrHeight)) / 2 - 30;
+		SetWindowPos(mWnd, HWND_NOTOPMOST, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE);
+	}
+	ShowWindow(mWnd, nCmdShow);
+	UpdateWindow(mWnd);
+}
+void XWindow::onLayout( int width, int height ) {
+	layoutChildren(width, height);
+}
+
+XDialog::XDialog( XmlNode *node ) : XContainer(node) {
+	parseAttrs();
+}
+void XDialog::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XDialog");
+	}
+	mID = generateWndId();
+	mWnd = CreateWindow("XDialog", mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
+		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
+		getParentWnd(), NULL, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	int err = 0;
+	if (XContainer::wndProc(msg, wParam, lParam, result))
+		return true;
+	if (msg == WM_SIZE && lParam > 0) {
+		layout(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		return true;
+	} else if (msg == WM_DESTROY) {
+		PostQuitMessage(wParam);
+		return true;
+	} else if (msg == WM_CLOSE) {
+		// default system close button is 0
+		HWND parent = getParentWnd();
+		EnableWindow(parent, TRUE);
+		// SetForegroundWindow(parent);
+		SetFocus(parent);
+	}
+	return false;
+}
+
+int XDialog::showModal() {
+	RECT rect = {0};
+	HWND parent = getParentWnd();
+	GetWindowRect(parent, &rect);
+	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0 && rect.right > 0 && rect.bottom > 0) {
+		int x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
+		int y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
+		SetWindowPos(mWnd, HWND_NOTOPMOST, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE);
+	}
+	EnableWindow(parent, FALSE);
+	ShowWindow(mWnd, SW_SHOWNORMAL);
+
+	int err = GetLastError();
+
+	MSG msg;
+	int nRet = 0;
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		if( msg.message == WM_CLOSE && msg.hwnd == mWnd ) {
+			nRet = msg.wParam;
+		}
+		if (! TranslateAccelerator(msg.hwnd, NULL, &msg)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+	return nRet;
+}
+
+void XDialog::onLayout( int widthSpec, int heightSpec ) {
+	layoutChildren(widthSpec, heightSpec);
+}
+
+void XDialog::close( int nRet ) {
+	PostMessage(mWnd, WM_CLOSE, (WPARAM)nRet, 0L);
 }

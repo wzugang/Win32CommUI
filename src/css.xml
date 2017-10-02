@@ -1,9 +1,9 @@
 
-<AbsLayout id = "" padding = "left top right bottom" space = "5px|auto" bgcolor="#ccddee" >
+<AbsLayout id = "" padding = "left top right bottom"  bgcolor="#ccddee" >
 	<Component font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" />
 					font-weight = 1 ... 1000  strikeout: 文字中间有横线
 					
-	<Button id = "" x = "0px" y = "0" width = "15px" height = "20%"  margin = "left top right bottom"
+	<Button id = "" rect="x y width height"  margin = "left top right bottom"
 		text="OK" />
 	<Label ..... visible = "false"/>
 	<ComboBox data="男;女;"  />

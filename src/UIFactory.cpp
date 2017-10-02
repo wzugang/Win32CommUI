@@ -15,19 +15,18 @@ struct NodeCreator {
 static NodeCreator g_creators[64];
 int UIFactory::mNum = 0;
 
-XComponent* UIFactory::build( XmlNode *root, HINSTANCE instance) {
+XComponent* UIFactory::build( XmlNode *root) {
 	if (root == NULL) return NULL;
 	Creator c = getCreator(root->getName());
 	if (c == NULL) {
 		printf("UIFactory.buildingTree: node name %s has no creator\n", root->getName());
 		return NULL;
 	}
-	XComponent::mInstance = instance;
 	XComponent *x = c(root);
 	root->setComponent(x);
 	for (int i = 0; i < root->getChildCount(); ++i) {
 		XmlNode *child = root->getChild(i);
-		XComponent *ix = build(child, instance);
+		XComponent *ix = build(child);
 		child->setComponent(ix);
 	}
 	return x;
@@ -70,8 +69,10 @@ static XComponent *XComboBox_Creator(XmlNode *n) {return new XComboBox(n);}
 static XComponent *XTable_Creator(XmlNode *n) {return new XTable(n);}
 static XComponent *XTree_Creator(XmlNode *n) {return new XTree(n);}
 static XComponent *XTab_Creator(XmlNode *n) {return new XTab(n);}
-static XComponent *XTab2_Creator(XmlNode *n) {return new XTab2(n);}
 static XComponent *XListBox_Creator(XmlNode *n) {return new XListBox(n);}
+static XComponent *XDateTimePicker_Creator(XmlNode *n) {return new XDateTimePicker(n);}
+static XComponent *XWindow_Creator(XmlNode *n) {return new XWindow(n);}
+static XComponent *XDialog_Creator(XmlNode *n) {return new XDialog(n);}
 
 struct InitUIFactory {
 	InitUIFactory() {
@@ -86,8 +87,10 @@ struct InitUIFactory {
 		UIFactory::registCreator("Table", XTable_Creator);
 		UIFactory::registCreator("Tree", XTree_Creator);
 		UIFactory::registCreator("Tab", XTab_Creator);
-		UIFactory::registCreator("Tab2", XTab2_Creator);
 		UIFactory::registCreator("ListBox", XListBox_Creator);
+		UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
+		UIFactory::registCreator("Window", XWindow_Creator);
+		UIFactory::registCreator("Dialog", XDialog_Creator);
 	}
 
 	~InitUIFactory() {
@@ -96,3 +99,4 @@ struct InitUIFactory {
 };
 
 static InitUIFactory s_init_ui_factory;
+

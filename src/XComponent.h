@@ -7,7 +7,7 @@ class XComponent;
 class XListener {
 public:
 	// if event has deal, return true
-	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam) = 0;
+	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret) = 0;
 };
 
 class XComponent {
@@ -20,9 +20,12 @@ public:
 	};
 	enum AttrFlag {
 		AF_COLOR = (1 << 0),
-		AF_BGCOLOR = (1 << 1)
+		AF_BG_COLOR = (1 << 1),
+		AF_BG_IMAGE = (1 << 2),
 	};
 	XComponent(XmlNode *node);
+	static void init(HINSTANCE instance);
+	static HINSTANCE getInstance();
 	virtual void createWnd();
 	void createWndTree(HWND parent);
 
@@ -31,7 +34,7 @@ public:
 	virtual void layout(int widthSpec, int heightSpec);
 	void mesureChildren(int widthSpec, int heighSpec);
 	void layoutChildren(int widthSpec, int heightSpec);
-	static int getSize(int sizeSpec);
+	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
 	HWND getWnd();
@@ -46,6 +49,7 @@ public:
 	static DWORD generateWndId();
 	virtual bool onColor(HDC dc, LRESULT *result);
 	void setAttrRect(int x, int y, int width, int height);
+	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual ~XComponent();
 protected:
 	void parseAttrs();
@@ -139,14 +143,10 @@ public:
 	XTree(XmlNode *node);
 	virtual void createWnd();
 };
-class XTab : public XBasicWnd {
+
+class XTab : public XContainer {
 public:
 	XTab(XmlNode *node);
-	virtual void createWnd();
-};
-class XTab2 : public XContainer {
-public:
-	XTab2(XmlNode *node);
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res);
 	virtual void onMeasure(int widthSpec, int heightSpec);
@@ -157,4 +157,31 @@ class XListBox : public XBasicWnd {
 public:
 	XListBox(XmlNode *node);
 	virtual void createWnd();
+};
+class XDateTimePicker : public XBasicWnd {
+public:
+	XDateTimePicker(XmlNode *node);
+	virtual void createWnd();
+};
+
+// only has one child
+class XWindow : public XContainer {
+public:
+	XWindow(XmlNode *node);
+	virtual void createWnd();
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onLayout(int widthSpec, int heightSpec);
+	virtual int messageLoop();
+	virtual void show(int nCmdShow);
+};
+
+// only has one child
+class XDialog: public XContainer {
+public:
+	XDialog(XmlNode *node);
+	virtual void createWnd();
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onLayout(int widthSpec, int heightSpec);
+	int showModal();
+	void close(int nRet);
 };

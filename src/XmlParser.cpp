@@ -398,6 +398,10 @@ void XmlPartLoader::doParse() {
 	while (p < EP) {
 		char *ap = strstr(p, "#####");
 		if (ap == NULL) break;
+		if (ap != mContent && ap[-1] != '\n') {
+			p = ap + 5;
+			continue;
+		}
 		*ap = 0;
 		p = ap + 5;
 		while (p < EP && (isspace(*p) || *p == '#')) ++p;
@@ -407,7 +411,7 @@ void XmlPartLoader::doParse() {
 		*p = 0;
 		mPartItems[mPartNum].mName = sp;
 		++p;
-		while (p < EP && (isspace(*p) || *p == '#')) ++p;
+		while (p < EP && *p != '\n') ++p;
 		if (p >= EP) break;
 		mPartItems[mPartNum].mContent = p;
 		++mPartNum;
