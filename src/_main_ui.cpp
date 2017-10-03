@@ -17,7 +17,7 @@ class ButtonListener : public XListener {
 public:
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret) {
 		int rt = 0;
-		if (msg != WM_COMMAND) {
+		if (msg != XComponent::WM_COMMAND_SELF) {
 			return false;
 		}
 		if (strcmp("btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
@@ -86,7 +86,7 @@ public:
 
 void InitMyTable() {
 	MyTable *t = new MyTable();
-	t->apply((XTable*) win->findById("tab"));
+	t->apply(win->findById("tab")->getWnd());
 }
 
 void InitMyTree() {

@@ -16,18 +16,5 @@ protected:
 	virtual void getItem(int row, int col, LVITEM *item);
 };
 
-class XImage {
-public:
-	XImage(HBITMAP bmp);
-	static XImage *loadFromFile(const char *path);
-	static XImage *loadFromResource(int resId);
-	static XImage *loadFromResource(const char * resName);
-	static XImage *create(int width, int height);
-	~XImage();
-protected:
-	void *mBits;
-	HBITMAP mHBitmap;
-	int mWidth;
-	int mHeight;
-};
+
 

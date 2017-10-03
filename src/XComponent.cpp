@@ -44,6 +44,7 @@ XComponent::XComponent(XmlNode *node) {
 	mAttrColor = mAttrBgColor = 0;
 	mFont = NULL;
 	mBgColorBrush = NULL;
+	mBgImage = NULL;
 }
 
 XComponent::~XComponent() {
@@ -161,6 +162,16 @@ static void parseArraySize(const char *str, int *arr) {
 		while (*str != ' ' && *str) ++str;
 	}
 }
+static int parseInt(const char *str) {
+	return (int)strtod(str, NULL);
+}
+static void parseArrayInt(const char *str, int *arr) {
+	for (int i = 0; i < 4; ++i) {
+		while (*str == ' ') ++str;
+		arr[i] = parseInt(str);
+		while (*str != ' ' && *str) ++str;
+	}
+}
 
 static COLORREF parseColor(const char *color, bool *valid) {
 	static const char *HEX = "0123456789ABCDEF";
@@ -200,23 +211,23 @@ void XComponent::parseAttrs() {
 			mAttrWidth = rect[2];
 			mAttrHeight = rect[3];
 		} else if (strcmp(attr->mName, "padding") == 0) {
-			parseArraySize(attr->mValue, mAttrPadding);
+			parseArrayInt(attr->mValue, mAttrPadding);
 		} else if (strcmp(attr->mName, "margin") == 0) {
-			parseArraySize(attr->mValue, mAttrMargin);
+			parseArrayInt(attr->mValue, mAttrMargin);
 		} else if (strcmp(attr->mName, "color") == 0) {
-			char *color = mNode->getAttrValue("color");
-			COLORREF cc = parseColor(color, &ok);
+			COLORREF cc = parseColor(attr->mValue, &ok);
 			if (ok) {
 				mAttrColor = cc;
 				mAttrFlags |= AF_COLOR;
 			}
 		} else if (strcmp(attr->mName, "bgcolor") == 0) {
-			char *color = mNode->getAttrValue("bgcolor");
-			COLORREF cc = parseColor(color, &ok);
+			COLORREF cc = parseColor(attr->mValue, &ok);
 			if (ok) {
 				mAttrBgColor = cc;
 				mAttrFlags |= AF_BG_COLOR;
 			}
+		} else if (strcmp(attr->mName, "bgimage") == 0) {
+			mBgImage = XImage::load(attr->mValue);
 		}
 	}
 }
@@ -264,6 +275,26 @@ HWND XComponent::getWnd() {
 }
 
 bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
+	if (msg == WM_ERASEBKGND) {
+		bool hasBgImg = (mBgImage != NULL && mBgImage->getHBitmap() != NULL);
+		if ((mAttrFlags & AF_BG_COLOR) /*&& !hasBgImg*/) {
+			HDC dc = (HDC)wParam;
+			HBRUSH brush = CreateSolidBrush(mAttrBgColor);
+			RECT rc = {0};
+			GetClientRect(mWnd, &rc);
+			FillRect(dc, &rc, brush);
+			DeleteObject(brush);
+		}
+		if (hasBgImg) {
+			HDC dc = (HDC)wParam;
+			HDC newDC = CreateCompatibleDC(dc);
+			SelectObject(newDC, mBgImage->getHBitmap());
+			bool ok = BitBlt(dc, 0, 0, mWidth, mHeight, newDC, 0, 0, SRCCOPY);
+			DeleteObject(newDC);
+		}
+		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)
+			return true;
+	}
 	return false;
 }
 
@@ -371,17 +402,10 @@ XContainer::XContainer( XmlNode *node ) : XComponent(node) {
 }
 
 bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
-	if (msg == WM_ERASEBKGND) {
-		if (mAttrFlags & AF_BG_COLOR) {
-			HDC dc = (HDC)wParam;
-			HBRUSH brush = CreateSolidBrush(mAttrBgColor);
-			RECT rc = {0};
-			GetClientRect(mWnd, &rc);
-			FillRect(dc, &rc, brush);
-			DeleteObject(brush);
-			return true;
-		}
-	} else if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
+	if (XComponent::wndProc(msg, wParam, lParam, result)) {
+		return true;
+	}
+	if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
@@ -391,14 +415,14 @@ bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
-			*result = SendMessage((HWND)lParam, WM_COMMAND, 0, 0);
+			*result = SendMessage((HWND)lParam, WM_COMMAND_SELF, 0, 0);
 			return true;
 		}
 	} else if (msg == WM_NOTIFY && lParam != 0) {
 		NMHDR *nmh = (NMHDR*)lParam;
 		XComponent *c = getChildById(nmh->idFrom);
 		if (c != NULL) {
-			*result = SendMessage(nmh->hwndFrom, WM_NOTIFY, wParam, lParam);
+			*result = SendMessage(nmh->hwndFrom, WM_NOTIFY_SELF, wParam, lParam);
 			return true;
 		}
 	}
@@ -611,13 +635,13 @@ void XTab::createWnd() {
 		TabCtrl_InsertItem(mWnd, i, &it);
 	}
 	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)__WndProc);
-	XComponent::createWnd();
+	XContainer::createWnd();
 }
 bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
 	if (XContainer::wndProc(msg, wParam, lParam, res)) {
 		return true;
 	}
-	if (msg == WM_NOTIFY) {
+	if (msg == WM_NOTIFY_SELF) {
 		NMHDR *hd = (NMHDR *)lParam;
 		if (hd->idFrom == mID) {
 			if (hd->code == TCN_SELCHANGING) { //Tab before change
@@ -629,8 +653,8 @@ bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
 				ShowWindow(getChild(sel)->getWnd(), SW_SHOW);
 				return true;
 			}
-			return true;
 		}
+		return true;
 	}
 	*res = CallWindowProc(mOldWndProc, mWnd, msg, wParam, lParam);
 	return true;
@@ -688,7 +712,7 @@ void XWindow::createWnd() {
 		reg = true;
 		MyRegisterClass(mInstance, "XWindow");
 	}
-	mID = generateWndId();
+	// mID = generateWndId();  // has no id
 	mWnd = CreateWindow("XWindow", mNode->getAttrValue("text"), WS_OVERLAPPEDWINDOW,
 		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
 		getParentWnd(), NULL, mInstance, this);
@@ -746,7 +770,7 @@ void XDialog::createWnd() {
 		reg = true;
 		MyRegisterClass(mInstance, "XDialog");
 	}
-	mID = generateWndId();
+	// mID = generateWndId(); // has no id
 	mWnd = CreateWindow("XDialog", mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
 		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
 		getParentWnd(), NULL, mInstance, this);

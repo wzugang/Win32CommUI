@@ -41,36 +41,4 @@ void XTableModel::getItem( int row, int col, LVITEM *item ) {
 	item->pszText = NULL;
 }
 
-XImage::XImage( HBITMAP bmp ) {
-	mBits = NULL;
-	mHBitmap = bmp;
-	mWidth = mHeight = 0;
-	if (bmp) {
-		BITMAP b = {0};
-		GetObject(bmp, sizeof(BITMAP), &b);
-		mWidth = b.bmWidth;
-		mHeight = b.bmHeight;
-		mBits = b.bmBits;
-	}
-}
 
-XImage * XImage::loadFromFile( const char *path ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), path, IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE | */ LR_LOADFROMFILE);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-}
-
-XImage * XImage::loadFromResource( int resId ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), MAKEINTRESOURCE(resId), IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE*/ 0);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-}
-
-XImage * XImage::loadFromResource( const char * resName ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resName, IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION  LR_DEFAULTSIZE*/ 0);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-}

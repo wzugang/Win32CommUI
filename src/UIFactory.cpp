@@ -3,6 +3,88 @@
 #include "XComponent.h"
 #include <string.h>
 
+XImage::XImage() {
+	mBits = NULL;
+	mHBitmap = NULL;
+	mWidth = mHeight = 0;
+}
+
+XImage::XImage( HBITMAP bmp ) {
+	mBits = NULL;
+	mHBitmap = bmp;
+	mWidth = mHeight = 0;
+	if (bmp) {
+		BITMAP b = {0};
+		GetObject(bmp, sizeof(BITMAP), &b);
+		mWidth = b.bmWidth;
+		mHeight = b.bmHeight;
+		mBits = b.bmBits;
+	}
+}
+
+XImage * XImage::loadFromFile( const char *path ) {
+	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), path, IMAGE_BITMAP, 0, 0,
+		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE | */ LR_LOADFROMFILE);
+	if (bmp) return new XImage(bmp);
+	return NULL;
+}
+
+XImage * XImage::loadFromResource( int resId ) {
+	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), MAKEINTRESOURCE(resId), IMAGE_BITMAP, 0, 0,
+		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE*/ 0);
+	if (bmp) return new XImage(bmp);
+	return NULL;
+}
+
+XImage * XImage::loadFromResource( const char * resName ) {
+	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resName, IMAGE_BITMAP, 0, 0,
+		/*LR_CREATEDIBSECTION  LR_DEFAULTSIZE*/ 0);
+	if (bmp) return new XImage(bmp);
+	return NULL;
+}
+
+XImage * XImage::load( const char *resPath ) {
+	if (memcmp(resPath, "res://", 6) == 0)
+		return loadFromResource(resPath + 6);
+	if (memcmp(resPath, "file://", 7) == 0)
+		return loadFromFile(resPath + 7);
+	return NULL;
+}
+
+XImage * XImage::create( int width, int height ) {
+	BITMAPINFOHEADER header = {0};
+	int nBytesPerLine = ((width * 32 + 31) & (~31)) >> 3;
+	header.biSize = sizeof(BITMAPINFOHEADER);
+	header.biWidth = width;
+	header.biHeight = height;
+	header.biPlanes = 1;
+	header.biBitCount = 32;
+	header.biCompression = BI_RGB;
+	header.biClrUsed = 0;
+	header.biSizeImage = nBytesPerLine * height;
+	PVOID pvBits = NULL;
+	HBITMAP bmp = CreateDIBSection(NULL, (PBITMAPINFO)&header, DIB_RGB_COLORS, &pvBits, NULL, 0);  
+	if (bmp == NULL)
+		return NULL;
+	return new XImage(bmp);
+}
+
+HBITMAP XImage::getHBitmap() {
+	return mHBitmap;
+}
+
+void * XImage::getBits() {
+	return mBits;
+}
+
+int XImage::getWidth() {
+	return mWidth;
+}
+
+int XImage::getHeight() {
+	return mHeight;
+}
+
 struct NodeCreator {
 	NodeCreator() {
 		mNodeName[0] = 0;

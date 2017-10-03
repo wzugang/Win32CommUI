@@ -3,6 +3,7 @@
 class XmlNode;
 class UIFactory;
 class XComponent;
+class XImage;
 
 class XListener {
 public:
@@ -21,7 +22,10 @@ public:
 	enum AttrFlag {
 		AF_COLOR = (1 << 0),
 		AF_BG_COLOR = (1 << 1),
-		AF_BG_IMAGE = (1 << 2),
+	};
+	enum ReflectWM {
+		WM_COMMAND_SELF = 0x6000,
+		WM_NOTIFY_SELF
 	};
 	XComponent(XmlNode *node);
 	static void init(HINSTANCE instance);
@@ -63,6 +67,7 @@ protected:
 	int mAttrPadding[4], mAttrMargin[4];
 	COLORREF mAttrColor, mAttrBgColor;
 	HBRUSH mBgColorBrush;
+	XImage *mBgImage;
 	XListener *mListener;
 	int mAttrFlags;
 	HFONT mFont;
