@@ -337,15 +337,16 @@ DWORD XComponent::generateWndId() {
 	return ++s_id;
 }
 
-bool XComponent::onColor( HDC dc, LRESULT *result ) {
-	if (mAttrFlags & AF_COLOR) 
+bool XComponent::onCtrlColor( HDC dc, LRESULT *result ) {
+	if (mAttrFlags & AF_COLOR)
 		SetTextColor(dc, mAttrColor);
 	if (mAttrFlags & AF_BG_COLOR) {
 		SetBkColor(dc, mAttrBgColor); // onlyÎÄ×Ö±³¾°É«
-		if (mBgColorBrush == NULL) 
+		if (mBgColorBrush == NULL)
 			mBgColorBrush = CreateSolidBrush(mAttrBgColor); // ¿Ø¼þ±³¾°
 		*result = (LRESULT)mBgColorBrush;
 	}
+	SetBkMode(dc, TRANSPARENT);
 	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BG_COLOR);
 }
 
@@ -409,7 +410,7 @@ bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
-			return c->onColor((HDC)wParam, result);
+			return c->onCtrlColor((HDC)wParam, result);
 		}
 	} else if (msg == WM_COMMAND && lParam != 0) {
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
@@ -497,18 +498,6 @@ void XLabel::createWnd() {
 		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XBasicWnd::createWnd();
-}
-
-bool XLabel::onColor( HDC dc, LRESULT *result ) {
-	if (mAttrFlags & AF_COLOR)
-		SetTextColor(dc, mAttrColor);
-	if (mAttrFlags & AF_BG_COLOR) {
-  		SetBkColor(dc, mAttrBgColor); // onlyÎÄ×Ö±³¾°É«
-  		if (mBgColorBrush == NULL) 
-			mBgColorBrush = CreateSolidBrush(mAttrBgColor); // ¿Ø¼þ±³¾°
-  		*result = (LRESULT)mBgColorBrush;
-	}
-	return (mAttrFlags & AF_COLOR)  || (mAttrFlags &  AF_BG_COLOR);
 }
 
 //--------------------------XCheckBox----------------------------

@@ -51,7 +51,7 @@ public:
 	void setListener(XListener *v);
 	XListener* getListener();
 	static DWORD generateWndId();
-	virtual bool onColor(HDC dc, LRESULT *result);
+	virtual bool onCtrlColor(HDC dc, LRESULT *result);
 	void setAttrRect(int x, int y, int width, int height);
 	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual ~XComponent();
@@ -108,7 +108,6 @@ class XLabel : public XBasicWnd {
 public:
 	XLabel(XmlNode *node);
 	virtual void createWnd();
-	virtual bool onColor(HDC dc, LRESULT *result);
 };
 class XCheckBox : public XButton {
 public:
