@@ -51,6 +51,10 @@ XComponent::XComponent(XmlNode *node) {
 XComponent::~XComponent() {
 	if (mBgColorBrush != NULL)  DeleteObject(mBgColorBrush);
 	if (mFont != NULL) DeleteObject(mFont);
+	if (mBgImage != NULL) {
+		mBgImage->decRef();
+		mBgImage = NULL;
+	}
 }
 
 static bool parseFont(LOGFONT *font, char *str) {

@@ -3,17 +3,30 @@
 #include "XComponent.h"
 #include "XExt.h"
 #include <string.h>
+#include <map>
+#include <string>
+
+static std::map<std::string, XImage*> mCache;
+
+static XImage *findInCache(const char *name) {
+	std::map<std::string, XImage*>::iterator it = mCache.find(name);
+	if (it == mCache.end())
+		return NULL;
+	return it->second;
+}
 
 XImage::XImage() {
 	mBits = NULL;
 	mHBitmap = NULL;
 	mWidth = mHeight = 0;
+	mRefCount = 1;
 }
 
 XImage::XImage( HBITMAP bmp ) {
 	mBits = NULL;
 	mHBitmap = bmp;
 	mWidth = mHeight = 0;
+	mRefCount = 1;
 	if (bmp) {
 		BITMAP b = {0};
 		GetObject(bmp, sizeof(BITMAP), &b);
@@ -23,33 +36,34 @@ XImage::XImage( HBITMAP bmp ) {
 	}
 }
 
-XImage * XImage::loadFromFile( const char *path ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), path, IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE | */ LR_LOADFROMFILE);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-}
-
+/*
 XImage * XImage::loadFromResource( int resId ) {
 	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), MAKEINTRESOURCE(resId), IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE*/ 0);
+		/ *LR_CREATEDIBSECTION | LR_DEFAULTSIZE* / 0);
 	if (bmp) return new XImage(bmp);
 	return NULL;
-}
+} */
 
-XImage * XImage::loadFromResource( const char * resName ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resName, IMAGE_BITMAP, 0, 0,
-		/*LR_CREATEDIBSECTION  LR_DEFAULTSIZE*/ 0);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-}
 
 XImage * XImage::load( const char *resPath ) {
-	if (memcmp(resPath, "res://", 6) == 0)
-		return loadFromResource(resPath + 6);
-	if (memcmp(resPath, "file://", 7) == 0)
-		return loadFromFile(resPath + 7);
-	return NULL;
+	XImage *img = findInCache(resPath);
+	if (img != NULL) {
+		img->incRef();
+		return img;
+	}
+	if (memcmp(resPath, "res://", 6) == 0) {
+		HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 6, IMAGE_BITMAP, 0, 0,
+			/*LR_CREATEDIBSECTION  LR_DEFAULTSIZE*/ 0);
+		if (bmp) img = new XImage(bmp);
+	} else if (memcmp(resPath, "file://", 7) == 0) {
+		HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 7, IMAGE_BITMAP, 0, 0,
+			/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE | */ LR_LOADFROMFILE);
+		if (bmp) img =  new XImage(bmp);
+	}
+	if (img != NULL) {
+		mCache[resPath] = img;
+	}
+	return img;
 }
 
 XImage * XImage::create( int width, int height ) {
@@ -88,6 +102,17 @@ int XImage::getHeight() {
 
 XImage::~XImage() {
 	if (mHBitmap) DeleteObject(mHBitmap);
+}
+
+void XImage::incRef() {
+	++mRefCount;
+}
+
+void XImage::decRef() {
+	--mRefCount;
+	if (mRefCount <= 0) {
+		// mCache.erase();
+	}
 }
 
 struct NodeCreator {

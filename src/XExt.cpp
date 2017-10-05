@@ -88,7 +88,7 @@ void XExtLabel::onLayout( int widthSpec, int heightSpec ) {
 		SetWindowRgn(mWnd, rgn, TRUE);
 	}
 	if (mBgImageForParnet != NULL) {
-		delete mBgImageForParnet;
+		mBgImageForParnet->decRef();
 		mBgImageForParnet = NULL;
 	}
 }
@@ -197,7 +197,7 @@ void XExtButton::onLayout( int widthSpec, int heightSpec ) {
 		SetWindowRgn(mWnd, rgn, TRUE);
 	}
 	if (mBgImage != NULL) {
-		delete mBgImage;
+		mBgImage->decRef();
 		mBgImage = NULL;
 	}
 }
@@ -311,7 +311,8 @@ XExtButton::BtnImage XExtButton::getBtnImage() {
 
 XExtButton::~XExtButton() {
 	for (int i = 0; i < sizeof(mImages)/sizeof(XImage*); ++i) {
-		if (mImages[i] != NULL) delete mImages[i];
+		if (mImages[i] != NULL)
+			mImages[i]->decRef();
 	}
 }
 

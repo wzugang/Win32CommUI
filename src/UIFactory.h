@@ -5,10 +5,6 @@ class XmlNode;
 
 class XImage {
 public:
-	XImage(HBITMAP bmp);
-	static XImage *loadFromFile(const char *path);
-	static XImage *loadFromResource(int resId);
-	static XImage *loadFromResource(const char * resName);
 	// @param resPath res://xxx   file://abc/xx.bmp
 	static XImage *load(const char *resPath);
 	static XImage *create(int width, int height);
@@ -17,13 +13,18 @@ public:
 	void *getBits();
 	int getWidth();
 	int getHeight();
-	~XImage();
+
+	void incRef();
+	void decRef();
 protected:
+	XImage(HBITMAP bmp);
+	~XImage();
 	XImage();
 	void *mBits;
 	HBITMAP mHBitmap;
 	int mWidth;
 	int mHeight;
+	int mRefCount;
 };
 
 class UIFactory {
