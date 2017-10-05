@@ -3,7 +3,7 @@
 	<Component font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" />
 					font-weight = 1 ... 1000  strikeout: 文字中间有横线
 					
-	<Button id = "" rect="x y width height"  margin = "left top right bottom"
+	<Button id = "" rect="x y width height"  margin = "left top right bottom"  roundConer="cx cy"
 		text="OK" />
 	<Label ..... visible = "false"/>
 	<ComboBox data="男;女;"  />

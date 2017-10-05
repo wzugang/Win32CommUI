@@ -1,6 +1,7 @@
 #include "UIFactory.h"
 #include "XmlParser.h"
 #include "XComponent.h"
+#include "XExt.h"
 #include <string.h>
 
 XImage::XImage() {
@@ -85,6 +86,10 @@ int XImage::getHeight() {
 	return mHeight;
 }
 
+XImage::~XImage() {
+	if (mHBitmap) DeleteObject(mHBitmap);
+}
+
 struct NodeCreator {
 	NodeCreator() {
 		mNodeName[0] = 0;
@@ -156,6 +161,12 @@ static XComponent *XDateTimePicker_Creator(XmlNode *n) {return new XDateTimePick
 static XComponent *XWindow_Creator(XmlNode *n) {return new XWindow(n);}
 static XComponent *XDialog_Creator(XmlNode *n) {return new XDialog(n);}
 
+static XComponent *XExtButton_Creator(XmlNode *n) {return new XExtButton(n);}
+static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
+static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
+static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
+static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
+
 struct InitUIFactory {
 	InitUIFactory() {
 		UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
@@ -173,10 +184,15 @@ struct InitUIFactory {
 		UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
 		UIFactory::registCreator("Window", XWindow_Creator);
 		UIFactory::registCreator("Dialog", XDialog_Creator);
+
+		UIFactory::registCreator("ExtButton", XExtButton_Creator);
+		UIFactory::registCreator("ExtOption", XExtOption_Creator);
+		UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
+		UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
+		UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
 	}
 
 	~InitUIFactory() {
-
 	}
 };
 

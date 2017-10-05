@@ -45,6 +45,7 @@ XComponent::XComponent(XmlNode *node) {
 	mFont = NULL;
 	mBgColorBrush = NULL;
 	mBgImage = NULL;
+	parseAttrs();
 }
 
 XComponent::~XComponent() {
@@ -175,6 +176,7 @@ static void parseArrayInt(const char *str, int *arr) {
 
 static COLORREF parseColor(const char *color, bool *valid) {
 	static const char *HEX = "0123456789ABCDEF";
+	if (valid) *valid = false;
 	if (color == NULL) {
 		if (valid) *valid = false;
 		return 0;
@@ -381,7 +383,7 @@ HINSTANCE XComponent::getInstance() {
 	return mInstance;
 }
 
-static void MyRegisterClass(HINSTANCE ins, const char *className) {
+void MyRegisterClass(HINSTANCE ins, const char *className) {
 	WNDCLASSEX wcex = {0};
 	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style			= CS_HREDRAW | CS_VREDRAW;
@@ -391,7 +393,7 @@ static void MyRegisterClass(HINSTANCE ins, const char *className) {
 	wcex.hInstance		= ins;
 	//wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_HGTUI));
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
+	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW + 1);
 	wcex.lpszMenuName	= NULL;
 	wcex.lpszClassName	= className;
 	wcex.hIconSm		= NULL;
@@ -440,7 +442,6 @@ void XContainer::onLayout( int width, int height ) {
 
 //--------------------------XAbsLayout-----------------------------
 XAbsLayout::XAbsLayout( XmlNode *node ) : XContainer(node) {
-	parseAttrs();
 }
 
 void XAbsLayout::createWnd() {
@@ -474,7 +475,6 @@ void XBasicWnd::createWnd() {
 
 //--------------------------XButton-----------------------------
 XButton::XButton( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 
 void XButton::createWnd() {
@@ -488,7 +488,6 @@ void XButton::createWnd() {
 
 //--------------------------XLabel-----------------------------
 XLabel::XLabel( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 
 void XLabel::createWnd() {
@@ -527,7 +526,6 @@ void XGroupBox::createWnd() {
 }
 
 XEdit::XEdit( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 
 void XEdit::createWnd() {
@@ -549,7 +547,6 @@ void XEdit::createWnd() {
 
 XComboBox::XComboBox( XmlNode *node ) : XBasicWnd(node) {
 	mDropHeight = 0;
-	parseAttrs();
 }
 static std::vector<char*> splitBy( char *data, char splitChar) {
 	std::vector<char*> arr;
@@ -583,7 +580,6 @@ void XComboBox::createWnd() {
 }
 
 XTable::XTable( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 
 void XTable::createWnd() {
@@ -596,7 +592,6 @@ void XTable::createWnd() {
 }
 
 XTree::XTree( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 void XTree::createWnd() {
 	mID = generateWndId();
@@ -608,7 +603,6 @@ void XTree::createWnd() {
 
 XTab::XTab(XmlNode *node) : XContainer(node) {
 	mOldWndProc = NULL;
-	parseAttrs();
 }
 void XTab::createWnd() {
 	mID = generateWndId();
@@ -664,7 +658,6 @@ void XTab::onMeasure( int widthSpec, int heightSpec ) {
 }
 
 XListBox::XListBox( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 void XListBox::createWnd() {
 	mID = generateWndId();
@@ -680,7 +673,6 @@ void XListBox::createWnd() {
 	XBasicWnd::createWnd();
 }
 XDateTimePicker::XDateTimePicker( XmlNode *node ) : XBasicWnd(node) {
-	parseAttrs();
 }
 void XDateTimePicker::createWnd() {
 	mID = generateWndId();
@@ -692,7 +684,6 @@ void XDateTimePicker::createWnd() {
 }
 
 XWindow::XWindow( XmlNode *node ) : XContainer(node) {
-	parseAttrs();
 }
 
 void XWindow::createWnd() {
@@ -751,7 +742,6 @@ void XWindow::onLayout( int width, int height ) {
 }
 
 XDialog::XDialog( XmlNode *node ) : XContainer(node) {
-	parseAttrs();
 }
 void XDialog::createWnd() {
 	static bool reg = false;

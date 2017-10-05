@@ -12,6 +12,7 @@ HINSTANCE hIns;
 
 void InitMyTable();
 void InitMyTree();
+void TestDecoderImage();
 
 class ButtonListener : public XListener {
 public:
@@ -32,14 +33,18 @@ public:
 			UIFactory::destory(root);
 		} else if (strcmp("tool_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
 			dlg->close(100);
+		} else if (strcmp("ext_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+			XExtOption *opt = (XExtOption *)win->findById("ext_opt_1");
+			opt->setSelect(! opt->isSelect());
 		}
 		return true;
 	}
 };
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
-	// AllocConsole();
-	// freopen("CONOUT$", "wb", stdout);
+	AllocConsole();
+	freopen("CONOUT$", "wb", stdout);
+	TestDecoderImage();
 
 	XComponent::init(hInstance);
 	hIns = hInstance;
@@ -51,6 +56,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	win = (XWindow *) UIFactory::build(rootNode);
 	win->createWndTree(NULL);
 	win->findById("btn_1")->setListener(new ButtonListener());
+	win->findById("ext_btn_1")->setListener(new ButtonListener());
 	win->show(nCmdShow);
 	win->messageLoop();
 
@@ -110,3 +116,7 @@ void InitMyTree() {
 	HTREEITEM hParent2 = (HTREEITEM) SendMessage(tw, TVM_INSERTITEM, 0, (LPARAM)&tvinsert);
 }
 
+void TestDecoderImage() {
+	UINT decodersNum, size;
+	// GetImageDecodersSize(&decodersNum, &size);
+}
