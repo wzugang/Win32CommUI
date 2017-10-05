@@ -26,7 +26,6 @@ public:
 	void setText(char *text);
 protected:
 	XImage *mBgImageForParnet;
-	int mRoundConerX, mRoundConerY;
 	char *mText;
 };
 
@@ -46,7 +45,6 @@ protected:
 	};
 	virtual BtnImage getBtnImage();
 	XImage *mImages[8];
-	int mRoundConerX, mRoundConerY;
 	bool mIsMouseDown;
 	bool mIsMouseMoving;
 	bool mIsMouseLeave;

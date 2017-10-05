@@ -51,19 +51,6 @@ void XTableModel::getItem( int row, int col, LVITEM *item ) {
 //--------------------XExtLabel-------------------------------------
 XExtLabel::XExtLabel( XmlNode *node ) : XComponent(node) {
 	mBgImageForParnet = NULL;
-	mRoundConerX = 0;
-	mRoundConerY = 0;
-	char *rr = mNode->getAttrValue("roundConer");
-	if (rr != NULL) {
-		char *p = NULL;
-		int v1 = (int)strtod(rr, &p);
-		int v2 = 0;
-		if (p) {
-			v2 = (int)strtod(p + 1, NULL);
-			mRoundConerX = v1;
-			mRoundConerY = v2;
-		}
-	}
 	mText = mNode->getAttrValue("text");
 }
 
@@ -83,10 +70,6 @@ void XExtLabel::createWnd() {
 
 void XExtLabel::onLayout( int widthSpec, int heightSpec ) {
 	XComponent::onLayout(widthSpec, heightSpec);
-	if (mRoundConerX != 0 && mRoundConerY != 0) {
-		HRGN rgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mRoundConerX, mRoundConerY);
-		SetWindowRgn(mWnd, rgn, TRUE);
-	}
 	if (mBgImageForParnet != NULL) {
 		mBgImageForParnet->decRef();
 		mBgImageForParnet = NULL;
@@ -146,7 +129,6 @@ void XExtLabel::setText( char *text ) {
 
 //-------------------XExtButton-----------------------------------
 XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
-	mRoundConerX = mRoundConerY = 0;
 	mIsMouseDown = mIsMouseMoving = mIsMouseLeave = false;
 	memset(mImages, 0, sizeof(mImages));
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
@@ -159,15 +141,6 @@ XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
 			mImages[BTN_IMG_PUSH] = XImage::load(attr->mValue);
 		} else if (strcmp(attr->mName, "disableImage") == 0) {
 			mImages[BTN_IMG_DISABLE] = XImage::load(attr->mValue);
-		} else if (strcmp(attr->mName, "roundConer") == 0) {
-			char *p = NULL;
-			int v1 = (int)strtod(attr->mValue, &p);
-			int v2 = 0;
-			if (p) {
-				v2 = (int)strtod(p + 1, NULL);
-				mRoundConerX = v1;
-				mRoundConerY = v2;
-			}
 		}
 	}
 }
@@ -187,15 +160,7 @@ void XExtButton::createWnd() {
 }
 
 void XExtButton::onLayout( int widthSpec, int heightSpec ) {
-	mWidth = mMesureWidth;
-	mHeight = mMesureHeight;
-	mX = calcSize(mAttrX, widthSpec);
-	mY = calcSize(mAttrY, heightSpec);
-	MoveWindow(mWnd, mX, mY, mWidth, mHeight, TRUE);
-	if (mRoundConerX != 0 && mRoundConerY != 0) {
-		HRGN rgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mRoundConerX, mRoundConerY);
-		SetWindowRgn(mWnd, rgn, TRUE);
-	}
+	XComponent::onLayout(widthSpec, heightSpec);
 	if (mBgImage != NULL) {
 		mBgImage->decRef();
 		mBgImage = NULL;

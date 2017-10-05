@@ -45,6 +45,7 @@ XComponent::XComponent(XmlNode *node) {
 	mFont = NULL;
 	mBgColorBrush = NULL;
 	mBgImage = NULL;
+	mAttrRoundConerX = mAttrRoundConerY = 0;
 	parseAttrs();
 }
 
@@ -139,6 +140,10 @@ void XComponent::onLayout( int widthSpec, int heightSpec ) {
 	mX = calcSize(mAttrX, widthSpec);
 	mY = calcSize(mAttrY, heightSpec);
 	MoveWindow(mWnd, mX, mY, mWidth, mHeight, TRUE);
+	if (mAttrRoundConerX != 0 && mAttrRoundConerY != 0) {
+		HRGN rgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mAttrRoundConerX, mAttrRoundConerY);
+		SetWindowRgn(mWnd, rgn, TRUE);
+	}
 }
 
 void XComponent::layout( int widthSpec, int heightSpec ) {
@@ -234,6 +239,15 @@ void XComponent::parseAttrs() {
 			}
 		} else if (strcmp(attr->mName, "bgimage") == 0) {
 			mBgImage = XImage::load(attr->mValue);
+		} else if (strcmp(attr->mName, "roundConer") == 0) {
+			char *p = NULL;
+			int v1 = (int)strtod(attr->mValue, &p);
+			int v2 = 0;
+			if (p) {
+				v2 = (int)strtod(p + 1, NULL);
+				mAttrRoundConerX = v1;
+				mAttrRoundConerY = v2;
+			}
 		}
 	}
 }

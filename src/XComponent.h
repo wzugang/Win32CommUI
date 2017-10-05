@@ -66,6 +66,7 @@ protected:
 	int mAttrX, mAttrY, mAttrWidth, mAttrHeight;
 	int mAttrPadding[4], mAttrMargin[4];
 	COLORREF mAttrColor, mAttrBgColor;
+	int mAttrRoundConerX, mAttrRoundConerY;
 	HBRUSH mBgColorBrush;
 	XImage *mBgImage;
 	XListener *mListener;
