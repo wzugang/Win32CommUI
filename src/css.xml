@@ -1,11 +1,20 @@
 
-<AbsLayout id = "" padding = "left top right bottom"  bgcolor="#ccddee" >
-	<Component font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" />
-					font-weight = 1 ... 1000  strikeout: 文字中间有横线
+<AbsLayout >
+	<Component  id="xxx"
+				rect="x y width height"
+				font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" 
+					         font-weight = 1 ... 1000 正常字体是400,值越大就越粗 ;  strikeout: 文字中间有横线
+				padding = "left top right bottom"
+				color="#rrggbb"
+				bgcolor="#ccddee"
+				bgimage="file://xxx.bmp | res://xx"
+				margin = "left top right bottom"
+				visible = "false"
+				roundConer="cx cy"
+	/>
 					
-	<Button id = "" rect="x y width height"  margin = "left top right bottom"  roundConer="cx cy"
-		text="OK" />
-	<Label ..... visible = "false"/>
+	<Button text="OK" />
+	<Label text="" />
 	<ComboBox data="男;女;"  />
 	<Table .../>
 	<Tree ... />
@@ -13,6 +22,12 @@
 	<Edit multiline= "true" readonly="true"/>
 	<CheckBox .../>
 	<Radio  group = "true" />
-
+	
+	<ExtLabel text="" />
+	<ExtButton text="" normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage=""/>
+	<ExtOption  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	<ExtCheckBox  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	<ExtRadio  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	
 </AbsLayout>
 
