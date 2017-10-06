@@ -7,8 +7,6 @@
 
 XWindow *win;
 XDialog *dlg;
-XmlPartLoader *loader;
-HINSTANCE hIns;
 
 void InitMyTable();
 void InitMyTree();
@@ -22,12 +20,9 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
-			XmlParser *parser = XmlParser::create();
-			parser->parseString(loader->getPartXml("sub-page")->mContent);
-			XmlNode *root = parser->getRoot();
-			dlg = (XDialog*) UIFactory::build(root);
+			XmlNode *root = UIFactory::buildNode("file://skin/base.xml", "sub-page");
+			dlg = (XDialog*) UIFactory::buildComponent(root);
 			root->findById("tool_btn_1")->getComponent()->setListener(new ButtonListener());
-
 			dlg->createWndTree(win->getWnd());
 			rt = dlg->showModal();
 			UIFactory::destory(root);
@@ -42,7 +37,7 @@ public:
 };
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
-	AllocConsole();
+	// AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
 	char path[256];
 	GetModuleFileName(NULL, path, 256);
@@ -50,14 +45,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	*p = 0;
 	SetCurrentDirectory(path);
 
-	XComponent::init(hInstance);
-	hIns = hInstance;
-	loader = XmlPartLoader::fetch("file://base.xml");
-	XmlPartLoader::PartItem * item = loader->getPartXml("main-page");
-	XmlParser *parser = XmlParser::create();
-	parser->parseString(item->mContent);
-	XmlNode *rootNode = parser->getRoot();
-	win = (XWindow *) UIFactory::build(rootNode);
+	XComponent::init();
+	XmlNode *rootNode = UIFactory::buildNode("file://skin/base.xml", "main-page");
+	win = (XWindow *) UIFactory::buildComponent(rootNode);
 
 	win->createWndTree(NULL);
 	win->findById("btn_1")->setListener(new ButtonListener());

@@ -390,11 +390,11 @@ void XComponent::setAttrRect( int x, int y, int width, int height ) {
 	mAttrHeight = height;
 }
 
-void XComponent::init( HINSTANCE instance ) {
+void XComponent::init() {
 	INITCOMMONCONTROLSEX cc = {0};
 	cc.dwSize = sizeof(cc);
 	InitCommonControlsEx(&cc);
-	mInstance = instance;
+	mInstance = GetModuleHandle(NULL);
 }
 
 HINSTANCE XComponent::getInstance() {

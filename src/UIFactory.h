@@ -31,9 +31,12 @@ class UIFactory {
 public:
 	typedef XComponent * (*Creator)(XmlNode*);
 
-	static XComponent* build(XmlNode *root);
-	static void destory(XmlNode *root);
+	static XComponent* buildComponent(XmlNode *root);
 
+	//@param resPath file://abc.xml  res://abc
+	static XmlNode* buildNode(const char *resPath, const char *partName);
+
+	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);
 	static Creator getCreator(const char *nodeName);
 protected:

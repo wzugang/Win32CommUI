@@ -28,7 +28,7 @@ public:
 		WM_NOTIFY_SELF
 	};
 	XComponent(XmlNode *node);
-	static void init(HINSTANCE instance);
+	static void init();
 	static HINSTANCE getInstance();
 	virtual void createWnd();
 	void createWndTree(HWND parent);

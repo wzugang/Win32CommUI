@@ -115,6 +115,7 @@ void XImage::decRef() {
 	}
 }
 
+//----------------------------UIFactory-------------------------
 struct NodeCreator {
 	NodeCreator() {
 		mNodeName[0] = 0;
@@ -127,7 +128,7 @@ struct NodeCreator {
 static NodeCreator g_creators[64];
 int UIFactory::mNum = 0;
 
-XComponent* UIFactory::build( XmlNode *root) {
+XComponent* UIFactory::buildComponent( XmlNode *root) {
 	if (root == NULL) return NULL;
 	Creator c = getCreator(root->getName());
 	if (c == NULL) {
@@ -138,10 +139,23 @@ XComponent* UIFactory::build( XmlNode *root) {
 	root->setComponent(x);
 	for (int i = 0; i < root->getChildCount(); ++i) {
 		XmlNode *child = root->getChild(i);
-		XComponent *ix = build(child);
+		XComponent *ix = buildComponent(child);
 		child->setComponent(ix);
 	}
 	return x;
+}
+
+XmlNode* UIFactory::buildNode( const char *resPath, const char *partName ) {
+	if (resPath == NULL || partName == NULL)
+		return NULL;
+	XmlPartLoader *loader = XmlPartLoader::fetch(resPath);
+	if (loader == NULL) return NULL;
+	XmlPartLoader::PartItem * item = loader->getPartXml(partName);
+	if (item == NULL) return NULL;
+	XmlParser *parser = XmlParser::create();
+	parser->parseString(item->mContent);
+	XmlNode *rootNode = parser->getRoot();
+	return rootNode;
 }
 
 void UIFactory::registCreator( const char *nodeName, Creator c ) {
