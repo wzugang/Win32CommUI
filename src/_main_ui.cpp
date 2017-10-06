@@ -117,6 +117,6 @@ void InitMyTree() {
 }
 
 void TestDecoderImage() {
-	UINT decodersNum, size;
+	// UINT decodersNum, size;
 	// GetImageDecodersSize(&decodersNum, &size);
 }

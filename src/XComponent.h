@@ -51,11 +51,14 @@ public:
 	XListener* getListener();
 	static DWORD generateWndId();
 	virtual bool onCtrlColor(HDC dc, LRESULT *result);
+
 	void setAttrRect(int x, int y, int width, int height);
 	int getMesureWidth();
 	int getMesureHeight();
 	int getAttrX();
 	int getAttrY();
+	int getAttrWeight();
+	int *getAttrMargin();
 
 	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual ~XComponent();
@@ -71,10 +74,12 @@ protected:
 	int mAttrPadding[4], mAttrMargin[4];
 	COLORREF mAttrColor, mAttrBgColor;
 	int mAttrRoundConerX, mAttrRoundConerY;
+	int mAttrWeight;
+	int mAttrFlags;
+
 	HBRUSH mBgColorBrush;
 	XImage *mBgImage;
 	XListener *mListener;
-	int mAttrFlags;
 	HFONT mFont;
 	static HINSTANCE mInstance;
 	friend class UIFactory;
@@ -89,6 +94,20 @@ public:
 class XAbsLayout : public XContainer {
 public:
 	XAbsLayout(XmlNode *node);
+	virtual void createWnd();
+	virtual void onLayout(int width, int height);
+};
+
+class XHLineLayout : public XContainer {
+public:
+	XHLineLayout(XmlNode *node);
+	virtual void createWnd();
+	virtual void onLayout(int width, int height);
+};
+
+class XVLineLayout : public XContainer {
+public:
+	XVLineLayout(XmlNode *node);
 	virtual void createWnd();
 	virtual void onLayout(int width, int height);
 };

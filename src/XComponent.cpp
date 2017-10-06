@@ -46,6 +46,7 @@ XComponent::XComponent(XmlNode *node) {
 	mBgColorBrush = NULL;
 	mBgImage = NULL;
 	mAttrRoundConerX = mAttrRoundConerY = 0;
+	mAttrWeight = 0;
 	parseAttrs();
 }
 
@@ -249,7 +250,10 @@ void XComponent::parseAttrs() {
 				mAttrRoundConerX = v1;
 				mAttrRoundConerY = v2;
 			}
-		}
+		} else if (strcmp(attr->mName, "weight") == 0) {
+			int v1 = (int)strtod(attr->mValue, NULL);
+			if (v1 > 0) mAttrWeight = v1;
+		} 
 	}
 }
 
@@ -277,10 +281,10 @@ HWND XComponent::getParentWnd() {
 	return mNode->getParent()->getComponent()->getWnd();
 }
 
-void XComponent::mesureChildren( int width, int height ) {
+void XComponent::mesureChildren( int widthSpec, int heightSpec ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		child->onMeasure(width, height);
+		child->onMeasure(widthSpec, heightSpec);
 	}
 }
 
@@ -413,6 +417,14 @@ int XComponent::getAttrY() {
 	return mAttrY;
 }
 
+int XComponent::getAttrWeight() {
+	return mAttrWeight;
+}
+
+int * XComponent::getAttrMargin() {
+	return mAttrMargin;
+}
+
 void MyRegisterClass(HINSTANCE ins, const char *className) {
 	WNDCLASSEX wcex = {0};
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -489,6 +501,77 @@ void XAbsLayout::onLayout( int width, int height ) {
 	}
 }
 
+//--------------------------XHLineLayout--------------------------
+XHLineLayout::XHLineLayout(XmlNode *node) : XContainer(node) {
+}
+
+void XHLineLayout::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XHLineLayout");
+	}
+	mID = generateWndId();
+	mWnd = CreateWindow("XHLineLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
+		mX, mY, mWidth, mHeight, 
+		getParentWnd(), (HMENU)mID, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+void XHLineLayout::onLayout( int width, int height ) {
+	int x = 0, weightAll = 0, childWidths = 0;
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		weightAll += child->getAttrWeight();
+		childWidths += child->getMesureWidth() + child->getAttrMargin()[0] + child->getAttrMargin()[2];
+	}
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		x += child->getAttrMargin()[0];
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		x += child->getMesureWidth() + child->getAttrMargin()[2];
+		if (childWidths < width && weightAll > 0) {
+			x += 1.0 * child->getAttrWeight() / weightAll * (width - childWidths);
+		}
+	}
+}
+//--------------------------XVLineLayout--------------------------
+XVLineLayout::XVLineLayout(XmlNode *node) : XContainer(node) {
+}
+void XVLineLayout::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XVLineLayout");
+	}
+	mID = generateWndId();
+	mWnd = CreateWindow("XVLineLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
+		mX, mY, mWidth, mHeight, 
+		getParentWnd(), (HMENU)mID, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+void XVLineLayout::onLayout( int width, int height ) {
+	int y = 0, weightAll = 0, childHeights = 0;
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		weightAll += child->getAttrWeight();
+		childHeights += child->getMesureHeight() + child->getAttrMargin()[1] + child->getAttrMargin()[3];
+	}
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		y += child->getAttrMargin()[1];
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		y += child->getMesureHeight() + child->getAttrMargin()[3];
+		if (childHeights < width && weightAll > 0) {
+			y += 1.0 * child->getAttrWeight() / weightAll * (height - childHeights);
+		}
+	}
+}
 //--------------------------XBasicWnd-----------------------------
 XBasicWnd::XBasicWnd( XmlNode *node ) : XComponent(node) {
 	mOldWndProc = NULL;
