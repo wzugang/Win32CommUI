@@ -307,7 +307,7 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 			HDC dc = (HDC)wParam;
 			HDC memDc = CreateCompatibleDC(dc);
 			SelectObject(memDc, mBgImage->getHBitmap());
-			bool ok = BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+			BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
 			DeleteObject(memDc);
 		}
 		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)

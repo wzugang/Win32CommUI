@@ -1,5 +1,4 @@
 
-<AbsLayout >
 	<Component  id="xxx"
 				rect="x y width height"
 				font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" 
@@ -19,10 +18,16 @@
 	<ComboBox data="男;女;"  />
 	<Table .../>
 	<Tree ... />
-	<Tab data="tab1; tab2; tab3;" />
+	<Tab data="tab1; tab2; tab3;" />  有子控件
 	<Edit multiline= "true" readonly="true"/>
 	<CheckBox .../>
 	<Radio  group = "true" />
+	
+	<AbsLayout />
+	<HLineLayout />
+	<VLineLayout />
+	
+	<include src="file://abc.xml | res://abc " part="part-name" />
 	
 	<ExtLabel text="" />
 	<ExtButton text="" normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage=""/>
@@ -30,5 +35,5 @@
 	<ExtCheckBox  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
 	<ExtRadio  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
 	
-</AbsLayout>
+
 

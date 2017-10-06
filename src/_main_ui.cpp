@@ -22,9 +22,9 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
-			XmlParser parser;
-			parser.parseString(loader->getPartXml("sub-page"));
-			XmlNode *root = parser.getRoot();
+			XmlParser *parser = XmlParser::create();
+			parser->parseString(loader->getPartXml("sub-page")->mContent);
+			XmlNode *root = parser->getRoot();
 			dlg = (XDialog*) UIFactory::build(root);
 			root->findById("tool_btn_1")->getComponent()->setListener(new ButtonListener());
 
@@ -44,16 +44,21 @@ public:
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
-	TestDecoderImage();
+	char path[256];
+	GetModuleFileName(NULL, path, 256);
+	char *p = strrchr(path, '\\') + 1;
+	*p = 0;
+	SetCurrentDirectory(path);
 
 	XComponent::init(hInstance);
 	hIns = hInstance;
-	loader = new XmlPartLoader("D:\\CPP\\WinUI\\Debug\\base.xml");
-	char * str = loader->getPartXml("main-page");
-	XmlParser parser;
-	parser.parseString(str);
-	XmlNode *rootNode = parser.getRoot();
+	loader = XmlPartLoader::fetch("file://base.xml");
+	XmlPartLoader::PartItem * item = loader->getPartXml("main-page");
+	XmlParser *parser = XmlParser::create();
+	parser->parseString(item->mContent);
+	XmlNode *rootNode = parser->getRoot();
 	win = (XWindow *) UIFactory::build(rootNode);
+
 	win->createWndTree(NULL);
 	win->findById("btn_1")->setListener(new ButtonListener());
 	win->findById("ext_btn_1")->setListener(new ButtonListener());

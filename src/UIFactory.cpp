@@ -173,6 +173,7 @@ void UIFactory::destory( XmlNode *root ) {
 static XComponent *XAbsLayout_Creator(XmlNode *n) {return new XAbsLayout(n);}
 static XComponent *XHLineLayout_Creator(XmlNode *n) {return new XHLineLayout(n);}
 static XComponent *XVLineLayout_Creator(XmlNode *n) {return new XVLineLayout(n);}
+
 static XComponent *XButton_Creator(XmlNode *n) {return new XButton(n);}
 static XComponent *XLabel_Creator(XmlNode *n) {return new XLabel(n);}
 static XComponent *XCheckBox_Creator(XmlNode *n) {return new XCheckBox(n);}
@@ -199,7 +200,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
 		UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
 		UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
-		UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
+
 		UIFactory::registCreator("Button", XButton_Creator);
 		UIFactory::registCreator("Label", XLabel_Creator);
 		UIFactory::registCreator("CheckBox", XCheckBox_Creator);

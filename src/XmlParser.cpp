@@ -6,6 +6,7 @@ XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mName = name;
 	mParent = parent;
 	mComponent = NULL;
+	mParser = NULL;
 }
 
 char * XmlNode::getName() {
@@ -54,9 +55,10 @@ void XmlNode::addAttr( char *name, char *val ) {
 }
 
 XmlNode::~XmlNode() {
-	/*for (int i = 0; i < mChildren.size(); ++i) {
-		delete mChildren.at(i);
-	}*/
+	// do not delete children
+	if (mParser != NULL)
+		delete mParser;
+	mParser = NULL;
 }
 
 void XmlNode::print(int step) {
@@ -106,9 +108,7 @@ XmlNode* XmlNode::getChildById( const char *id ) {
 	return NULL;
 }
 
-//-------------------------------------------------
-
-
+//----------------------------XmlParser---------------------
 XmlParser::XmlParser() {
 	mError = new char[256];
 	reset();
@@ -123,18 +123,24 @@ void XmlParser::reset() {
 	mHasError = false;
 }
 
-void XmlParser::parseString( const char *xml ) {
+XmlParser *XmlParser::create() {
+	return new XmlParser();
+}
+
+void XmlParser::parseString( const char *xml, int xmlLen) {
 	reset();
 	if (xml == NULL || *xml == 0) {
 		strcpy(mError, "xml is null");
 		mHasError = true;
 		return;
 	}
-	int len = strlen(xml);
+	int len = xmlLen < 0 ? strlen(xml) : xmlLen;
 	mXml = new char[len + 1];
 	strcpy(mXml, xml);
 	mXmlLen = len;
 	doParse();
+	// replace all include node
+	replaceAllIncludeNode(mRoot);
 }
 
 static char *ReadFileContent(const char *path, int *pLen) {
@@ -168,6 +174,7 @@ static char *ReadFileContent(const char *path, int *pLen) {
 	return NULL;
 }
 
+#if 0
 void XmlParser::parseFile( const char *path ) {
 	reset();
 	mXml = ReadFileContent(path, &mXmlLen);
@@ -178,8 +185,12 @@ void XmlParser::parseFile( const char *path ) {
 	}
 	doParse();
 }
+#endif
 
 XmlNode * XmlParser::getRoot() {
+	if (mRoot != NULL) {
+		mRoot->mParser = this;
+	}
 	return mRoot;
 }
 
@@ -363,32 +374,106 @@ int XmlParser::nextWord() {
 }
 
 XmlParser::~XmlParser() {
-	// delete [] mXml;
+	delete [] mXml;
 }
 
 bool XmlParser::hasError() {
 	return mHasError;
 }
 
+void XmlParser::replaceIncludeNode( XmlNode *n ) {
+	char *resPath = n->getAttrValue("src");
+	char *part = n->getAttrValue("part");
+	XmlPartLoader *loader = NULL;
+	XmlParser *parser = NULL;
+	XmlNode *inclueRoot = NULL;
+	if (resPath == NULL || *resPath == 0 || part == NULL || *part == 0)
+		goto _end;
+	// build include node
+	loader = XmlPartLoader::fetch(resPath);
+	if (loader == NULL) goto _end;
+	XmlPartLoader::PartItem *item = loader->getPartXml(part);
+	if (item == NULL) goto _end;
+	parser = XmlParser::create();
+	parser->parseString(item->mContent, item->mCntLen);
+	if (parser->hasError()) goto _end;
+	inclueRoot = parser->getRoot();
+_end:
+	// now replace the include node
+	XmlNode *parent = n->getParent();
+	int idx = 0;
+	for (int i = 0; i < parent->mChildren.size(); ++i) {
+		if (parent->mChildren[i] == n) {
+			idx = i;
+			break;
+		}
+	}
+	parent->mChildren.erase(parent->mChildren.begin() + idx);
+	if (inclueRoot != NULL) {
+		parent->mChildren.insert(parent->mChildren.begin() + idx, inclueRoot);
+		inclueRoot->mParent = parent;
+	}
+}
+
+void XmlParser::replaceAllIncludeNode( XmlNode *n ) {
+	if (n == NULL) return;
+	for (int i = 0; i < n->mChildren.size(); ++i) {
+		XmlNode *child = n->mChildren.at(i);
+		if (strcmp(child->mName, "include") == 0) {
+			replaceIncludeNode(child);
+			--i;
+		} else {
+			replaceAllIncludeNode(child);
+		}
+	}
+}
+
+//---------------------------XmlPartLoader---------------------------
+static XmlPartLoader *mPartCache[20];
+
+XmlPartLoader * XmlPartLoader::fetch( const char *resPath ) {
+	if (resPath == NULL)
+		return NULL;
+	for (int i = 0; i < sizeof(mPartCache)/sizeof(XmlPartLoader*); ++i) {
+		if (mPartCache[i] != NULL && strcmp(mPartCache[i]->mResPath, resPath) == 0)
+			return mPartCache[i];
+	}
+	XmlPartLoader *ldr = new XmlPartLoader(resPath);
+	// save in cache
+	for (int i = 0; i < sizeof(mPartCache)/sizeof(XmlPartLoader*); ++i) {
+		if (mPartCache[i] == NULL) {
+			mPartCache[i] = ldr;
+			break;
+		}
+	}
+	return ldr;
+}
+
 XmlPartLoader::XmlPartLoader( const char *filePath ) {
+	mContent = NULL;
 	mPartNum = 0;
-	mContent = ReadFileContent(filePath, &mContentLen);
+	strcpy(mResPath, filePath);
+	if (memcmp(filePath, "file://", 7) == 0) {
+		mContent = ReadFileContent(filePath + 7, &mContentLen);
+	} else if (memcmp(filePath, "res://", 6) == 0) {
+		// TODO:
+	}
 	doParse();
 }
 
-char * XmlPartLoader::getPartXml( const char *name ) {
+XmlPartLoader::PartItem * XmlPartLoader::getPartXml( const char *name ) {
 	if (name == NULL || *name == 0)
 		return NULL;
 	for (int i = 0; i < mPartNum; ++i) {
 		if (strcmp(mPartItems[i].mName, name) == 0)
-			return mPartItems[i].mContent;
+			return &mPartItems[i];
 	}
 	return NULL;
 }
 
-char * XmlPartLoader::getPartXml( int idx ) {
+XmlPartLoader::PartItem * XmlPartLoader::getPartXml( int idx ) {
 	if (idx >= mPartNum) return NULL;
-	return mPartItems[idx].mContent;
+	return &mPartItems[idx];
 }
 
 void XmlPartLoader::doParse() {
@@ -421,8 +506,28 @@ void XmlPartLoader::doParse() {
 		mPartItems[mPartNum].mContent = mContent;
 		++mPartNum;
 	}
+	for (int i = 0; i < mPartNum; ++i) {
+		mPartItems[i].mCntLen = strlen(mPartItems[i].mContent);
+	}
+}
+
+XmlPartLoader::PartItem * XmlPartLoader::findPartXml( const char *name ) {
+	// find in cache
+	for (int i = 0; i < sizeof(mPartCache)/sizeof(XmlPartLoader*); ++i) {
+		if (mPartCache[i] == NULL) continue;
+		PartItem *dat = mPartCache[i]->getPartXml(name);
+		if (dat != NULL) return dat;
+	}
+	return NULL;
 }
 
 XmlPartLoader::~XmlPartLoader() {
 	if (mContent) delete[] mContent;
+	// remove in cache
+	for (int i = 0; i < sizeof(mPartCache)/sizeof(XmlPartLoader*); ++i) {
+		if (mPartCache[i] == this) {
+			mPartCache[i] = NULL;
+			break;
+		}
+	}
 }
