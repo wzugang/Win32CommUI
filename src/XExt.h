@@ -20,7 +20,7 @@ class XExtLabel : public XComponent {
 public:
 	XExtLabel(XmlNode *node);
 	virtual void createWnd();
-	virtual void onLayout(int widthSpec, int heightSpec);
+	virtual void layout(int x, int y, int width, int height);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	char *getText();
 	void setText(char *text);
@@ -33,7 +33,7 @@ class XExtButton : public XComponent {
 public:
 	XExtButton(XmlNode *node);
 	virtual void createWnd();
-	virtual void onLayout(int widthSpec, int heightSpec);
+	virtual void layout(int x, int y, int width, int height);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual ~XExtButton();
 protected:

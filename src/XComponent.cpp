@@ -132,23 +132,24 @@ void XComponent::createWndTree( HWND parent ) {
 void XComponent::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	mesureChildren(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
 }
 
-void XComponent::onLayout( int widthSpec, int heightSpec ) {
-	mWidth = mMesureWidth;
-	mHeight = mMesureHeight;
-	mX = calcSize(mAttrX, widthSpec);
-	mY = calcSize(mAttrY, heightSpec);
+void XComponent::onLayout( int width, int height ) {
+	// layout children
+}
+
+void XComponent::layout( int x, int y, int width, int height ) {
+	mX = x;
+	mY = y;
+	mWidth = width;
+	mHeight = height;
 	MoveWindow(mWnd, mX, mY, mWidth, mHeight, TRUE);
 	if (mAttrRoundConerX != 0 && mAttrRoundConerY != 0) {
 		HRGN rgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mAttrRoundConerX, mAttrRoundConerY);
 		SetWindowRgn(mWnd, rgn, TRUE);
 	}
-}
-
-void XComponent::layout( int widthSpec, int heightSpec ) {
-	onMeasure(widthSpec, heightSpec);
-	onLayout(widthSpec, heightSpec);
+	onLayout(width, height);
 }
 
 static int parseSize(const char *str) {
@@ -283,13 +284,6 @@ void XComponent::mesureChildren( int width, int height ) {
 	}
 }
 
-void XComponent::layoutChildren( int width, int height ) {
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		XComponent *child = mNode->getChild(i)->getComponent();
-		child->onLayout(width, height);
-	}
-}
-
 HWND XComponent::getWnd() {
 	return mWnd;
 }
@@ -307,10 +301,10 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 		}
 		if (hasBgImg) {
 			HDC dc = (HDC)wParam;
-			HDC newDC = CreateCompatibleDC(dc);
-			SelectObject(newDC, mBgImage->getHBitmap());
-			bool ok = BitBlt(dc, 0, 0, mWidth, mHeight, newDC, 0, 0, SRCCOPY);
-			DeleteObject(newDC);
+			HDC memDc = CreateCompatibleDC(dc);
+			SelectObject(memDc, mBgImage->getHBitmap());
+			bool ok = BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+			DeleteObject(memDc);
 		}
 		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)
 			return true;
@@ -393,12 +387,30 @@ void XComponent::setAttrRect( int x, int y, int width, int height ) {
 }
 
 void XComponent::init( HINSTANCE instance ) {
-	InitCommonControls();
+	INITCOMMONCONTROLSEX cc = {0};
+	cc.dwSize = sizeof(cc);
+	InitCommonControlsEx(&cc);
 	mInstance = instance;
 }
 
 HINSTANCE XComponent::getInstance() {
 	return mInstance;
+}
+
+int XComponent::getMesureWidth() {
+	return mMesureWidth;
+}
+
+int XComponent::getMesureHeight() {
+	return mMesureHeight;
+}
+
+int XComponent::getAttrX() {
+	return mAttrX;
+}
+
+int XComponent::getAttrY() {
+	return mAttrY;
 }
 
 void MyRegisterClass(HINSTANCE ins, const char *className) {
@@ -449,14 +461,6 @@ bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 	}
 	return false;
 }
-void XContainer::onMeasure( int width, int height ) {
-	XComponent::onMeasure(width, height);
-	mesureChildren(width, height);
-}
-void XContainer::onLayout( int width, int height ) {
-	XComponent::onLayout(width, height);
-	layoutChildren(width, height);
-}
 
 //--------------------------XAbsLayout-----------------------------
 XAbsLayout::XAbsLayout( XmlNode *node ) : XContainer(node) {
@@ -474,6 +478,15 @@ void XAbsLayout::createWnd() {
 		getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	XContainer::createWnd();
+}
+
+void XAbsLayout::onLayout( int width, int height ) {
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
 }
 
 //--------------------------XBasicWnd-----------------------------
@@ -664,15 +677,18 @@ bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
 void XTab::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-
 	RECT rect = {0 , 0, mMesureWidth, mMesureHeight};
+	TabCtrl_AdjustRect(mWnd, FALSE, &rect);
+	mesureChildren((rect.right - rect.left) | MS_FIX, (rect.bottom - rect.top) | MS_FIX);
+}
+
+void XTab::onLayout(int width, int height) {
+	RECT rect = {0 , 0, width, height};
 	TabCtrl_AdjustRect(mWnd, FALSE, &rect);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		child->setAttrRect(rect.left | MS_FIX, rect.top | MS_FIX, 
-			(rect.right - rect.left) | MS_FIX, (rect.bottom - rect.top) | MS_FIX);
+		child->layout(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 	}
-	mesureChildren((rect.right - rect.left) | MS_FIX, (rect.bottom - rect.top) | MS_FIX);
 }
 
 XListBox::XListBox( XmlNode *node ) : XBasicWnd(node) {
@@ -722,7 +738,10 @@ bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 	if (XContainer::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
-		layout(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		RECT r = {0};
+		GetWindowRect(mWnd, &r);
+		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		onLayout(LOWORD(lParam), HIWORD(lParam));
 		return true;
 	} else if (msg == WM_DESTROY) {
 		PostQuitMessage(0);
@@ -755,8 +774,20 @@ void XWindow::show(int nCmdShow) {
 	ShowWindow(mWnd, nCmdShow);
 	UpdateWindow(mWnd);
 }
-void XWindow::onLayout( int width, int height ) {
-	layoutChildren(width, height);
+
+void XWindow::onMeasure(int widthSpec, int heightSpec) {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	mesureChildren((r.right - r.left) | MS_FIX, (r.bottom - r.top) | MS_FIX);
+}
+
+void XWindow::onLayout(int width, int height) {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		child->layout(0, 0, r.right, r.bottom);
+	}
 }
 
 XDialog::XDialog( XmlNode *node ) : XContainer(node) {
@@ -780,7 +811,10 @@ bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 	if (XContainer::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
-		layout(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		RECT r = {0};
+		GetWindowRect(mWnd, &r);
+		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		onLayout(LOWORD(lParam), HIWORD(lParam));
 		return true;
 	} else if (msg == WM_DESTROY) {
 		PostQuitMessage(wParam);
@@ -823,8 +857,19 @@ int XDialog::showModal() {
 	return nRet;
 }
 
-void XDialog::onLayout( int widthSpec, int heightSpec ) {
-	layoutChildren(widthSpec, heightSpec);
+void XDialog::onMeasure(int widthSpec, int heightSpec) {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	mesureChildren((r.right - r.left) | MS_FIX, (r.bottom - r.top) | MS_FIX);
+}
+
+void XDialog::onLayout(int width, int height) {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		child->layout(0, 0, r.right, r.bottom);
+	}
 }
 
 void XDialog::close( int nRet ) {

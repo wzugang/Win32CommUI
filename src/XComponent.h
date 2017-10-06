@@ -34,10 +34,9 @@ public:
 	void createWndTree(HWND parent);
 
 	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onLayout(int widthSpec, int heightSpec);
-	virtual void layout(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
+	virtual void layout(int x, int y, int width, int height);
 	void mesureChildren(int widthSpec, int heighSpec);
-	void layoutChildren(int widthSpec, int heightSpec);
 	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
@@ -53,6 +52,11 @@ public:
 	static DWORD generateWndId();
 	virtual bool onCtrlColor(HDC dc, LRESULT *result);
 	void setAttrRect(int x, int y, int width, int height);
+	int getMesureWidth();
+	int getMesureHeight();
+	int getAttrX();
+	int getAttrY();
+
 	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual ~XComponent();
 protected:
@@ -79,8 +83,6 @@ protected:
 class XContainer : public XComponent {
 public:
 	XContainer(XmlNode *node);
-	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onLayout(int widthSpec, int heightSpec);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 };
 
@@ -88,6 +90,7 @@ class XAbsLayout : public XContainer {
 public:
 	XAbsLayout(XmlNode *node);
 	virtual void createWnd();
+	virtual void onLayout(int width, int height);
 };
 
 class XBasicWnd : public XComponent {
@@ -155,6 +158,7 @@ public:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res);
 	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
 protected:
 	WNDPROC mOldWndProc;
 };
@@ -175,7 +179,8 @@ public:
 	XWindow(XmlNode *node);
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onLayout(int widthSpec, int heightSpec);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
 	virtual int messageLoop();
 	virtual void show(int nCmdShow);
 };
@@ -186,7 +191,8 @@ public:
 	XDialog(XmlNode *node);
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onLayout(int widthSpec, int heightSpec);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
 	int showModal();
 	void close(int nRet);
 };

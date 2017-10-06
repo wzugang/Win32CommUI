@@ -68,8 +68,8 @@ void XExtLabel::createWnd() {
 	XComponent::createWnd();
 }
 
-void XExtLabel::onLayout( int widthSpec, int heightSpec ) {
-	XComponent::onLayout(widthSpec, heightSpec);
+void XExtLabel::layout(int x, int y, int width, int height) {
+	XComponent::layout(x, y, width, height);
 	if (mBgImageForParnet != NULL) {
 		mBgImageForParnet->decRef();
 		mBgImageForParnet = NULL;
@@ -159,8 +159,8 @@ void XExtButton::createWnd() {
 	XComponent::createWnd();
 }
 
-void XExtButton::onLayout( int widthSpec, int heightSpec ) {
-	XComponent::onLayout(widthSpec, heightSpec);
+void XExtButton::layout(int x, int y, int width, int height) {
+	XComponent::layout(x, y, width, height);
 	if (mBgImage != NULL) {
 		mBgImage->decRef();
 		mBgImage = NULL;
