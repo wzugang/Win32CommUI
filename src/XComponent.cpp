@@ -408,13 +408,6 @@ HFONT XComponent::getFont() {
 	return mNode->getParent()->getComponent()->getFont();
 }
 
-void XComponent::setAttrRect( int x, int y, int width, int height ) {
-	mAttrX = x;
-	mAttrY = y;
-	mAttrWidth = width;
-	mAttrHeight = height;
-}
-
 void XComponent::init() {
 	INITCOMMONCONTROLSEX cc = {0};
 	cc.dwSize = sizeof(cc);
@@ -787,13 +780,7 @@ void XTab::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 	RECT rect = {0 , 0, mMesureWidth, mMesureHeight};
 	TabCtrl_AdjustRect(mWnd, FALSE, &rect);
-
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		XComponent *child = mNode->getChild(i)->getComponent();
-		if (child->getNode()->getAttrValue("rect") == NULL)
-			child->setAttrRect(0, 0, 100 | MS_PERCENT, 100 | MS_PERCENT);
-	}
-	mesureChildren((rect.right - rect.left) | MS_FIX, (rect.bottom - rect.top) | MS_FIX);
+	mesureChildren((rect.right - rect.left) | MS_ATMOST, (rect.bottom - rect.top) | MS_ATMOST);
 }
 
 void XTab::onLayout(int width, int height) {
@@ -801,7 +788,9 @@ void XTab::onLayout(int width, int height) {
 	TabCtrl_AdjustRect(mWnd, FALSE, &rect);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		child->layout(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+		int x = calcSize(child->getAttrX(), (rect.right - rect.left) | MS_ATMOST) + rect.left;
+		int y  = calcSize(child->getAttrY(), (rect.bottom - rect.top) | MS_ATMOST) + rect.top;
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
 

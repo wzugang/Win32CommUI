@@ -53,7 +53,6 @@ public:
 	static DWORD generateWndId();
 	virtual bool onCtrlColor(HDC dc, LRESULT *result);
 
-	void setAttrRect(int x, int y, int width, int height);
 	int getMesureWidth();
 	int getMesureHeight();
 	int getAttrX();
