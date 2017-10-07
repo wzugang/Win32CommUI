@@ -1062,7 +1062,7 @@ void XScroll::onMeasure( int widthSpec, int heightSpec ) {
 	SCROLLINFO si = {0};
 	si.cbSize = sizeof(SCROLLINFO);
 	si.fMask = SIF_RANGE | SIF_PAGE;
-	si.nMax = childRight - 1;
+	si.nMax = childRight - 1; // nMax 等于 nPage 时也会显示scroll bar
 	si.nPage = clientWidth;
 	SetScrollInfo(mWnd, SB_HORZ, &si, FALSE);
 
@@ -1079,8 +1079,8 @@ void XScroll::onMeasure( int widthSpec, int heightSpec ) {
 void XScroll::onLayout( int width, int height ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
-		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST) - GetScrollPos(mWnd, SB_HORZ);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST) - GetScrollPos(mWnd, SB_VERT);
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
@@ -1096,10 +1096,4 @@ void XScroll::moveChildrenPos( int dx, int dy ) {
 		GetWindowRect(wnd, &ch);
 		SetWindowPos(wnd, HWND_NOTOPMOST, ch.left - pa.left + dx, ch.top - pa.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 	}
-}
-
-void XScroll::layout( int x, int y, int width, int height ) {
-	SetScrollPos(mWnd, SB_HORZ, 0, FALSE);
-	SetScrollPos(mWnd, SB_VERT, 0, FALSE);
-	XContainer::layout(x, y, width, height);
 }
