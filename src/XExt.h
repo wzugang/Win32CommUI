@@ -97,6 +97,7 @@ protected:
 class XExtScroll : public XScroll {
 public:
 	XExtScroll(XmlNode *node);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual ~XExtScroll();
 protected:
 	XScrollBar *mHorBar, *mVerBar;

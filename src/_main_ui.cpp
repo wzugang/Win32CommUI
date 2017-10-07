@@ -31,18 +31,6 @@ public:
 		} else if (strcmp("ext_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
 			XExtOption *opt = (XExtOption *)win->findById("ext_opt_1");
 			opt->setSelect(! opt->isSelect());
-
-			RECT r;
-			HWND cc = win->findById("label_1")->getWnd();
-			GetWindowRect(cc, &r);
-			printf("before r = {%d %d %d %d} \n", r.left, r.top, r.right, r.bottom);
-			MoveWindow(cc, -30, -15, 150, 30, TRUE);
-			GetWindowRect(cc, &r);
-			printf("after  r = {%d %d %d %d} \n", r.left, r.top, r.right, r.bottom);
-			
-			POINT pt = {r.left, r.top};
-			ScreenToClient(cc, &pt);
-			printf("xx pt = %d %d size: %d %d \n", pt.x, pt.y, r.right - r.left, r.bottom - r.top);
 		}  
 		return true;
 	}

@@ -25,7 +25,8 @@ public:
 	};
 	enum ReflectWM {
 		WM_COMMAND_SELF = 0x6000,
-		WM_NOTIFY_SELF
+		WM_NOTIFY_SELF,
+		WM_MOUSEWHEEL_BUBBLE
 	};
 	XComponent(XmlNode *node);
 	static void init();
@@ -217,7 +218,7 @@ public:
 	void close(int nRet);
 };
 
-// only has one child
+// every time: only has one visible child; but can has many invisible child
 class XScroll : public XContainer {
 public:
 	XScroll(XmlNode *node);

@@ -398,6 +398,13 @@ XExtScroll::XExtScroll( XmlNode *node ) : XScroll(node) {
 	mVerBar = new XScrollBar(this, false);
 }
 
+bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_NCPAINT) {
+		return true;
+	}
+	return XScroll::wndProc(msg, wParam, lParam, result);
+}
+
 XExtScroll::~XExtScroll() {
 	delete mHorBar;
 	delete mVerBar;

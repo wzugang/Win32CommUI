@@ -26,7 +26,23 @@ LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM
 			return ret;
 		if (cc->wndProc(msg, wParam, lParam, &ret))
 			return ret;
+		// bubble mouse wheel msg
+		if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL) {
+			POINT pt;
+			GetCursorPos(&pt);
+			HWND ptWnd = WindowFromPoint(pt);
+			XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
+			XmlNode *node = pc != NULL ? pc->getNode() : NULL;
+			while (node != NULL) {
+				XComponent *x = node->getComponent();
+				if (x == NULL) break;
+				if (x->wndProc(WM_MOUSEWHEEL_BUBBLE, wParam, lParam, &ret))
+					return ret;
+				node = node->getParent();
+			}
+		}
 	}
+	_end:
 	return DefWindowProc(wnd, msg, wParam, lParam);
 }
 
@@ -1033,6 +1049,22 @@ bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 		else if (si.nPos > si.nMax - si.nPage) si.nPos = si.nMax - si.nPage;
 		SetScrollInfo(mWnd, SB_VERT, &si, TRUE);
 		moveChildrenPos(0, -si.nPos + oldPos);
+		return true;
+	} else if (msg == WM_MOUSEWHEEL_BUBBLE) {
+		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
+		if (GetWindowLong(mWnd, GWL_STYLE) & WS_VSCROLL) {
+			int oldPos = GetScrollPos(mWnd, SB_VERT);
+			SetScrollPos(mWnd, SB_VERT, oldPos - d, TRUE);
+			moveChildrenPos(0, oldPos - GetScrollPos(mWnd, SB_VERT));
+			return true;
+		}
+		if (GetWindowLong(mWnd, GWL_STYLE) & WS_HSCROLL) {
+			int oldPos = GetScrollPos(mWnd, SB_HORZ);
+			SetScrollPos(mWnd, SB_HORZ, oldPos - d, TRUE);
+			moveChildrenPos(0, oldPos - GetScrollPos(mWnd, SB_HORZ));
+			return true;
+		}
+		return true;
 	}
 	return XContainer::wndProc(msg, wParam, lParam, result);
 }
