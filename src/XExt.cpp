@@ -392,3 +392,61 @@ bool XExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 	}
 	return XExtCheckBox::wndProc(msg, wParam, lParam, result);
 }
+
+XExtScroll::XExtScroll( XmlNode *node ) : XScroll(node) {
+	mHorBar = new XScrollBar(this, true);
+	mVerBar = new XScrollBar(this, false);
+}
+
+XExtScroll::~XExtScroll() {
+	delete mHorBar;
+	delete mVerBar;
+}
+
+XScrollBar::XScrollBar( XComponent *owner, bool horizontal ) {
+	mOwner = owner;
+	mHorizontal = horizontal;
+	mX = mY = mWidth = mHeight = 0;
+	mRange = 0;
+	mVisible = false;
+}
+
+void XScrollBar::onPaint( HDC hdc ) {
+	if (! mVisible) return;
+	int barSize = 0;
+	if (mRange > 0) barSize = mHorizontal ? (mWidth * mWidth / mRange) : (mHeight * mHeight / mRange);
+	RECT r = getRect();
+	HBRUSH br = CreateSolidBrush(RGB(250, 20, 20));
+	FillRect(hdc, &r, br);
+	RECT tmp = {20, 20, 100, 100};
+	FillRect(hdc, &r, br);
+}
+
+void XScrollBar::onEvent( UINT msg, WPARAM wParam, LPARAM lParam ) {
+	if (msg == WM_SIZE) {
+		if (mHorizontal) {
+			mX = 0;
+			mWidth = LOWORD(lParam);
+			mHeight = 15;
+			mY = HIWORD(lParam) - mHeight;
+		} else {
+			mY = 0;
+			mHeight = HIWORD(lParam);
+			mWidth = 15;
+			mX = LOWORD(lParam) - mWidth;
+		}
+	}
+}
+
+RECT XScrollBar::getRect() {
+	RECT r = {mX, mY, mX + mWidth, mY + mHeight};
+	return r;
+}
+
+void XScrollBar::setRange( int range ) {
+	mRange = range;
+}
+
+void XScrollBar::setVisible(bool visible) {
+	mVisible = visible;
+}

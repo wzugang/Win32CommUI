@@ -43,6 +43,7 @@ XComponent::XComponent(XmlNode *node) {
 	mAttrFlags = 0;
 	mAttrColor = mAttrBgColor = 0;
 	mFont = NULL;
+	mRectRgn = NULL;
 	mBgColorBrush = NULL;
 	mBgImage = NULL;
 	mAttrRoundConerX = mAttrRoundConerY = 0;
@@ -133,7 +134,8 @@ void XComponent::createWndTree( HWND parent ) {
 void XComponent::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	mesureChildren(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	mesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
+		(mMesureHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 }
 
 void XComponent::onLayout( int width, int height ) {
@@ -147,8 +149,12 @@ void XComponent::layout( int x, int y, int width, int height ) {
 	mHeight = height;
 	MoveWindow(mWnd, mX, mY, mWidth, mHeight, TRUE);
 	if (mAttrRoundConerX != 0 && mAttrRoundConerY != 0) {
-		HRGN rgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mAttrRoundConerX, mAttrRoundConerY);
-		SetWindowRgn(mWnd, rgn, TRUE);
+		if (mRectRgn != NULL) {
+			DeleteObject(mRectRgn);
+			mRectRgn = NULL;
+		}
+		mRectRgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mAttrRoundConerX, mAttrRoundConerY);
+		SetWindowRgn(mWnd, mRectRgn, TRUE);
 	}
 	onLayout(width, height);
 }
@@ -270,6 +276,9 @@ int XComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
 			return getSpecSize(selfSizeSpec) * getSpecSize(parentSizeSpec) / 100;
 		}
 	}
+	/*if ((parentSizeSpec & MS_FIX) || (parentSizeSpec & MS_ATMOST)) {
+		return getSpecSize(parentSizeSpec);
+	}*/
 	return 0;
 }
 
@@ -520,7 +529,7 @@ void XHLineLayout::createWnd() {
 }
 
 void XHLineLayout::onLayout( int width, int height ) {
-	int x = 0, weightAll = 0, childWidths = 0;
+	int x = mAttrPadding[0], weightAll = 0, childWidths = 0, lessWidth = width - mAttrPadding[0] - mAttrPadding[2];
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		weightAll += child->getAttrWeight();
@@ -528,12 +537,12 @@ void XHLineLayout::onLayout( int width, int height ) {
 	}
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), (height - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 		x += child->getAttrMargin()[0];
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 		x += child->getMesureWidth() + child->getAttrMargin()[2];
-		if (childWidths < width && weightAll > 0) {
-			x += 1.0 * child->getAttrWeight() / weightAll * (width - childWidths);
+		if (childWidths < lessWidth && weightAll > 0) {
+			x += 1.0 * child->getAttrWeight() / weightAll * (lessWidth - childWidths);
 		}
 	}
 }
@@ -555,7 +564,7 @@ void XVLineLayout::createWnd() {
 }
 
 void XVLineLayout::onLayout( int width, int height ) {
-	int y = 0, weightAll = 0, childHeights = 0;
+	int y = mAttrPadding[1], weightAll = 0, childHeights = 0, lessHeight = height - mAttrPadding[1] - mAttrPadding[3];
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		weightAll += child->getAttrWeight();
@@ -563,12 +572,12 @@ void XVLineLayout::onLayout( int width, int height ) {
 	}
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int x = calcSize(child->getAttrX(), (width - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
 		y += child->getAttrMargin()[1];
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 		y += child->getMesureHeight() + child->getAttrMargin()[3];
-		if (childHeights < width && weightAll > 0) {
-			y += 1.0 * child->getAttrWeight() / weightAll * (height - childHeights);
+		if (childHeights < lessHeight && weightAll > 0) {
+			y += 1.0 * child->getAttrWeight() / weightAll * (lessHeight - childHeights);
 		}
 	}
 }
@@ -762,6 +771,12 @@ void XTab::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 	RECT rect = {0 , 0, mMesureWidth, mMesureHeight};
 	TabCtrl_AdjustRect(mWnd, FALSE, &rect);
+
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		if (child->getNode()->getAttrValue("rect") == NULL)
+			child->setAttrRect(0, 0, 100 | MS_PERCENT, 100 | MS_PERCENT);
+	}
 	mesureChildren((rect.right - rect.left) | MS_FIX, (rect.bottom - rect.top) | MS_FIX);
 }
 
@@ -852,7 +867,7 @@ void XWindow::show(int nCmdShow) {
 	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0) {
 		int x = (rect.right - getSpecSize(mAttrWidth)) / 2;
 		int y = (rect.bottom - getSpecSize(mAttrHeight)) / 2 - 30;
-		SetWindowPos(mWnd, HWND_NOTOPMOST, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE);
+		SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE | SWP_NOZORDER);
 	}
 	ShowWindow(mWnd, nCmdShow);
 	UpdateWindow(mWnd);
@@ -908,6 +923,7 @@ bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 		EnableWindow(parent, TRUE);
 		// SetForegroundWindow(parent);
 		SetFocus(parent);
+		// go through, deal by default
 	}
 	return false;
 }
@@ -919,7 +935,7 @@ int XDialog::showModal() {
 	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0 && rect.right > 0 && rect.bottom > 0) {
 		int x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
 		int y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
-		SetWindowPos(mWnd, HWND_NOTOPMOST, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE);
+		SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE|SWP_NOZORDER);
 	}
 	EnableWindow(parent, FALSE);
 	ShowWindow(mWnd, SW_SHOWNORMAL);
@@ -957,4 +973,133 @@ void XDialog::onLayout(int width, int height) {
 
 void XDialog::close( int nRet ) {
 	PostMessage(mWnd, WM_CLOSE, (WPARAM)nRet, 0L);
+}
+
+// --------------------------XScroller-----------------------------------
+XScroll::XScroll( XmlNode *node ) : XContainer(node) {
+}
+
+void XScroll::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XScrollContainer");
+	}
+	mID = generateWndId();
+	mWnd = CreateWindow("XScrollContainer", "", WS_CHILDWINDOW | WS_VISIBLE,
+		mX, mY, mWidth, mHeight, 
+		getParentWnd(), (HMENU)mID, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_HSCROLL) {
+		SCROLLINFO si = {0};
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_ALL;
+		GetScrollInfo(mWnd, SB_HORZ, &si);
+		int oldPos = si.nPos;
+		switch(LOWORD (wParam)) {
+			case SB_LEFT: si.nPos = si.nMin; break;
+			case SB_RIGHT: si.nPos = si.nMax; break;
+			case SB_LINELEFT: si.nPos -= 20; break;
+			case SB_LINERIGHT: si.nPos += 20; break;
+			case SB_PAGELEFT: si.nPos -= si.nPage;  break;
+			case SB_PAGERIGHT: si.nPos += si.nPage; break;
+			case SB_THUMBTRACK: si.nPos = si.nTrackPos; break;
+		}
+		if (si.nPos < si.nMin) si.nPos = si.nMin;
+		else if (si.nPos > si.nMax - si.nPage) si.nPos = si.nMax - si.nPage;
+		SetScrollInfo(mWnd, SB_HORZ, &si, TRUE);
+		moveChildrenPos(-si.nPos + oldPos, 0);
+		return true;
+	} else if (msg == WM_VSCROLL) {
+		SCROLLINFO si = {0};
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_ALL;
+		GetScrollInfo(mWnd, SB_VERT, &si);
+		int oldPos = si.nPos;
+		switch (LOWORD(wParam)) {
+			case SB_TOP: si.nPos = si.nMin; break;
+			case SB_BOTTOM: si.nPos = si.nMax; break;
+			case SB_LINEUP: si.nPos -= 20; break;
+			case SB_LINEDOWN: si.nPos += 20; break;
+			case SB_PAGEUP: si.nPos -= si.nPage;  break;
+			case SB_PAGEDOWN: si.nPos += si.nPage; break;
+			case SB_THUMBTRACK: si.nPos = si.nTrackPos; break;
+		}
+		if (si.nPos < si.nMin) si.nPos = si.nMin;
+		else if (si.nPos > si.nMax - si.nPage) si.nPos = si.nMax - si.nPage;
+		SetScrollInfo(mWnd, SB_VERT, &si, TRUE);
+		moveChildrenPos(0, -si.nPos + oldPos);
+	}
+	return XContainer::wndProc(msg, wParam, lParam, result);
+}
+
+void XScroll::onMeasure( int widthSpec, int heightSpec ) {
+	bool hasHorBar = GetWindowLong(mWnd, GWL_STYLE) & WS_HSCROLL;
+	bool hasVerBar = GetWindowLong(mWnd, GWL_STYLE) & WS_VSCROLL;
+	int thumbSize = GetSystemMetrics(SM_CXHTHUMB);
+
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	int clientWidth = mMesureWidth - (hasVerBar ? thumbSize : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? thumbSize : 0);
+	mesureChildren(clientWidth | MS_FIX, clientHeight| MS_FIX);
+	
+	int childRight = 0, childBottom = 0;
+	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		if ((GetWindowLong(child->getWnd(), GWL_STYLE) & WS_VISIBLE) == 0)
+			continue;
+		int x = calcSize(child->getAttrX(), mMesureWidth | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), mMesureHeight | MS_ATMOST);
+		childRight = x + child->getMesureWidth();
+		childBottom = y = child->getMesureHeight();
+		break;
+	}
+	SCROLLINFO si = {0};
+	si.cbSize = sizeof(SCROLLINFO);
+	si.fMask = SIF_RANGE | SIF_PAGE;
+	si.nMax = childRight - 1;
+	si.nPage = clientWidth;
+	SetScrollInfo(mWnd, SB_HORZ, &si, FALSE);
+
+	si.nMax = childBottom;
+	si.nPage = clientHeight;
+	SetScrollInfo(mWnd, SB_VERT, &si, FALSE);
+
+	bool curHasHorBar = GetWindowLong(mWnd, GWL_STYLE) & WS_HSCROLL;
+	bool curHasVerBar = GetWindowLong(mWnd, GWL_STYLE) & WS_VSCROLL;
+	if (curHasHorBar != hasHorBar || curHasVerBar != hasVerBar)
+		onMeasure(widthSpec, heightSpec);
+}
+
+void XScroll::onLayout( int width, int height ) {
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
+}
+
+void XScroll::moveChildrenPos( int dx, int dy ) {
+	if (dx == 0 && dy == 0)
+		return;
+	RECT pa, ch;
+	GetWindowRect(mWnd, &pa);
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		HWND wnd = child->getWnd();
+		GetWindowRect(wnd, &ch);
+		SetWindowPos(wnd, HWND_NOTOPMOST, ch.left - pa.left + dx, ch.top - pa.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	}
+}
+
+void XScroll::layout( int x, int y, int width, int height ) {
+	SetScrollPos(mWnd, SB_HORZ, 0, FALSE);
+	SetScrollPos(mWnd, SB_VERT, 0, FALSE);
+	XContainer::layout(x, y, width, height);
 }

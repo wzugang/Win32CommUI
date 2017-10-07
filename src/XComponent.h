@@ -81,6 +81,7 @@ protected:
 	XImage *mBgImage;
 	XListener *mListener;
 	HFONT mFont;
+	HRGN mRectRgn;
 	static HINSTANCE mInstance;
 	friend class UIFactory;
 };
@@ -205,7 +206,7 @@ public:
 };
 
 // only has one child
-class XDialog: public XContainer {
+class XDialog : public XContainer {
 public:
 	XDialog(XmlNode *node);
 	virtual void createWnd();
@@ -215,3 +216,17 @@ public:
 	int showModal();
 	void close(int nRet);
 };
+
+// only has one child
+class XScroll : public XContainer {
+public:
+	XScroll(XmlNode *node);
+	virtual void createWnd();
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
+	virtual void layout(int x, int y, int width, int height);
+protected:
+	void moveChildrenPos(int dx, int dy);
+};
+

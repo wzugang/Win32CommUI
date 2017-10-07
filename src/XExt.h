@@ -77,3 +77,27 @@ public:
 	XExtRadio(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 };
+
+class XScrollBar {
+public:
+	XScrollBar(XComponent *owner, bool horizontal);
+	virtual void onPaint(HDC hdc);
+	virtual void onEvent(UINT msg, WPARAM wParam, LPARAM lParam);
+	RECT getRect();
+	void setRange(int range);
+	void setVisible(bool visible);
+protected:
+	XComponent *mOwner;
+	bool mHorizontal;
+	int mX, mY, mWidth, mHeight;
+	int mRange;
+	bool mVisible;
+};
+
+class XExtScroll : public XScroll {
+public:
+	XExtScroll(XmlNode *node);
+	virtual ~XExtScroll();
+protected:
+	XScrollBar *mHorBar, *mVerBar;
+};

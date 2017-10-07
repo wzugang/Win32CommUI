@@ -202,6 +202,7 @@ static XComponent *XListBox_Creator(XmlNode *n) {return new XListBox(n);}
 static XComponent *XDateTimePicker_Creator(XmlNode *n) {return new XDateTimePicker(n);}
 static XComponent *XWindow_Creator(XmlNode *n) {return new XWindow(n);}
 static XComponent *XDialog_Creator(XmlNode *n) {return new XDialog(n);}
+static XComponent *XScroller_Creator(XmlNode *n) {return new XScroll(n);}
 
 static XComponent *XExtButton_Creator(XmlNode *n) {return new XExtButton(n);}
 static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
@@ -229,6 +230,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
 		UIFactory::registCreator("Window", XWindow_Creator);
 		UIFactory::registCreator("Dialog", XDialog_Creator);
+		UIFactory::registCreator("Scroll", XScroller_Creator);
 
 		UIFactory::registCreator("ExtButton", XExtButton_Creator);
 		UIFactory::registCreator("ExtOption", XExtOption_Creator);
