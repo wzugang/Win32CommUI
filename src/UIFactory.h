@@ -17,9 +17,8 @@ public:
 	void incRef();
 	void decRef();
 protected:
-	XImage(HBITMAP bmp);
 	~XImage();
-	XImage();
+	XImage(HBITMAP bmp, int w, int h, void *bits);
 	void *mBits;
 	HBITMAP mHBitmap;
 	int mWidth;

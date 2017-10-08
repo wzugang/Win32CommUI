@@ -15,25 +15,12 @@ static XImage *findInCache(const char *name) {
 	return it->second;
 }
 
-XImage::XImage() {
-	mBits = NULL;
-	mHBitmap = NULL;
-	mWidth = mHeight = 0;
-	mRefCount = 1;
-}
-
-XImage::XImage( HBITMAP bmp ) {
-	mBits = NULL;
+XImage::XImage(HBITMAP bmp, int w, int h, void *bits) {
 	mHBitmap = bmp;
-	mWidth = mHeight = 0;
+	mWidth = w;
+	mHeight = h;
+	mBits = bits;
 	mRefCount = 1;
-	if (bmp) {
-		BITMAP b = {0};
-		GetObject(bmp, sizeof(BITMAP), &b);
-		mWidth = b.bmWidth;
-		mHeight = b.bmHeight;
-		mBits = b.bmBits;
-	}
 }
 
 XImage * XImage::load( const char *resPath ) {
@@ -42,37 +29,53 @@ XImage * XImage::load( const char *resPath ) {
 		img->incRef();
 		return img;
 	}
+	HBITMAP bmp = NULL;
 	if (memcmp(resPath, "res://", 6) == 0) {
-		HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 6, IMAGE_BITMAP, 0, 0,
-			/*LR_CREATEDIBSECTION  LR_DEFAULTSIZE*/ 0);
-		if (bmp) img = new XImage(bmp);
+		bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 6, IMAGE_BITMAP, 0, 0, 0);
 	} else if (memcmp(resPath, "file://", 7) == 0) {
-		HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 7, IMAGE_BITMAP, 0, 0,
-			/*LR_CREATEDIBSECTION | LR_DEFAULTSIZE | */ LR_LOADFROMFILE);
-		if (bmp) img =  new XImage(bmp);
+		bmp = (HBITMAP)LoadImage(XComponent::getInstance(), resPath + 7, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 	}
-	if (img != NULL) {
-		mCache[resPath] = img;
+	if (bmp == NULL) return NULL;
+	BITMAP bt = {0};
+	if (GetObject(bmp, sizeof(BITMAP), &bt) == 0)
+		return NULL;
+	int height = bt.bmHeight > 0 ? bt.bmHeight : -bt.bmHeight;
+	BITMAPINFO bi = {0};
+	bi.bmiHeader.biSize = sizeof(BITMAPINFO);
+	bi.bmiHeader.biWidth = bt.bmWidth;
+	bi.bmiHeader.biHeight = -height;
+	bi.bmiHeader.biBitCount = 32;
+	bi.bmiHeader.biCompression = BI_RGB;
+	bi.bmiHeader.biPlanes = 1;
+	bi.bmiHeader.biSizeImage = bt.bmWidth * height * 4;
+	void *pvBits = NULL;
+	HBITMAP bmp2 = CreateDIBSection(NULL, &bi, DIB_RGB_COLORS, &pvBits, NULL, 0);
+	if (bmp2 == NULL)
+		return NULL;
+	int row = GetDIBits(GetDC(NULL), bmp, 0, height, pvBits, &bi, DIB_RGB_COLORS);
+	if (row != height) {
+		return NULL;
 	}
+	img = new XImage(bmp2, bt.bmWidth, height, pvBits);
+	mCache[resPath] = img;
 	return img;
 }
 
 XImage * XImage::create( int width, int height ) {
 	BITMAPINFOHEADER header = {0};
-	int nBytesPerLine = ((width * 32 + 31) & (~31)) >> 3;
 	header.biSize = sizeof(BITMAPINFOHEADER);
 	header.biWidth = width;
-	header.biHeight = height;
+	header.biHeight = -height;
 	header.biPlanes = 1;
 	header.biBitCount = 32;
 	header.biCompression = BI_RGB;
 	header.biClrUsed = 0;
-	header.biSizeImage = nBytesPerLine * height;
+	header.biSizeImage = width * height * 4;
 	PVOID pvBits = NULL;
-	HBITMAP bmp = CreateDIBSection(NULL, (PBITMAPINFO)&header, DIB_RGB_COLORS, &pvBits, NULL, 0);  
+	HBITMAP bmp = CreateDIBSection(NULL, (PBITMAPINFO)&header, DIB_RGB_COLORS, &pvBits, NULL, 0);
 	if (bmp == NULL)
 		return NULL;
-	return new XImage(bmp);
+	return new XImage(bmp, width, height, pvBits);
 }
 
 HBITMAP XImage::getHBitmap() {
