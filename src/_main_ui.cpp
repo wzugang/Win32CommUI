@@ -17,33 +17,41 @@ class ButtonListener : public XListener {
 public:
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret) {
 		int rt = 0;
-		if (msg != XComponent::WM_COMMAND_SELF) {
+		char *id = evtSource->getNode()->getAttrValue("id");
+
+		if (msg != XComponent::WM_COMMAND_SELF && msg != WM_COMMAND) {
 			return false;
 		}
-		if (strcmp("btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+		if (strcmp("btn_1", id) == 0) {
 			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "sub-page", win->getWnd());
 			dlg->findById("tool_btn_1")->setListener(new ButtonListener());
 			rt = dlg->showModal();
 			UIFactory::destory(dlg->getNode());
-		} else if (strcmp("tool_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+			return true;
+		}
+		if (strcmp("tool_btn_1", id) == 0) {
 			dlg->close(100);
-		} else if (strcmp("ext_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+			return true;
+		}
+		if (strcmp("ext_btn_1", id) == 0) {
 			XExtOption *opt = (XExtOption *)win->findById("ext_opt_1");
 			opt->setSelect(! opt->isSelect());
 
 			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win->getWnd());
-			popup->findById("pop_btn_1")->setListener(new ButtonListener());
+			popup->findById("pop_btn_1")->setListener(this);
 			// set window owner
 			// SetWindowLong(popup->getWnd(), GWL_HWNDPARENT, (LONG)win->getWnd());
 			POINT pt;
 			GetCursorPos(&pt);
 			popup->show(pt.x, pt.y);
-		}  else if (strcmp("pop_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+			return true;
+		}
+		if (strcmp("pop_btn_1", id) == 0) {
 			popup->close();
 			MessageBox(win->getWnd(), "Hello Popup", NULL, MB_OK);
 			return true;
 		}
-		return true;
+		return false;
 	}
 };
 
@@ -57,16 +65,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	SetCurrentDirectory(path);
 
 	XComponent::init();
-	XmlNode *rootNode = UIFactory::buildNode("file://skin/base.xml", "main-page");
-	win = (XWindow *) UIFactory::buildComponent(rootNode);
 
-	win->createWndTree(NULL);
+	// dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "sub-page", NULL);
+	// dlg->showModal();
+
+	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
 	win->findById("btn_1")->setListener(new ButtonListener());
 	win->findById("ext_btn_1")->setListener(new ButtonListener());
 	win->show(nCmdShow);
 	win->messageLoop();
-
-	UIFactory::destory(rootNode);
+	UIFactory::destory(win->getNode());
 
 	return 0;
 }

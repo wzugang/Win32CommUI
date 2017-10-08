@@ -437,14 +437,15 @@ XExtPopup::XExtPopup( XmlNode *node ) : XContainer(node) {
 void XExtPopup::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId();  // has no id
-	mWnd = CreateWindow(mClassName, NULL, WS_POPUP,
-		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
-		getParentWnd(), NULL, mInstance, this);
+	mWnd = CreateWindow(mClassName, NULL, WS_POPUP, 0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
 }
 
 bool XExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_ERASEBKGND) {
+		int a = 0;
+	}
 	if (XContainer::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
@@ -509,7 +510,8 @@ int XExtPopup::messageLoop() {
 }
 
 void XExtPopup::show( int x, int y ) {
-	SetWindowPos(mWnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), 
+		SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
 	// ShowWindow(mWnd, SW_SHOWNOACTIVATE);
 	UpdateWindow(mWnd);
 	messageLoop();

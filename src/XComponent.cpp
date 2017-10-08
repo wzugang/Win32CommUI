@@ -873,9 +873,8 @@ XDialog::XDialog( XmlNode *node ) : XContainer(node) {
 void XDialog::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId(); // has no id
-	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
-		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
-		getParentWnd(), NULL, mInstance, this);
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP /*| WS_SYSMENU*/ | WS_CAPTION | WS_DLGFRAME,
+		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
 }
@@ -885,10 +884,8 @@ bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 	if (XContainer::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
-		RECT r = {0};
-		GetWindowRect(mWnd, &r);
-		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
-		onLayout(LOWORD(lParam), HIWORD(lParam));
+		onMeasure(0, 0);
+		onLayout(0, 0);
 		return true;
 	} else if (msg == WM_DESTROY) {
 		PostQuitMessage(wParam);
@@ -907,16 +904,17 @@ bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 int XDialog::showModal() {
 	RECT rect = {0};
 	HWND parent = getParentWnd();
+	if (parent == NULL) parent = GetDesktopWindow();
 	GetWindowRect(parent, &rect);
-	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0 && rect.right > 0 && rect.bottom > 0) {
-		int x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
-		int y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
-		SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE|SWP_NOZORDER);
+	int x = getSpecSize(mAttrX);
+	int y = getSpecSize(mAttrY);
+	if (x == 0 && y == 0 && rect.right > 0 && rect.bottom > 0) {
+		x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
+		y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
 	}
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER);
 	EnableWindow(parent, FALSE);
 	ShowWindow(mWnd, SW_SHOWNORMAL);
-
-	int err = GetLastError();
 
 	MSG msg;
 	int nRet = 0;
