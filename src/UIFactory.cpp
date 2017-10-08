@@ -158,6 +158,14 @@ XmlNode* UIFactory::buildNode( const char *resPath, const char *partName ) {
 	return rootNode;
 }
 
+XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, HWND parent ) {
+	XmlNode *root = UIFactory::buildNode(resPath, partName);
+	if (root == NULL) return NULL;
+	XComponent *cc = UIFactory::buildComponent(root);
+	cc->createWndTree(parent);
+	return cc;
+}
+
 void UIFactory::registCreator( const char *nodeName, Creator c ) {
 	if (nodeName == NULL || c == NULL)
 		return;
@@ -209,6 +217,7 @@ static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
 static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
 static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
 static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
+static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 
 struct InitUIFactory {
 	InitUIFactory() {
@@ -237,6 +246,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
 		UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
 		UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
+		UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
 	}
 
 	~InitUIFactory() {

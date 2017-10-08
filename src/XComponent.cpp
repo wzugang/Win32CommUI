@@ -1087,7 +1087,7 @@ void XScroll::onMeasure( int widthSpec, int heightSpec ) {
 	si.nPage = clientWidth;
 	SetScrollInfo(mWnd, SB_HORZ, &si, FALSE);
 
-	si.nMax = childBottom;
+	si.nMax = childBottom - 1;
 	si.nPage = clientHeight;
 	SetScrollInfo(mWnd, SB_VERT, &si, FALSE);
 

@@ -457,3 +457,102 @@ void XScrollBar::setRange( int range ) {
 void XScrollBar::setVisible(bool visible) {
 	mVisible = visible;
 }
+
+XExtPopup::XExtPopup( XmlNode *node ) : XContainer(node) {
+}
+
+void XExtPopup::createWnd() {
+	static bool reg = false;
+	if (!reg) {
+		reg = true;
+		MyRegisterClass(mInstance, "XExtPopup");
+	}
+	// mID = generateWndId();  // has no id
+	mWnd = CreateWindow("XExtPopup", NULL, WS_POPUP,
+		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
+		getParentWnd(), NULL, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	XContainer::createWnd();
+}
+
+bool XExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (XContainer::wndProc(msg, wParam, lParam, result))
+		return true;
+	if (msg == WM_SIZE && lParam > 0) {
+		RECT r = {0};
+		GetWindowRect(mWnd, &r);
+		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		onLayout(LOWORD(lParam), HIWORD(lParam));
+		return true;
+	} else if (msg == WM_DESTROY) {
+		// PostQuitMessage(0); // Do not it
+		return true;
+	} else if (msg == WM_MOUSEACTIVATE) {
+		*result = MA_NOACTIVATE; // 鼠标点击时，不活动
+		return true;
+	}
+	return false;
+}
+
+void XExtPopup::onLayout( int width, int height ) {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
+}
+
+int XExtPopup::messageLoop() {
+	MSG msg = {0};
+	HWND ownerWnd = GetWindow(mWnd, GW_OWNER);
+	RECT popupRect;
+	GetWindowRect(mWnd, &popupRect);
+	while (TRUE) {
+		if ((GetWindowLong(mWnd, GWL_STYLE) & WS_VISIBLE) == 0)
+			break;
+		if (GetForegroundWindow() != mWnd && GetForegroundWindow() != ownerWnd) {
+			break;
+		}
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
+				// transfer the message to menu window
+				msg.hwnd = mWnd;
+			} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
+				/*if (msg.hwnd != mWnd) { // click on other window
+					break;
+				}*/
+				POINT pt;
+				GetCursorPos(&pt);
+				if (! PtInRect(&popupRect, pt)) {
+					break;
+				}
+			} else if (msg.message == WM_QUIT) {
+				break;
+			}
+		} else {
+			MsgWaitForMultipleObjects(0, 0, 0, 10, QS_ALLINPUT);
+		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	ShowWindow(mWnd, SW_HIDE);
+	return 0;
+}
+
+void XExtPopup::show( int x, int y ) {
+	SetWindowPos(mWnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
+	// ShowWindow(mWnd, SW_SHOWNOACTIVATE);
+	UpdateWindow(mWnd);
+	messageLoop();
+}
+
+void XExtPopup::close() {
+	ShowWindow(mWnd, SW_HIDE);
+}
+
+XExtPopup::~XExtPopup() {
+	if (mWnd) DestroyWindow(mWnd);
+}

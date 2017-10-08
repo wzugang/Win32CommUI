@@ -102,3 +102,17 @@ public:
 protected:
 	XScrollBar *mHorBar, *mVerBar;
 };
+
+class XExtPopup : public XContainer {
+public:
+	XExtPopup(XmlNode *node);
+	virtual void show(int x, int y);
+	virtual void close();
+	virtual ~XExtPopup();
+protected:
+	virtual void createWnd();
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onLayout(int width, int height);
+	virtual int messageLoop();
+	bool mMsgLooping;
+};

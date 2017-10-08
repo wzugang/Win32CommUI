@@ -36,6 +36,8 @@ public:
 	//@param resPath file://abc.xml  res://abc
 	static XmlNode* buildNode(const char *resPath, const char *partName);
 
+	static XComponent* fastBuild(const char *resPath, const char *partName, HWND parent);
+
 	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);
 	static Creator getCreator(const char *nodeName);

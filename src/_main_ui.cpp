@@ -7,6 +7,7 @@
 
 XWindow *win;
 XDialog *dlg;
+XExtPopup *popup;
 
 void InitMyTable();
 void InitMyTree();
@@ -20,18 +21,28 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
-			XmlNode *root = UIFactory::buildNode("file://skin/base.xml", "sub-page");
-			dlg = (XDialog*) UIFactory::buildComponent(root);
-			root->findById("tool_btn_1")->getComponent()->setListener(new ButtonListener());
-			dlg->createWndTree(win->getWnd());
+			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "sub-page", win->getWnd());
+			dlg->findById("tool_btn_1")->setListener(new ButtonListener());
 			rt = dlg->showModal();
-			UIFactory::destory(root);
+			UIFactory::destory(dlg->getNode());
 		} else if (strcmp("tool_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
 			dlg->close(100);
 		} else if (strcmp("ext_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
 			XExtOption *opt = (XExtOption *)win->findById("ext_opt_1");
 			opt->setSelect(! opt->isSelect());
-		}  
+
+			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win->getWnd());
+			popup->findById("pop_btn_1")->setListener(new ButtonListener());
+			// set window owner
+			// SetWindowLong(popup->getWnd(), GWL_HWNDPARENT, (LONG)win->getWnd());
+			POINT pt;
+			GetCursorPos(&pt);
+			popup->show(pt.x, pt.y);
+		}  else if (strcmp("pop_btn_1", evtSource->getNode()->getAttrValue("id")) == 0) {
+			popup->close();
+			MessageBox(win->getWnd(), "Hello Popup", NULL, MB_OK);
+			return true;
+		}
 		return true;
 	}
 };
