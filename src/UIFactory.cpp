@@ -36,15 +36,6 @@ XImage::XImage( HBITMAP bmp ) {
 	}
 }
 
-/*
-XImage * XImage::loadFromResource( int resId ) {
-	HBITMAP bmp = (HBITMAP)LoadImage(XComponent::getInstance(), MAKEINTRESOURCE(resId), IMAGE_BITMAP, 0, 0,
-		/ *LR_CREATEDIBSECTION | LR_DEFAULTSIZE* / 0);
-	if (bmp) return new XImage(bmp);
-	return NULL;
-} */
-
-
 XImage * XImage::load( const char *resPath ) {
 	XImage *img = findInCache(resPath);
 	if (img != NULL) {

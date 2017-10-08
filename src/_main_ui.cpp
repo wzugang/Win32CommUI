@@ -23,7 +23,7 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", id) == 0) {
-			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "sub-page", win->getWnd());
+			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "dialog-page", win->getWnd());
 			dlg->findById("tool_btn_1")->setListener(new ButtonListener());
 			rt = dlg->showModal();
 			UIFactory::destory(dlg->getNode());
@@ -53,7 +53,8 @@ public:
 };
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
-	AllocConsole();
+	// ---- debug -----
+	// AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
 	char path[256];
 	GetModuleFileName(NULL, path, 256);
@@ -61,10 +62,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	*p = 0;
 	SetCurrentDirectory(path);
 
-	XComponent::init();
+	/*HRSRC mm = FindResource(NULL, "MY_ANY_MM", "ANY");
+	HGLOBAL hmm = LoadResource(NULL, mm);
+	char *mmDat = (char *)LockResource(hmm);
+	int mmLen = SizeofResource(NULL, mm);
+	FreeResource(hmm);*/
 
-	// dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "sub-page", NULL);
-	// dlg->showModal();
+	XComponent::init();
 
 	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
 	win->findById("btn_1")->setListener(new ButtonListener());
