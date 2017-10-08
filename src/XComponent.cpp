@@ -156,8 +156,7 @@ void XComponent::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	mID = generateWndId();
 	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight,
-		getParentWnd(), (HMENU)mID, mInstance, this);
+		0, 0, 0, 0, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
 }
@@ -805,8 +804,7 @@ void XWindow::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId();  // has no id
 	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_OVERLAPPEDWINDOW,
-		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
-		getParentWnd(), NULL, mInstance, this);
+		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
 }
@@ -843,11 +841,9 @@ void XWindow::show(int nCmdShow) {
 	HWND desk = GetDesktopWindow();
 	RECT rect = {0};
 	GetClientRect(desk, &rect);
-	if (getSpecSize(mAttrX) == 0 && getSpecSize(mAttrY) == 0) {
-		int x = (rect.right - getSpecSize(mAttrWidth)) / 2;
-		int y = (rect.bottom - getSpecSize(mAttrHeight)) / 2 - 30;
-		SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOSIZE | SWP_NOZORDER);
-	}
+	int x = (rect.right - getSpecSize(mAttrWidth)) / 2;
+	int y = (rect.bottom - getSpecSize(mAttrHeight)) / 2 - 30;
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER);
 	ShowWindow(mWnd, nCmdShow);
 	UpdateWindow(mWnd);
 }
