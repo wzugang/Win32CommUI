@@ -371,6 +371,26 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 		}
 		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)
 			return true;
+	} else if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
+		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
+		XComponent *c = getChildById(id);
+		if (c != NULL) {
+			return c->onCtrlColor((HDC)wParam, res);
+		}
+	} else if (msg == WM_COMMAND && lParam != 0) {
+		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
+		XComponent *c = getChildById(id);
+		if (c != NULL) {
+			*res = SendMessage((HWND)lParam, WM_COMMAND_SELF, 0, 0);
+			return true;
+		}
+	} else if (msg == WM_NOTIFY && lParam != 0) {
+		NMHDR *nmh = (NMHDR*)lParam;
+		XComponent *c = getChildById(nmh->idFrom);
+		if (c != NULL) {
+			*res = SendMessage(nmh->hwndFrom, WM_NOTIFY_SELF, wParam, lParam);
+			return true;
+		}
 	}
 	return false;
 }
@@ -477,40 +497,8 @@ int * XComponent::getAttrMargin() {
 	return mAttrMargin;
 }
 
-//--------------------------XContainer-----------------------------
-XContainer::XContainer( XmlNode *node ) : XComponent(node) {
-}
-
-bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
-	if (XComponent::wndProc(msg, wParam, lParam, result)) {
-		return true;
-	}
-	if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
-		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
-		XComponent *c = getChildById(id);
-		if (c != NULL) {
-			return c->onCtrlColor((HDC)wParam, result);
-		}
-	} else if (msg == WM_COMMAND && lParam != 0) {
-		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
-		XComponent *c = getChildById(id);
-		if (c != NULL) {
-			*result = SendMessage((HWND)lParam, WM_COMMAND_SELF, 0, 0);
-			return true;
-		}
-	} else if (msg == WM_NOTIFY && lParam != 0) {
-		NMHDR *nmh = (NMHDR*)lParam;
-		XComponent *c = getChildById(nmh->idFrom);
-		if (c != NULL) {
-			*result = SendMessage(nmh->hwndFrom, WM_NOTIFY_SELF, wParam, lParam);
-			return true;
-		}
-	}
-	return false;
-}
-
 //--------------------------XAbsLayout-----------------------------
-XAbsLayout::XAbsLayout( XmlNode *node ) : XContainer(node) {
+XAbsLayout::XAbsLayout( XmlNode *node ) : XComponent(node) {
 }
 
 void XAbsLayout::onLayout( int width, int height ) {
@@ -523,7 +511,7 @@ void XAbsLayout::onLayout( int width, int height ) {
 }
 
 //--------------------------XHLineLayout--------------------------
-XHLineLayout::XHLineLayout(XmlNode *node) : XContainer(node) {
+XHLineLayout::XHLineLayout(XmlNode *node) : XComponent(node) {
 }
 
 void XHLineLayout::onLayout( int width, int height ) {
@@ -545,7 +533,7 @@ void XHLineLayout::onLayout( int width, int height ) {
 	}
 }
 //--------------------------XVLineLayout--------------------------
-XVLineLayout::XVLineLayout(XmlNode *node) : XContainer(node) {
+XVLineLayout::XVLineLayout(XmlNode *node) : XComponent(node) {
 }
 
 void XVLineLayout::onLayout( int width, int height ) {
@@ -709,7 +697,7 @@ void XTree::createWnd() {
 	XBasicWnd::createWnd();
 }
 
-XTab::XTab(XmlNode *node) : XContainer(node) {
+XTab::XTab(XmlNode *node) : XComponent(node) {
 	mOldWndProc = NULL;
 }
 void XTab::createWnd() {
@@ -729,7 +717,7 @@ void XTab::createWnd() {
 	applyAttrs();
 }
 bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
-	if (XContainer::wndProc(msg, wParam, lParam, res)) {
+	if (XComponent::wndProc(msg, wParam, lParam, res)) {
 		return true;
 	}
 	if (msg == WM_NOTIFY_SELF) {
@@ -796,7 +784,7 @@ void XDateTimePicker::createWnd() {
 	XBasicWnd::createWnd();
 }
 
-XWindow::XWindow( XmlNode *node ) : XContainer(node) {
+XWindow::XWindow( XmlNode *node ) : XComponent(node) {
 	strcpy(mClassName, "XWindow");
 }
 
@@ -810,7 +798,7 @@ void XWindow::createWnd() {
 }
 
 bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (XContainer::wndProc(msg, wParam, lParam, result))
+	if (XComponent::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
 		RECT r = {0};
@@ -863,7 +851,7 @@ void XWindow::onLayout(int width, int height) {
 	}
 }
 
-XDialog::XDialog( XmlNode *node ) : XContainer(node) {
+XDialog::XDialog( XmlNode *node ) : XComponent(node) {
 	strcpy(mClassName, "XDialog");
 }
 void XDialog::createWnd() {
@@ -877,7 +865,7 @@ void XDialog::createWnd() {
 
 bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	int err = 0;
-	if (XContainer::wndProc(msg, wParam, lParam, result))
+	if (XComponent::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
 		onMeasure(0, 0);
@@ -946,7 +934,7 @@ void XDialog::close( int nRet ) {
 }
 
 // --------------------------XScroller-----------------------------------
-XScroll::XScroll( XmlNode *node ) : XContainer(node) {
+XScroll::XScroll( XmlNode *node ) : XComponent(node) {
 }
 
 bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -1006,7 +994,7 @@ bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 		}
 		return true;
 	}
-	return XContainer::wndProc(msg, wParam, lParam, result);
+	return XComponent::wndProc(msg, wParam, lParam, result);
 }
 
 void XScroll::onMeasure( int widthSpec, int heightSpec ) {

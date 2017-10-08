@@ -88,25 +88,19 @@ protected:
 	friend class UIFactory;
 };
 
-class XContainer : public XComponent {
-public:
-	XContainer(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-};
-
-class XAbsLayout : public XContainer {
+class XAbsLayout : public XComponent {
 public:
 	XAbsLayout(XmlNode *node);
 	virtual void onLayout(int width, int height);
 };
 
-class XHLineLayout : public XContainer {
+class XHLineLayout : public XComponent {
 public:
 	XHLineLayout(XmlNode *node);
 	virtual void onLayout(int width, int height);
 };
 
-class XVLineLayout : public XContainer {
+class XVLineLayout : public XComponent {
 public:
 	XVLineLayout(XmlNode *node);
 	virtual void onLayout(int width, int height);
@@ -171,7 +165,7 @@ public:
 	virtual void createWnd();
 };
 
-class XTab : public XContainer {
+class XTab : public XComponent {
 public:
 	XTab(XmlNode *node);
 	virtual void createWnd();
@@ -193,7 +187,7 @@ public:
 };
 
 // only has one child
-class XWindow : public XContainer {
+class XWindow : public XComponent {
 public:
 	XWindow(XmlNode *node);
 	virtual void createWnd();
@@ -205,7 +199,7 @@ public:
 };
 
 // only has one child
-class XDialog : public XContainer {
+class XDialog : public XComponent {
 public:
 	XDialog(XmlNode *node);
 	virtual void createWnd();
@@ -217,7 +211,7 @@ public:
 };
 
 // every time: only has one visible child; but can has many invisible child
-class XScroll : public XContainer {
+class XScroll : public XComponent {
 public:
 	XScroll(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);

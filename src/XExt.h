@@ -101,7 +101,7 @@ protected:
 	XScrollBar *mHorBar, *mVerBar;
 };
 
-class XExtPopup : public XContainer {
+class XExtPopup : public XComponent {
 public:
 	XExtPopup(XmlNode *node);
 	virtual void show(int x, int y);

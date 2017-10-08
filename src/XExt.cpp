@@ -430,7 +430,7 @@ void XScrollBar::setVisible(bool visible) {
 	mVisible = visible;
 }
 
-XExtPopup::XExtPopup( XmlNode *node ) : XContainer(node) {
+XExtPopup::XExtPopup( XmlNode *node ) : XComponent(node) {
 	strcpy(mClassName, "XExtPopup");
 }
 
@@ -443,10 +443,7 @@ void XExtPopup::createWnd() {
 }
 
 bool XExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		int a = 0;
-	}
-	if (XContainer::wndProc(msg, wParam, lParam, result))
+	if (XComponent::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
 		RECT r = {0};

@@ -34,9 +34,6 @@ public:
 			return true;
 		}
 		if (strcmp("ext_btn_1", id) == 0) {
-			XExtOption *opt = (XExtOption *)win->findById("ext_opt_1");
-			opt->setSelect(! opt->isSelect());
-
 			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win->getWnd());
 			popup->findById("pop_btn_1")->setListener(this);
 			// set window owner
