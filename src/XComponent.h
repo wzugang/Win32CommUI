@@ -64,6 +64,7 @@ public:
 	virtual ~XComponent();
 protected:
 	void parseAttrs();
+	void applyAttrs();
 	HWND getParentWnd();
 	HFONT getFont();
 	DWORD mID;
@@ -82,6 +83,7 @@ protected:
 	XListener *mListener;
 	HFONT mFont;
 	HRGN mRectRgn;
+	char mClassName[32];
 	static HINSTANCE mInstance;
 	friend class UIFactory;
 };
@@ -95,21 +97,18 @@ public:
 class XAbsLayout : public XContainer {
 public:
 	XAbsLayout(XmlNode *node);
-	virtual void createWnd();
 	virtual void onLayout(int width, int height);
 };
 
 class XHLineLayout : public XContainer {
 public:
 	XHLineLayout(XmlNode *node);
-	virtual void createWnd();
 	virtual void onLayout(int width, int height);
 };
 
 class XVLineLayout : public XContainer {
 public:
 	XVLineLayout(XmlNode *node);
-	virtual void createWnd();
 	virtual void onLayout(int width, int height);
 };
 
@@ -221,7 +220,6 @@ public:
 class XScroll : public XContainer {
 public:
 	XScroll(XmlNode *node);
-	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);

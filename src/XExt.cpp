@@ -54,20 +54,6 @@ XExtLabel::XExtLabel( XmlNode *node ) : XComponent(node) {
 	mText = mNode->getAttrValue("text");
 }
 
-void XExtLabel::createWnd() {
-	static bool reg = false;
-	if (! reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XExtLabel");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XExtLabel", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight,
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XComponent::createWnd();
-}
-
 void XExtLabel::layout(int x, int y, int width, int height) {
 	XComponent::layout(x, y, width, height);
 	if (mBgImageForParnet != NULL) {
@@ -143,20 +129,6 @@ XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
 			mImages[BTN_IMG_DISABLE] = XImage::load(attr->mValue);
 		}
 	}
-}
-
-void XExtButton::createWnd() {
-	static bool reg = false;
-	if (! reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XExtButton");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XExtButton", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XComponent::createWnd();
 }
 
 void XExtButton::layout(int x, int y, int width, int height) {
@@ -459,20 +431,17 @@ void XScrollBar::setVisible(bool visible) {
 }
 
 XExtPopup::XExtPopup( XmlNode *node ) : XContainer(node) {
+	strcpy(mClassName, "XExtPopup");
 }
 
 void XExtPopup::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XExtPopup");
-	}
+	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId();  // has no id
-	mWnd = CreateWindow("XExtPopup", NULL, WS_POPUP,
+	mWnd = CreateWindow(mClassName, NULL, WS_POPUP,
 		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
 		getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
+	applyAttrs();
 }
 
 bool XExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -521,12 +490,9 @@ int XExtPopup::messageLoop() {
 				// transfer the message to menu window
 				msg.hwnd = mWnd;
 			} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
-				/*if (msg.hwnd != mWnd) { // click on other window
-					break;
-				}*/
 				POINT pt;
 				GetCursorPos(&pt);
-				if (! PtInRect(&popupRect, pt)) {
+				if (! PtInRect(&popupRect, pt)) { // click on other window
 					break;
 				}
 			} else if (msg.message == WM_QUIT) {

@@ -4,11 +4,35 @@
 #include <stdlib.h>
 #include <CommCtrl.h>
 #include <vector>
+#include <map>
+#include <string>
 
 #pragma comment(linker,"\"/manifestdependency:type='win32'  name='Microsoft.Windows.Common-Controls' version='6.0.0.0'   processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib")
 
 HINSTANCE XComponent::mInstance;
+
+void MyRegisterClass(HINSTANCE ins, const char *className) {
+	static std::map<std::string, bool> sCache;
+	if (sCache.find(className) != sCache.end())
+		return;
+	WNDCLASSEX wcex = {0};
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.style			= CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc	= XComponent::__WndProc;
+	wcex.cbClsExtra		= 0;
+	wcex.cbWndExtra		= 0;
+	wcex.hInstance		= ins;
+	//wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_HGTUI));
+	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
+	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName	= NULL;
+	wcex.lpszClassName	= className;
+	wcex.hIconSm		= NULL;
+	if (RegisterClassEx(&wcex) != 0) {
+		sCache[className] = true;
+	}
+}
 
 LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	XComponent* cc = NULL;
@@ -64,6 +88,7 @@ XComponent::XComponent(XmlNode *node) {
 	mBgImage = NULL;
 	mAttrRoundConerX = mAttrRoundConerY = 0;
 	mAttrWeight = 0;
+	strcpy(mClassName, "XComponent");
 	parseAttrs();
 }
 
@@ -128,14 +153,13 @@ static bool parseFont(LOGFONT *font, char *str) {
 }
 
 void XComponent::createWnd() {
-	HFONT font = getFont();
-	SendMessage(mWnd, WM_SETFONT, (WPARAM)font, 0);
-	char *visible = mNode->getAttrValue("visible");
-	if (visible != NULL && strcmp("false", visible) == 0) {
-		DWORD st = GetWindowLong(mWnd, GWL_STYLE);
-		st = st & ~WS_VISIBLE;
-		SetWindowLong(mWnd,GWL_STYLE, st);
-	}
+	MyRegisterClass(mInstance, mClassName);
+	mID = generateWndId();
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_CHILDWINDOW | WS_VISIBLE,
+		mX, mY, mWidth, mHeight,
+		getParentWnd(), (HMENU)mID, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	applyAttrs();
 }
 
 void XComponent::createWndTree( HWND parent ) {
@@ -276,6 +300,17 @@ void XComponent::parseAttrs() {
 			int v1 = (int)strtod(attr->mValue, NULL);
 			if (v1 > 0) mAttrWeight = v1;
 		} 
+	}
+}
+
+void XComponent::applyAttrs() {
+	HFONT font = getFont();
+	SendMessage(mWnd, WM_SETFONT, (WPARAM)font, 0);
+	char *visible = mNode->getAttrValue("visible");
+	if (visible != NULL && strcmp("false", visible) == 0) {
+		DWORD st = GetWindowLong(mWnd, GWL_STYLE);
+		st = st & ~WS_VISIBLE;
+		SetWindowLong(mWnd,GWL_STYLE, st);
 	}
 }
 
@@ -443,23 +478,6 @@ int * XComponent::getAttrMargin() {
 	return mAttrMargin;
 }
 
-void MyRegisterClass(HINSTANCE ins, const char *className) {
-	WNDCLASSEX wcex = {0};
-	wcex.cbSize = sizeof(WNDCLASSEX);
-	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= XComponent::__WndProc;
-	wcex.cbClsExtra		= 0;
-	wcex.cbWndExtra		= 0;
-	wcex.hInstance		= ins;
-	//wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_HGTUI));
-	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName	= NULL;
-	wcex.lpszClassName	= className;
-	wcex.hIconSm		= NULL;
-	RegisterClassEx(&wcex);
-}
-
 //--------------------------XContainer-----------------------------
 XContainer::XContainer( XmlNode *node ) : XComponent(node) {
 }
@@ -496,20 +514,6 @@ bool XContainer::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 XAbsLayout::XAbsLayout( XmlNode *node ) : XContainer(node) {
 }
 
-void XAbsLayout::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XAbsLayout");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XAbsLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
-}
-
 void XAbsLayout::onLayout( int width, int height ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
@@ -521,20 +525,6 @@ void XAbsLayout::onLayout( int width, int height ) {
 
 //--------------------------XHLineLayout--------------------------
 XHLineLayout::XHLineLayout(XmlNode *node) : XContainer(node) {
-}
-
-void XHLineLayout::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XHLineLayout");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XHLineLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
 }
 
 void XHLineLayout::onLayout( int width, int height ) {
@@ -557,19 +547,6 @@ void XHLineLayout::onLayout( int width, int height ) {
 }
 //--------------------------XVLineLayout--------------------------
 XVLineLayout::XVLineLayout(XmlNode *node) : XContainer(node) {
-}
-void XVLineLayout::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XVLineLayout");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XVLineLayout", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
 }
 
 void XVLineLayout::onLayout( int width, int height ) {
@@ -602,7 +579,7 @@ bool XBasicWnd::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) 
 
 void XBasicWnd::createWnd() {
 	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)__WndProc);
-	XComponent::createWnd();
+	applyAttrs();
 }
 
 //--------------------------XButton-----------------------------
@@ -750,7 +727,7 @@ void XTab::createWnd() {
 		TabCtrl_InsertItem(mWnd, i, &it);
 	}
 	mOldWndProc = (WNDPROC)SetWindowLongPtr(mWnd, GWL_WNDPROC, (LONG_PTR)__WndProc);
-	XContainer::createWnd();
+	applyAttrs();
 }
 bool XTab::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res ) {
 	if (XContainer::wndProc(msg, wParam, lParam, res)) {
@@ -821,20 +798,17 @@ void XDateTimePicker::createWnd() {
 }
 
 XWindow::XWindow( XmlNode *node ) : XContainer(node) {
+	strcpy(mClassName, "XWindow");
 }
 
 void XWindow::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XWindow");
-	}
+	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId();  // has no id
-	mWnd = CreateWindow("XWindow", mNode->getAttrValue("text"), WS_OVERLAPPEDWINDOW,
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_OVERLAPPEDWINDOW,
 		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
 		getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
+	applyAttrs();
 }
 
 bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -894,19 +868,16 @@ void XWindow::onLayout(int width, int height) {
 }
 
 XDialog::XDialog( XmlNode *node ) : XContainer(node) {
+	strcpy(mClassName, "XDialog");
 }
 void XDialog::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XDialog");
-	}
+	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId(); // has no id
-	mWnd = CreateWindow("XDialog", mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
 		getSpecSize(mAttrX), getSpecSize(mAttrY), getSpecSize(mAttrWidth), getSpecSize(mAttrHeight),
 		getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
+	applyAttrs();
 }
 
 bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -982,20 +953,6 @@ void XDialog::close( int nRet ) {
 
 // --------------------------XScroller-----------------------------------
 XScroll::XScroll( XmlNode *node ) : XContainer(node) {
-}
-
-void XScroll::createWnd() {
-	static bool reg = false;
-	if (!reg) {
-		reg = true;
-		MyRegisterClass(mInstance, "XScrollContainer");
-	}
-	mID = generateWndId();
-	mWnd = CreateWindow("XScrollContainer", "", WS_CHILDWINDOW | WS_VISIBLE,
-		mX, mY, mWidth, mHeight, 
-		getParentWnd(), (HMENU)mID, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	XContainer::createWnd();
 }
 
 bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
