@@ -63,6 +63,8 @@ class XExtRadio : public XExtCheckBox {
 public:
 	XExtRadio(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+protected:
+	void unselectOthers();
 };
 
 class XScrollBar {

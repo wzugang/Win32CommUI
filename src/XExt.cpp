@@ -272,6 +272,7 @@ bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 }
 
 XExtRadio::XExtRadio( XmlNode *node ) : XExtCheckBox(node) {
+	strcpy(mClassName, "XExtRadio");
 }
 
 bool XExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -281,9 +282,24 @@ bool XExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 		if (mIsMouseDown && PtInRect(&r, pt) && mIsSelect)
 			return true;
 		mIsSelect = true;
+		unselectOthers();
 		return XExtButton::wndProc(msg, wParam, lParam, result);
 	}
 	return XExtCheckBox::wndProc(msg, wParam, lParam, result);
+}
+
+void XExtRadio::unselectOthers() {
+	char *groupName = mNode->getAttrValue("group");
+	if (groupName == NULL) return;
+	XmlNode *parent = mNode->getParent();
+	for (int i = 0; parent != NULL && i < parent->getChildCount(); ++i) {
+		XExtRadio *child = dynamic_cast<XExtRadio*>(parent->getComponent()->getChild(i));
+		if (child == NULL || child == this) continue;
+		if (child->mIsSelect && strcmp(groupName, child->getNode()->getAttrValue("group")) == 0) {
+			child->mIsSelect = false;
+			InvalidateRect(child->getWnd(), NULL, TRUE);
+		}
+	}
 }
 
 XExtScroll::XExtScroll( XmlNode *node ) : XScroll(node) {

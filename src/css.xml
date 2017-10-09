@@ -18,7 +18,7 @@
 	<ComboBox data="男;女;"  />
 	<Table .../>
 	<Tree ... />
-	<Tab data="tab1; tab2; tab3;" />  有子控件
+	<Tab data="tab1; tab2; tab3;" />  有多个子控件，但只有一个可见
 	<Edit multiline= "true" readonly="true"/>
 	<CheckBox .../>
 	<Radio  group = "true" />
@@ -30,10 +30,10 @@
 	<include src="file://abc.xml | res://abc " part="part-name" />
 	
 	<ExtLabel text="" />
-	<ExtButton text="" normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage=""/>
-	<ExtOption  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
-	<ExtCheckBox  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
-	<ExtRadio  normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
-	
-
+	<ExtButton text="" normalImage="file://xx.bmp [x y width height]" hoverImage="" pushImage="" disableImage=""/>
+	<ExtOption  normalImage="" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	<ExtCheckBox  normalImage="" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	<ExtRadio  group="group-name" normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
+	      group-name 有相同名称的分组，选中一个，其它的会自动不选
+	<ExtPopup /> 只有一个子控件可见，可以有多个
 
