@@ -57,7 +57,7 @@ XExtLabel::XExtLabel( XmlNode *node ) : XComponent(node) {
 void XExtLabel::layout(int x, int y, int width, int height) {
 	XComponent::layout(x, y, width, height);
 	if (mBgImageForParnet != NULL) {
-		mBgImageForParnet->decRef();
+		// mBgImageForParnet->decRef();
 		mBgImageForParnet = NULL;
 	}
 }
@@ -134,7 +134,7 @@ XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
 void XExtButton::layout(int x, int y, int width, int height) {
 	XComponent::layout(x, y, width, height);
 	if (mBgImage != NULL) {
-		mBgImage->decRef();
+		// mBgImage->decRef();
 		mBgImage = NULL;
 	}
 }
@@ -248,8 +248,8 @@ XExtButton::BtnImage XExtButton::getBtnImage() {
 
 XExtButton::~XExtButton() {
 	for (int i = 0; i < sizeof(mImages)/sizeof(XImage*); ++i) {
-		if (mImages[i] != NULL)
-			mImages[i]->decRef();
+		// if (mImages[i] != NULL)
+		//	mImages[i]->decRef();
 	}
 }
 

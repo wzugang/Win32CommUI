@@ -4,6 +4,7 @@
 #include <CommCtrl.h>
 #include "XmlParser.h"
 #include "XExt.h"
+#include <atlimage.h>
 
 XWindow *win;
 XDialog *dlg;

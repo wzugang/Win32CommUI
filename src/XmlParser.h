@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <windows.h>
 class XComponent;
 class XmlParser;
 
@@ -93,4 +94,16 @@ protected:
 	int mContentLen;
 	int mPartNum;
 	PartItem mPartItems[100];
+};
+
+class AttrUtils {
+public:
+	static char *trim(char *str);
+	static bool parseFont(LOGFONT *font, char *str);
+	static int parseSize(const char *str);
+	static void parseArraySize(const char *str, int *arr, int arrNum);
+	static int parseInt(const char *str);
+	static void parseArrayInt(const char *str, int *arr, int arrNum);
+	static COLORREF parseColor(const char *color, bool *valid);
+	static std::vector<char*> splitBy( char *data, char splitChar);
 };

@@ -96,60 +96,9 @@ XComponent::~XComponent() {
 	if (mBgColorBrush != NULL)  DeleteObject(mBgColorBrush);
 	if (mFont != NULL) DeleteObject(mFont);
 	if (mBgImage != NULL) {
-		mBgImage->decRef();
+		// mBgImage->decRef();
 		mBgImage = NULL;
 	}
-}
-
-static bool parseFont(LOGFONT *font, char *str) {
-	if (str == NULL || *str == 0) return false;
-	bool changed = false;
-	char *p = strstr(str, "name:");
-	char *p2 = NULL;
-	if (p != NULL) {
-		p2 = strchr(p, ';');
-		if (p2 && p2 - p - 5 <= sizeof(font->lfFaceName - 1)) {
-			memcpy(font->lfFaceName, p + 5, p2 - p - 5);
-			font->lfFaceName[p2 - p - 5] = 0;
-			changed = true;
-		} else {
-			if (strlen(p + 5) < sizeof(font->lfFaceName - 1)) {
-				strcpy(font->lfFaceName, p + 5);
-				changed = true;
-			}
-		}
-	}
-
-	p = strstr(str, "size:");
-	if (p != NULL) {
-		int s = atoi(p + 5);
-		if (s != 0) {
-			font->lfHeight = s;
-			changed = true;
-		}
-	}
-	p = strstr(str, "weight:");
-	if (p != NULL) {
-		int s = atoi(p + 7);
-		if (s > 0) {
-			font->lfWeight = s;
-			changed = true;
-		}
-	}
-	
-	if (strstr(str, "italic") != NULL) {
-		font->lfItalic = TRUE;
-		changed = true;
-	}
-	if (strstr(str, "underline") != NULL) {
-		font->lfUnderline = TRUE;
-		changed = true;
-	}
-	if (strstr(str, "strikeout") != NULL) {
-		font->lfStrikeOut = TRUE;
-		changed = true;
-	}
-	return changed;
 }
 
 void XComponent::createWnd() {
@@ -198,88 +147,29 @@ void XComponent::layout( int x, int y, int width, int height ) {
 	onLayout(width, height);
 }
 
-static int parseSize(const char *str) {
-	char *ep = NULL;
-	int v = (int)strtod(str, &ep);
-	if (str == ep && strstr(str, "auto") != NULL) {
-		return XComponent::MS_AUTO;
-	}
-	if (ep != NULL && *ep == '%') {
-		if (v < 0) v = -v;
-		v = v | XComponent::MS_PERCENT;
-	} else {
-		v = v | XComponent::MS_FIX;
-	}
-	return v;
-}
-static void parseArraySize(const char *str, int *arr) {
-	for (int i = 0; i < 4; ++i) {
-		while (*str == ' ') ++str;
-		arr[i] = parseSize(str);
-		while (*str != ' ' && *str) ++str;
-	}
-}
-static int parseInt(const char *str) {
-	return (int)strtod(str, NULL);
-}
-static void parseArrayInt(const char *str, int *arr) {
-	for (int i = 0; i < 4; ++i) {
-		while (*str == ' ') ++str;
-		arr[i] = parseInt(str);
-		while (*str != ' ' && *str) ++str;
-	}
-}
-
-static COLORREF parseColor(const char *color, bool *valid) {
-	static const char *HEX = "0123456789ABCDEF";
-	if (valid) *valid = false;
-	if (color == NULL) {
-		if (valid) *valid = false;
-		return 0;
-	}
-	while (*color == ' ') ++color;
-	if (*color != '#') {
-		if (valid) *valid = false;
-		return 0;
-	}
-	++color;
-	COLORREF cc = 0;
-	for (int i = 0; i < 3; ++i) {
-		char *p0 = strchr((char *)HEX, toupper(color[i * 2]));
-		char *p1 = strchr((char *)HEX, toupper(color[i * 2 + 1]));
-		if (p0 == NULL || p1 == NULL) {
-			if (valid) *valid = false;
-			return 0;
-		}
-		cc |= ((p0 - HEX) * 16 + (p1 - HEX)) << i * 8;
-	}
-	if (valid) *valid = true;
-	return cc;
-}
-
 void XComponent::parseAttrs() {
 	bool ok = false;
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
 		XmlNode::Attr *attr = mNode->getAttr(i);
 		if (strcmp(attr->mName, "rect") == 0) {
 			int rect[4] = {0};
-			parseArraySize(attr->mValue, rect);
+			AttrUtils::parseArraySize(attr->mValue, rect, 4);
 			mAttrX = rect[0];
 			mAttrY = rect[1];
 			mAttrWidth = rect[2];
 			mAttrHeight = rect[3];
 		} else if (strcmp(attr->mName, "padding") == 0) {
-			parseArrayInt(attr->mValue, mAttrPadding);
+			AttrUtils::parseArrayInt(attr->mValue, mAttrPadding, 4);
 		} else if (strcmp(attr->mName, "margin") == 0) {
-			parseArrayInt(attr->mValue, mAttrMargin);
+			AttrUtils::parseArrayInt(attr->mValue, mAttrMargin, 4);
 		} else if (strcmp(attr->mName, "color") == 0) {
-			COLORREF cc = parseColor(attr->mValue, &ok);
+			COLORREF cc = AttrUtils::parseColor(attr->mValue, &ok);
 			if (ok) {
 				mAttrColor = cc;
 				mAttrFlags |= AF_COLOR;
 			}
 		} else if (strcmp(attr->mName, "bgcolor") == 0) {
-			COLORREF cc = parseColor(attr->mValue, &ok);
+			COLORREF cc = AttrUtils::parseColor(attr->mValue, &ok);
 			if (ok) {
 				mAttrBgColor = cc;
 				mAttrFlags |= AF_BG_COLOR;
@@ -454,7 +344,7 @@ HFONT XComponent::getFont() {
 		LOGFONT ff = {0};
 		HFONT font = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 		GetObject(font, sizeof(LOGFONT), &ff);
-		if (parseFont(&ff, mNode->getAttrValue("font"))) {
+		if (AttrUtils::parseFont(&ff, mNode->getAttrValue("font"))) {
 			font = mFont = CreateFontIndirect(&ff);
 		}
 		return font;
@@ -644,23 +534,6 @@ void XEdit::createWnd() {
 XComboBox::XComboBox( XmlNode *node ) : XBasicWnd(node) {
 	mDropHeight = 0;
 }
-static std::vector<char*> splitBy( char *data, char splitChar) {
-	std::vector<char*> arr;
-	if (data == NULL || *data == 0)
-		return arr;
-	char *ps = data;
-	char *end = data + strlen(data);
-	while (ps <= end && *ps != 0) {
-		char *p = strchr(ps, splitChar);
-		if (p != NULL) {
-			*p = 0; 
-		}
-		arr.push_back(ps);
-		ps = p + 1;
-		if (p == NULL) break;
-	}
-	return arr;
-}
 
 void XComboBox::createWnd() {
 	mID = generateWndId();
@@ -668,7 +541,7 @@ void XComboBox::createWnd() {
 		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 
-	std::vector<char*> arr = splitBy(mNode->getAttrValue("data"), ';');
+	std::vector<char*> arr = AttrUtils::splitBy(mNode->getAttrValue("data"), ';');
 	for (int i = 0; i < arr.size(); ++i) {
 		SendMessage(mWnd, CB_ADDSTRING, 0, (LPARAM)arr.at(i));
 	}
@@ -705,7 +578,7 @@ void XTab::createWnd() {
 	mWnd = CreateWindow("SysTabControl32", NULL,  WS_VISIBLE | WS_CHILD | TCS_FIXEDWIDTH,
 		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	std::vector<char*> titles = splitBy(mNode->getAttrValue("data"), ';');
+	std::vector<char*> titles = AttrUtils::splitBy(mNode->getAttrValue("data"), ';');
 
 	for (int i = 0; i < titles.size(); ++i) {
 		TC_ITEM it = {0};
@@ -765,7 +638,7 @@ void XListBox::createWnd() {
 	mWnd = CreateWindow("ListBox", NULL,  WS_VISIBLE | WS_CHILD | LBS_HASSTRINGS | LBS_MULTIPLESEL | WS_VSCROLL,
 		mX, mY, mWidth, mHeight, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	std::vector<char*> items = splitBy(mNode->getAttrValue("data"), ';');
+	std::vector<char*> items = AttrUtils::splitBy(mNode->getAttrValue("data"), ';');
 
 	for (int i = 0; i < items.size(); ++i) {
 		SendMessage(mWnd, LB_ADDSTRING, 0, (LPARAM)items.at(i));

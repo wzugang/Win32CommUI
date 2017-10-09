@@ -1,6 +1,7 @@
 #include "XmlParser.h"
 #include <string.h>
 #include <ctype.h>
+#include "XComponent.h"
 
 XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mName = name;
@@ -530,4 +531,147 @@ XmlPartLoader::~XmlPartLoader() {
 			break;
 		}
 	}
+}
+
+char * AttrUtils::trim( char *str ) {
+	if (str == NULL) return NULL;
+	while (isspace(*str)) ++str; // trim left
+	char *p = str + strlen(str) - 1;
+	if (p < str) return str;
+	while (p >= str && isspace(*p)) {
+		*p = 0;
+		--p;
+	}
+	return str;
+}
+
+bool AttrUtils::parseFont(LOGFONT *font, char *str) {
+	if (str == NULL || *str == 0) return false;
+	bool changed = false;
+	char *p = strstr(str, "name:");
+	char *p2 = NULL;
+	if (p != NULL) {
+		p2 = strchr(p, ';');
+		if (p2 && p2 - p - 5 <= sizeof(font->lfFaceName - 1)) {
+			memcpy(font->lfFaceName, p + 5, p2 - p - 5);
+			font->lfFaceName[p2 - p - 5] = 0;
+			changed = true;
+		} else {
+			if (strlen(p + 5) < sizeof(font->lfFaceName - 1)) {
+				strcpy(font->lfFaceName, p + 5);
+				changed = true;
+			}
+		}
+	}
+
+	p = strstr(str, "size:");
+	if (p != NULL) {
+		int s = atoi(p + 5);
+		if (s != 0) {
+			font->lfHeight = s;
+			changed = true;
+		}
+	}
+	p = strstr(str, "weight:");
+	if (p != NULL) {
+		int s = atoi(p + 7);
+		if (s > 0) {
+			font->lfWeight = s;
+			changed = true;
+		}
+	}
+
+	if (strstr(str, "italic") != NULL) {
+		font->lfItalic = TRUE;
+		changed = true;
+	}
+	if (strstr(str, "underline") != NULL) {
+		font->lfUnderline = TRUE;
+		changed = true;
+	}
+	if (strstr(str, "strikeout") != NULL) {
+		font->lfStrikeOut = TRUE;
+		changed = true;
+	}
+	return changed;
+}
+
+int AttrUtils::parseSize(const char *str) {
+	char *ep = NULL;
+	int v = (int)strtod(str, &ep);
+	if (str == ep && strstr(str, "auto") != NULL) {
+		return XComponent::MS_AUTO;
+	}
+	if (ep != NULL && *ep == '%') {
+		if (v < 0) v = -v;
+		v = v | XComponent::MS_PERCENT;
+	} else {
+		v = v | XComponent::MS_FIX;
+	}
+	return v;
+}
+
+void AttrUtils::parseArraySize(const char *str, int *arr, int arrNum) {
+	for (int i = 0; i < arrNum; ++i) {
+		while (*str == ' ') ++str;
+		arr[i] = parseSize(str);
+		while (*str != ' ' && *str) ++str;
+	}
+}
+
+int AttrUtils::parseInt(const char *str) {
+	return (int)strtod(str, NULL);
+}
+
+void AttrUtils::parseArrayInt(const char *str, int *arr, int arrNum) {
+	for (int i = 0; i < arrNum; ++i) {
+		while (*str == ' ') ++str;
+		arr[i] = parseInt(str);
+		while (*str != ' ' && *str) ++str;
+	}
+}
+
+COLORREF AttrUtils::parseColor(const char *color, bool *valid) {
+	static const char *HEX = "0123456789ABCDEF";
+	if (valid) *valid = false;
+	if (color == NULL) {
+		if (valid) *valid = false;
+		return 0;
+	}
+	while (*color == ' ') ++color;
+	if (*color != '#') {
+		if (valid) *valid = false;
+		return 0;
+	}
+	++color;
+	COLORREF cc = 0;
+	for (int i = 0; i < 3; ++i) {
+		char *p0 = strchr((char *)HEX, toupper(color[i * 2]));
+		char *p1 = strchr((char *)HEX, toupper(color[i * 2 + 1]));
+		if (p0 == NULL || p1 == NULL) {
+			if (valid) *valid = false;
+			return 0;
+		}
+		cc |= ((p0 - HEX) * 16 + (p1 - HEX)) << i * 8;
+	}
+	if (valid) *valid = true;
+	return cc;
+}
+
+std::vector<char*> AttrUtils::splitBy( char *data, char splitChar) {
+	std::vector<char*> arr;
+	if (data == NULL || *data == 0)
+		return arr;
+	char *ps = data;
+	char *end = data + strlen(data);
+	while (ps <= end && *ps != 0) {
+		char *p = strchr(ps, splitChar);
+		if (p != NULL) {
+			*p = 0; 
+		}
+		arr.push_back(ps);
+		ps = p + 1;
+		if (p == NULL) break;
+	}
+	return arr;
 }

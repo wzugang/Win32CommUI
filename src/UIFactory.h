@@ -2,28 +2,35 @@
 #include <windows.h>
 class XComponent;
 class XmlNode;
+class ResPathInfo;
 
 class XImage {
 public:
 	// @param resPath res://xxx   file://abc/xx.bmp
 	static XImage *load(const char *resPath);
-	static XImage *create(int width, int height);
+	static XImage *create(int width, int height, int bitPerPix = 32);
 
 	HBITMAP getHBitmap();
 	void *getBits();
 	int getWidth();
 	int getHeight();
-
-	void incRef();
-	void decRef();
+	void *getRowBits(int row);
 protected:
 	~XImage();
-	XImage(HBITMAP bmp, int w, int h, void *bits);
+	XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowBytes);
+	static XImage *createPart(XImage *org, int x, int y, int width, int height);
+	static XImage *loadImage(ResPathInfo *info);
+
 	void *mBits;
 	HBITMAP mHBitmap;
 	int mWidth;
 	int mHeight;
-	int mRefCount;
+	int mBitPerPix;
+	bool mHasAlphaChannel;
+	COLORREF mTransparentColor;
+	// ¸º£ºdown-up image;
+	// Õý: up-down image
+	int mRowBytes;
 };
 
 class UIFactory {
