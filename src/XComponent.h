@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <CommCtrl.h>
 class XmlNode;
 class UIFactory;
 class XComponent;
@@ -158,6 +159,18 @@ class XTable : public XBasicWnd {
 public:
 	XTable(XmlNode *node);
 	virtual void createWnd();
+};
+class XTableModel {
+public:
+	void apply(HWND tableWnd);
+protected:
+	virtual int getColumnCount() = 0;
+	virtual int getRowCount() = 0;
+	virtual int getColumnWidth(int col) = 0;
+	virtual char *getColumnTitle(int col) = 0;
+
+	virtual void getColumn(int col, LVCOLUMN *lvc);
+	virtual void getItem(int row, int col, LVITEM *item);
 };
 class XTree : public XBasicWnd {
 public:
