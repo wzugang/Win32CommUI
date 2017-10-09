@@ -15,8 +15,8 @@ public:
 	int getWidth();
 	int getHeight();
 	void *getRowBits(int row);
-protected:
 	~XImage();
+protected:
 	XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowBytes);
 	static XImage *createPart(XImage *org, int x, int y, int width, int height);
 	static XImage *loadImage(ResPathInfo *info);

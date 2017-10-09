@@ -16,24 +16,30 @@ protected:
 	virtual void getItem(int row, int col, LVITEM *item);
 };
 
-class XExtLabel : public XComponent {
+class XExtComponent : public XComponent {
+public:
+	XExtComponent(XmlNode *node);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	void layout(int x, int y, int width, int height);
+	virtual ~XExtComponent();
+protected:
+	XImage *mBgImageForParnet;
+};
+
+class XExtLabel : public XExtComponent {
 public:
 	XExtLabel(XmlNode *node);
-	virtual void layout(int x, int y, int width, int height);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	char *getText();
 	void setText(char *text);
 protected:
-	XImage *mBgImageForParnet;
 	char *mText;
 };
 
-class XExtButton : public XComponent {
+class XExtButton : public XExtComponent {
 public:
 	XExtButton(XmlNode *node);
-	virtual void layout(int x, int y, int width, int height);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual ~XExtButton();
 protected:
 	enum BtnImage {
 		BTN_IMG_NORMAL,

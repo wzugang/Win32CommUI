@@ -48,21 +48,13 @@ void XTableModel::getItem( int row, int col, LVITEM *item ) {
 	item->iSubItem = col;
 	item->pszText = NULL;
 }
-//--------------------XExtLabel-------------------------------------
-XExtLabel::XExtLabel( XmlNode *node ) : XComponent(node) {
+
+//--------------------XExtComponent-------------------------------------
+XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mBgImageForParnet = NULL;
-	mText = mNode->getAttrValue("text");
 }
 
-void XExtLabel::layout(int x, int y, int width, int height) {
-	XComponent::layout(x, y, width, height);
-	if (mBgImageForParnet != NULL) {
-		// mBgImageForParnet->decRef();
-		mBgImageForParnet = NULL;
-	}
-}
-
-bool XExtLabel::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
 		if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
 			HDC memDc = CreateCompatibleDC((HDC)wParam);
@@ -90,7 +82,32 @@ bool XExtLabel::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 			DeleteObject(memDc);
 		}
 		return true;
-	} else if (msg == WM_PAINT) {
+	}
+	return XComponent::wndProc(msg, wParam, lParam, result);
+}
+
+void XExtComponent::layout( int x, int y, int width, int height ) {
+	XComponent::layout(x, y, width, height);
+	if (mBgImageForParnet != NULL) {
+		delete mBgImageForParnet;
+		mBgImageForParnet = NULL;
+	}
+}
+
+XExtComponent::~XExtComponent() {
+	if (mBgImageForParnet) {
+		delete mBgImageForParnet;
+		mBgImageForParnet = NULL;
+	}
+}
+
+//--------------------XExtLabel-------------------------------------
+XExtLabel::XExtLabel( XmlNode *node ) : XExtComponent(node) {
+	mText = mNode->getAttrValue("text");
+}
+
+bool XExtLabel::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {mAttrPadding[0], mAttrPadding[1], mWidth - mAttrPadding[2], mHeight - mAttrPadding[3]};
@@ -102,7 +119,7 @@ bool XExtLabel::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 		EndPaint(mWnd, &ps);
 		return true;
 	}
-	return XComponent::wndProc(msg, wParam, lParam, result);
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
 
 char * XExtLabel::getText() {
@@ -112,9 +129,8 @@ char * XExtLabel::getText() {
 void XExtLabel::setText( char *text ) {
 	mText = text;
 }
-
 //-------------------XExtButton-----------------------------------
-XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
+XExtButton::XExtButton( XmlNode *node ) : XExtComponent(node) {
 	mIsMouseDown = mIsMouseMoving = mIsMouseLeave = false;
 	memset(mImages, 0, sizeof(mImages));
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
@@ -131,35 +147,8 @@ XExtButton::XExtButton( XmlNode *node ) : XComponent(node) {
 	}
 }
 
-void XExtButton::layout(int x, int y, int width, int height) {
-	XComponent::layout(x, y, width, height);
-	if (mBgImage != NULL) {
-		// mBgImage->decRef();
-		mBgImage = NULL;
-	}
-}
-
 bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		if (mBgImage == NULL) {
-			HDC memDc = CreateCompatibleDC((HDC)wParam);
-			HWND parent = getParentWnd();
-			mBgImage = XImage::create(mWidth, mHeight);
-			SelectObject(memDc, mBgImage->getHBitmap());
-			HDC dc = GetDC(parent);
-			BitBlt(memDc, 0, 0, mWidth, mHeight, dc, mX, mY, SRCCOPY);
-			DeleteObject(memDc);
-			ReleaseDC(parent, dc);
-		}
-		if (mBgImage != NULL && mBgImage->getHBitmap() != NULL) {
-			HDC dc = (HDC)wParam;
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, mBgImage->getHBitmap());
-			BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-			DeleteObject(memDc);
-		}
-		return true;
-	} else if (msg == WM_PAINT) {
+	if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {0, 0, mWidth, mHeight};
@@ -229,7 +218,7 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
 	}
-	return XComponent::wndProc(msg, wParam, lParam, result);
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
 
 XExtButton::BtnImage XExtButton::getBtnImage() {
@@ -244,13 +233,6 @@ XExtButton::BtnImage XExtButton::getBtnImage() {
 		return BTN_IMG_HOVER;
 	}
 	return BTN_IMG_NORMAL;
-}
-
-XExtButton::~XExtButton() {
-	for (int i = 0; i < sizeof(mImages)/sizeof(XImage*); ++i) {
-		// if (mImages[i] != NULL)
-		//	mImages[i]->decRef();
-	}
 }
 
 XExtOption::XExtOption( XmlNode *node ) : XExtButton(node) {

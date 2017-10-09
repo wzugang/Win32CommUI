@@ -86,7 +86,7 @@ XImage::XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowByte
 	mBits = bits;
 	mBitPerPix = bitPerPix;
 	mRowBytes = rowBytes;
-	mHasAlphaChannel = false;
+	mHasAlphaChannel = (bitPerPix == 32);
 	mTransparentColor = -1;
 }
 
