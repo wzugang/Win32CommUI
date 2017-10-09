@@ -72,8 +72,6 @@ class XExtCheckBox : public XExtOption {
 public:
 	XExtCheckBox(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-protected:
-	XImage *mBgImageForParnet;
 };
 
 class XExtRadio : public XExtCheckBox {

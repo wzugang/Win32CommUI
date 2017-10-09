@@ -7,69 +7,6 @@
 #include <string>
 #include <atlimage.h>
 
-struct ResPathInfo {
-	enum ResType {
-		RT_NONE,
-		RT_RES,
-		RT_FILE
-	};
-	ResPathInfo() {
-		mPath[0] = 0;
-		mX = mY = mWidth = mHeight = 0;
-		mHasRect = false;
-		mResType = RT_NONE;
-		mCacheName[0] = 0;
-	}
-	char mPath[128];
-	char mCacheName[128];
-	int mX, mY, mWidth, mHeight;
-	bool mHasRect;
-	ResType mResType;
-
-	bool parse(const char *resPath) {
-		if (resPath == NULL) return false;
-		char path[128];
-		strcpy(path, resPath);
-		char *ps = AttrUtils::trim(path);
-		int len = strlen(ps);
-		char *pe = len > 0 ? ps + len - 1 : ps;
-		if (*pe == ']') {
-			*pe = 0;
-			char *p = strrchr(ps, '[');
-			if (p == NULL) return false;
-			*p = 0;
-			pe = p + 1;
-			ps = AttrUtils::trim(ps);
-			mHasRect = true;
-		}
-		if (memcmp(ps, "res://", 6) == 0) {
-			ps += 6;
-			mResType = RT_RES;
-		} else if (memcmp(ps, "file://", 7) == 0) {
-			ps += 7;
-			mResType = RT_FILE;
-		} else {
-			return false;
-		}
-		strcpy(mPath, ps);
-		if (mHasRect)
-			AttrUtils::parseArrayInt(pe, &mX, 4);
-		return true;
-	}
-	char *getCacheName() {
-		if (!mHasRect) {
-			sprintf(mCacheName, "%s", mPath);
-		} else {
-			sprintf(mCacheName, "%s [%d %d %d %d]", mPath, mX, mY, mWidth, mHeight);
-		}
-		return mCacheName;
-	}
-	char *getCacheNameWithNoRect() {
-		sprintf(mCacheName, "%s", mPath);
-		return mCacheName;
-	}
-};
-
 static std::map<std::string, XImage*> mCache;
 
 static XImage *findInCache(const char *name) {
@@ -91,7 +28,7 @@ XImage::XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowByte
 }
 
 XImage * XImage::load( const char *resPath ) {
-	ResPathInfo info;
+	ResPath info;
 	if (! info.parse(resPath))
 		return NULL;
 	XImage *img = findInCache(info.getCacheName());
@@ -110,9 +47,9 @@ XImage * XImage::load( const char *resPath ) {
 	return img;
 }
 
-XImage * XImage::loadImage( ResPathInfo *info) {
+XImage * XImage::loadImage( ResPath *info) {
 	CImage cimg;
-	if (info->mResType == ResPathInfo::RT_FILE) {
+	if (info->mResType == ResPath::RT_FILE) {
 		cimg.Load(info->mPath);
 	} else {
 		cimg.LoadFromResource(XComponent::getInstance(), info->mPath);
@@ -122,6 +59,9 @@ XImage * XImage::loadImage( ResPathInfo *info) {
 
 	XImage *img = new XImage(NULL, cimg.GetWidth(), cimg.GetHeight(), cimg.GetBits(), cimg.GetBPP(), cimg.GetPitch());
 	img->mHBitmap = cimg.Detach();
+	if (img->mHasAlphaChannel) {
+		img->buildAlphaChannel();
+	}
 	return img;
 }
 
@@ -144,8 +84,6 @@ XImage * XImage::createPart( XImage *org, int x, int y, int width, int height ) 
 void * XImage::getRowBits( int row ) {
 	if (mBits == NULL || row >= mHeight)
 		return NULL;
-	if (mRowBytes > 0)
-		return (BYTE*)mBits + mRowBytes * row;
 	return (BYTE*)mBits + (mRowBytes * row);
 }
 
@@ -168,6 +106,18 @@ XImage * XImage::create( int width, int height, int bitPerPix ) {
 	return new XImage(bmp, width, height, pvBits, bitPerPix, rowByteNum);
 }
 
+void XImage::buildAlphaChannel() {
+	for (int r = 0; r < mHeight; ++r) {
+		BYTE *p = (BYTE *)getRowBits(r);
+		for (int c = 0; c < mWidth; ++c, p += 4) {
+			if (p[3] == 255) continue;
+			p[0] = p[0] * p[3] / 255;
+			p[1] = p[1] * p[3] / 255;
+			p[2] = p[2] * p[3] / 255;
+		}
+	}
+}
+
 HBITMAP XImage::getHBitmap() {
 	return mHBitmap;
 }
@@ -186,6 +136,10 @@ int XImage::getHeight() {
 
 XImage::~XImage() {
 	if (mHBitmap) DeleteObject(mHBitmap);
+}
+
+bool XImage::hasAlphaChannel() {
+	return mHasAlphaChannel;
 }
 
 //----------------------------UIFactory-------------------------

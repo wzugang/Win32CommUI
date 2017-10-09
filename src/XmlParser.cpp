@@ -675,3 +675,54 @@ std::vector<char*> AttrUtils::splitBy( char *data, char splitChar) {
 	}
 	return arr;
 }
+
+ResPath::ResPath() {
+	mPath[0] = 0;
+	mX = mY = mWidth = mHeight = 0;
+	mHasRect = false;
+	mResType = RT_NONE;
+	mCacheName[0] = 0;
+}
+
+bool ResPath::parse(const char *resPath) {
+	if (resPath == NULL) return false;
+	char path[128];
+	strcpy(path, resPath);
+	char *ps = AttrUtils::trim(path);
+	int len = strlen(ps);
+	char *pe = len > 0 ? ps + len - 1 : ps;
+	if (*pe == ']') {
+		*pe = 0;
+		char *p = strrchr(ps, '[');
+		if (p == NULL) return false;
+		*p = 0;
+		pe = p + 1;
+		ps = AttrUtils::trim(ps);
+		mHasRect = true;
+	}
+	if (memcmp(ps, "res://", 6) == 0) {
+		ps += 6;
+		mResType = RT_RES;
+	} else if (memcmp(ps, "file://", 7) == 0) {
+		ps += 7;
+		mResType = RT_FILE;
+	} else {
+		return false;
+	}
+	strcpy(mPath, ps);
+	if (mHasRect)
+		AttrUtils::parseArrayInt(pe, &mX, 4);
+	return true;
+}
+char * ResPath::getCacheName() {
+	if (!mHasRect) {
+		sprintf(mCacheName, "%s", mPath);
+	} else {
+		sprintf(mCacheName, "%s [%d %d %d %d]", mPath, mX, mY, mWidth, mHeight);
+	}
+	return mCacheName;
+}
+char * ResPath::getCacheNameWithNoRect() {
+	sprintf(mCacheName, "%s", mPath);
+	return mCacheName;
+}

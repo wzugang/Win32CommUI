@@ -2,11 +2,13 @@
 #include <windows.h>
 class XComponent;
 class XmlNode;
-class ResPathInfo;
+class ResPath;
 
 class XImage {
 public:
-	// @param resPath res://xxx   file://abc/xx.bmp
+	// @param resPath 
+	// res://xxx [x y width height] 
+	// file://abc/xx.bmp [x y width height] 
 	static XImage *load(const char *resPath);
 	static XImage *create(int width, int height, int bitPerPix = 32);
 
@@ -15,11 +17,13 @@ public:
 	int getWidth();
 	int getHeight();
 	void *getRowBits(int row);
+	bool hasAlphaChannel();
 	~XImage();
 protected:
 	XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowBytes);
 	static XImage *createPart(XImage *org, int x, int y, int width, int height);
-	static XImage *loadImage(ResPathInfo *info);
+	static XImage *loadImage(ResPath *info);
+	void buildAlphaChannel();
 
 	void *mBits;
 	HBITMAP mHBitmap;

@@ -96,6 +96,22 @@ protected:
 	PartItem mPartItems[100];
 };
 
+class ResPath {
+public:
+	enum ResType { RT_NONE, RT_RES, RT_FILE };
+	ResPath();
+	bool parse(const char *resPath);
+	char *getCacheName();
+	char *getCacheNameWithNoRect();
+
+	ResType mResType;
+	char mPath[128];
+	int mX, mY, mWidth, mHeight;
+	bool mHasRect;
+protected:
+	char mCacheName[128];
+};
+
 class AttrUtils {
 public:
 	static char *trim(char *str);

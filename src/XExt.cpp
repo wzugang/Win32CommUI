@@ -271,38 +271,10 @@ XExtOption::BtnImage XExtOption::getBtnImage() {
 }
 
 XExtCheckBox::XExtCheckBox( XmlNode *node ) : XExtOption(node) {
-	mBgImageForParnet = NULL;
 }
 
 bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
-			HDC memDc = CreateCompatibleDC((HDC)wParam);
-			HWND parent = getParentWnd();
-			mBgImageForParnet = XImage::create(mWidth, mHeight);
-			SelectObject(memDc, mBgImageForParnet->getHBitmap());
-			HDC dc = GetDC(parent);
-			BitBlt(memDc, 0, 0, mWidth, mHeight, dc, mX, mY, SRCCOPY);
-			DeleteObject(memDc);
-			ReleaseDC(parent, dc);
-		}
-		if (mAttrFlags & AF_BG_COLOR) {
-			HDC dc = (HDC)wParam;
-			HBRUSH brush = CreateSolidBrush(mAttrBgColor);
-			RECT rc = {0, 0, mWidth, mHeight};
-			FillRect(dc, &rc, brush);
-			DeleteObject(brush);
-		}
-		XImage *bg = mBgImageForParnet != NULL ? mBgImageForParnet : mBgImage;
-		if (bg != NULL && bg->getHBitmap() != NULL) {
-			HDC dc = (HDC)wParam;
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, bg->getHBitmap());
-			BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-			DeleteObject(memDc);
-		}
-		return true;
-	} else if (msg == WM_PAINT) {
+	if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {0, 0, mWidth, mHeight};
@@ -311,7 +283,12 @@ bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 			HDC memDc = CreateCompatibleDC(dc);
 			SelectObject(memDc, cur->getHBitmap());
 			int y = (mHeight - cur->getHeight()) / 2;
-			BitBlt(dc, 0, y, cur->getWidth(), cur->getHeight(), memDc, 0, 0, SRCCOPY);
+			if (cur->hasAlphaChannel())  {
+				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+				AlphaBlend(dc, 0, y, cur->getWidth(), cur->getHeight(), memDc, 0, 0, cur->getWidth(), cur->getHeight(), bf);
+			} else {
+				BitBlt(dc, 0, y, cur->getWidth(), cur->getHeight(), memDc, 0, 0, SRCCOPY);
+			}
 			DeleteObject(memDc);
 			r.left = cur->getWidth() + 5 + mAttrPadding[0];
 		}
@@ -339,7 +316,7 @@ bool XExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 	if (msg == WM_LBUTTONUP) {
 		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
-		if (mIsMouseDown && PtInRect(&r, pt) && mIsSelect) 
+		if (mIsMouseDown && PtInRect(&r, pt) && mIsSelect)
 			return true;
 		mIsSelect = true;
 		return XExtButton::wndProc(msg, wParam, lParam, result);
