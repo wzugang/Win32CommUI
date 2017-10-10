@@ -7,8 +7,8 @@ class ResPath;
 class XImage {
 public:
 	// @param resPath 
-	// res://xxx [x y width height] 
-	// file://abc/xx.bmp [x y width height] 
+	// res://xxx [x y width height] repeat-x repeat-y
+	// file://abc/xx.bmp ...
 	static XImage *load(const char *resPath);
 	static XImage *create(int width, int height, int bitPerPix = 32);
 

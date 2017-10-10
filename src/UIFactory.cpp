@@ -15,6 +15,15 @@ static XImage *findInCache(const char *name) {
 		return NULL;
 	return it->second;
 }
+static char *getCacheName(ResPath *r, bool basic) {
+	static char CACHE_NAME[128];
+	if (!r->mHasRect || basic) {
+		sprintf(CACHE_NAME, "%s", r->mPath);
+	} else {
+		sprintf(CACHE_NAME, "%s [%d %d %d %d]", r->mPath, r->mX, r->mY, r->mWidth, r->mHeight);
+	}
+	return CACHE_NAME;
+}
 
 XImage::XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowBytes) {
 	mHBitmap = bmp;
@@ -31,19 +40,22 @@ XImage * XImage::load( const char *resPath ) {
 	ResPath info;
 	if (! info.parse(resPath))
 		return NULL;
-	XImage *img = findInCache(info.getCacheName());
+	XImage *img = findInCache(getCacheName(&info, false));
 	if (img != NULL)
 		return img;
-	img = loadImage(&info);
-	if (img == NULL)
-		return NULL;
-	mCache[info.getCacheNameWithNoRect()] = img;
+	img = findInCache(getCacheName(&info, true));
+	if (img == NULL) {
+		img = loadImage(&info);
+		if (img == NULL)
+			return NULL;
+		mCache[getCacheName(&info, true)] = img;
+	}
 	if (! info.mHasRect)
 		return img;
 	img = createPart(img, info.mX, info.mY, info.mWidth, info.mHeight);
 	if (img == NULL)
 		return NULL;
-	mCache[info.getCacheName()] = img;
+	mCache[getCacheName(&info, false)] = img;
 	return img;
 }
 

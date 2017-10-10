@@ -681,25 +681,23 @@ ResPath::ResPath() {
 	mX = mY = mWidth = mHeight = 0;
 	mHasRect = false;
 	mResType = RT_NONE;
-	mCacheName[0] = 0;
+	mValidate = false;
+	mRepeatX = mRepeatY = false;
 }
 
 bool ResPath::parse(const char *resPath) {
+	mValidate = false;
 	if (resPath == NULL) return false;
 	char path[128];
 	strcpy(path, resPath);
 	char *ps = AttrUtils::trim(path);
 	int len = strlen(ps);
-	char *pe = len > 0 ? ps + len - 1 : ps;
-	if (*pe == ']') {
-		*pe = 0;
-		char *p = strrchr(ps, '[');
-		if (p == NULL) return false;
-		*p = 0;
-		pe = p + 1;
-		ps = AttrUtils::trim(ps);
-		mHasRect = true;
+	char *pe = ps + len - 1;
+	if (len < 6) {
+		return false;
 	}
+	char *p = strchr(ps, ' ');
+	if (p != NULL) *p = 0;
 	if (memcmp(ps, "res://", 6) == 0) {
 		ps += 6;
 		mResType = RT_RES;
@@ -710,19 +708,24 @@ bool ResPath::parse(const char *resPath) {
 		return false;
 	}
 	strcpy(mPath, ps);
-	if (mHasRect)
-		AttrUtils::parseArrayInt(pe, &mX, 4);
-	return true;
-}
-char * ResPath::getCacheName() {
-	if (!mHasRect) {
-		sprintf(mCacheName, "%s", mPath);
-	} else {
-		sprintf(mCacheName, "%s [%d %d %d %d]", mPath, mX, mY, mWidth, mHeight);
+	if (p == NULL) {
+		mValidate = true;
+		return true;
 	}
-	return mCacheName;
-}
-char * ResPath::getCacheNameWithNoRect() {
-	sprintf(mCacheName, "%s", mPath);
-	return mCacheName;
+	ps = AttrUtils::trim(p + 1);
+	if (*ps == '[') {
+		AttrUtils::parseArrayInt(ps + 1, &mX, 4);
+		p = strchr(ps + 1, ']');
+		if (p == NULL) return false;
+		mHasRect = true;
+		ps = p + 1;
+	}
+	if (ps > pe) {
+		mValidate = true;
+		return true;
+	}
+	if (strstr(ps, "repeat-x")) mRepeatX = true;
+	if (strstr(ps, "repeat-y")) mRepeatY = true;
+	mValidate = true;
+	return true;
 }

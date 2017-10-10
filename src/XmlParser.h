@@ -101,15 +101,14 @@ public:
 	enum ResType { RT_NONE, RT_RES, RT_FILE };
 	ResPath();
 	bool parse(const char *resPath);
-	char *getCacheName();
-	char *getCacheNameWithNoRect();
 
 	ResType mResType;
 	char mPath[128];
 	int mX, mY, mWidth, mHeight;
+	bool mRepeatX;
+	bool mRepeatY;
 	bool mHasRect;
-protected:
-	char mCacheName[128];
+	bool mValidate;
 };
 
 class AttrUtils {

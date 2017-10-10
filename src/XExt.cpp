@@ -119,7 +119,12 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		if (cur != NULL && cur->getHBitmap() != NULL) {
 			HDC memDc = CreateCompatibleDC(dc);
 			SelectObject(memDc, cur->getHBitmap());
-			StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, cur->getWidth(), cur->getHeight(), SRCCOPY);
+			if (cur->hasAlphaChannel())  {
+				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+				AlphaBlend(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, cur->getWidth(), cur->getHeight(), bf);
+			} else {
+				StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, cur->getWidth(), cur->getHeight(), SRCCOPY);
+			}
 			DeleteObject(memDc);
 		}
 
@@ -209,7 +214,7 @@ bool XExtOption::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 	if (msg == WM_LBUTTONUP) {
 		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
-		mIsSelect = mIsMouseDown && PtInRect(&r, pt);
+		if (! mIsSelect) mIsSelect = mIsMouseDown && PtInRect(&r, pt);
 		return XExtButton::wndProc(msg, wParam, lParam, result);
 	}
 	return XExtButton::wndProc(msg, wParam, lParam, result);
@@ -272,7 +277,6 @@ bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 }
 
 XExtRadio::XExtRadio( XmlNode *node ) : XExtCheckBox(node) {
-	strcpy(mClassName, "XExtRadio");
 }
 
 bool XExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
