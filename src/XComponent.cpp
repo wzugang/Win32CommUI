@@ -208,17 +208,17 @@ int XComponent::getSpecSize( int sizeSpec ) {
 }
 
 int XComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
+	if (parentSizeSpec & MS_FIX) {
+		return getSpecSize(parentSizeSpec);
+	}
 	if (selfSizeSpec & MS_FIX) {
 		return getSpecSize(selfSizeSpec);
 	}
 	if (selfSizeSpec & MS_PERCENT) {
-		if ((parentSizeSpec & MS_FIX) || (parentSizeSpec & MS_ATMOST)) {
+		if (parentSizeSpec & MS_ATMOST) {
 			return getSpecSize(selfSizeSpec) * getSpecSize(parentSizeSpec) / 100;
 		}
 	}
-	/*if ((parentSizeSpec & MS_FIX) || (parentSizeSpec & MS_ATMOST)) {
-		return getSpecSize(parentSizeSpec);
-	}*/
 	return 0;
 }
 
@@ -411,15 +411,19 @@ void XHLineLayout::onLayout( int width, int height ) {
 		weightAll += child->getAttrWeight();
 		childWidths += child->getMesureWidth() + child->getAttrMargin()[0] + child->getAttrMargin()[2];
 	}
+	lessWidth -= childWidths;
+	double perWeight = 0;
+	if (weightAll > 0 && lessWidth > 0) perWeight = lessWidth / weightAll;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		int y  = calcSize(child->getAttrY(), (height - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 		x += child->getAttrMargin()[0];
+		if (child->getAttrWeight() > 0 && perWeight > 0) {
+			int nw = child->getMesureWidth() + child->getAttrWeight() * perWeight;
+			child->onMeasure(nw | MS_FIX , child->getMesureHeight() | MS_FIX);
+		}
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 		x += child->getMesureWidth() + child->getAttrMargin()[2];
-		if (childWidths < lessWidth && weightAll > 0) {
-			x += 1.0 * child->getAttrWeight() / weightAll * (lessWidth - childWidths);
-		}
 	}
 }
 //--------------------------XVLineLayout--------------------------
@@ -433,15 +437,19 @@ void XVLineLayout::onLayout( int width, int height ) {
 		weightAll += child->getAttrWeight();
 		childHeights += child->getMesureHeight() + child->getAttrMargin()[1] + child->getAttrMargin()[3];
 	}
+	lessHeight -= childHeights;
+	double perWeight = 0;
+	if (weightAll > 0 && lessHeight > 0) perWeight = lessHeight / weightAll;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		int x = calcSize(child->getAttrX(), (width - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
 		y += child->getAttrMargin()[1];
+		if (child->getAttrWeight() > 0 && perWeight > 0) {
+			int nh = child->getMesureHeight() + child->getAttrWeight() * perWeight;
+			child->onMeasure(child->getMesureWidth() | MS_FIX , nh | MS_FIX);
+		}
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 		y += child->getMesureHeight() + child->getAttrMargin()[3];
-		if (childHeights < lessHeight && weightAll > 0) {
-			y += 1.0 * child->getAttrWeight() / weightAll * (lessHeight - childHeights);
-		}
 	}
 }
 //--------------------------XBasicWnd-----------------------------
@@ -915,7 +923,7 @@ void XScroll::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 	int clientWidth = mMesureWidth - (hasVerBar ? thumbSize : 0);
 	int clientHeight = mMesureHeight - (hasHorBar ? thumbSize : 0);
-	mesureChildren(clientWidth | MS_FIX, clientHeight| MS_FIX);
+	mesureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
 	
 	int childRight = 0, childBottom = 0;
 	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {

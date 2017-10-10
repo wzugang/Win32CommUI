@@ -389,7 +389,7 @@ bool XExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 	if (msg == WM_SIZE && lParam > 0) {
 		RECT r = {0};
 		GetWindowRect(mWnd, &r);
-		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
+		onMeasure(LOWORD(lParam) | XComponent::MS_ATMOST, HIWORD(lParam) | XComponent::MS_ATMOST);
 		onLayout(LOWORD(lParam), HIWORD(lParam));
 		return true;
 	} else if (msg == WM_DESTROY) {
