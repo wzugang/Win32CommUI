@@ -50,17 +50,25 @@ LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM
 			return ret;
 		if (cc->wndProc(msg, wParam, lParam, &ret))
 			return ret;
-		// bubble mouse wheel msg
-		if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL) {
+		// bubble mouse wheel, mouse down msg
+		if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL || msg == WM_LBUTTONDOWN) {
 			POINT pt;
 			GetCursorPos(&pt);
 			HWND ptWnd = WindowFromPoint(pt);
 			XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
 			XmlNode *node = pc != NULL ? pc->getNode() : NULL;
+			UINT bmsg = 0;
+			switch (msg) {
+			case WM_MOUSEWHEEL:
+			case WM_MOUSEHWHEEL:
+				bmsg = WM_MOUSEWHEEL_BUBBLE;break;
+			case WM_LBUTTONDOWN:
+				bmsg = WM_LBUTTONDOWN_BUTTLE;break;
+			}
 			while (node != NULL) {
 				XComponent *x = node->getComponent();
 				if (x == NULL) break;
-				if (x->wndProc(WM_MOUSEWHEEL_BUBBLE, wParam, lParam, &ret))
+				if (x->wndProc(bmsg, wParam, lParam, &ret))
 					return ret;
 				node = node->getParent();
 			}
@@ -614,6 +622,71 @@ void XTree::createWnd() {
 	XBasicWnd::createWnd();
 }
 
+XTreeNode::XTreeNode(const char *text) {
+	memset(&mNodeInfo, 0, sizeof(mNodeInfo));
+	mNodeInfo.hInsertAfter = TVI_LAST;
+	mNodeInfo.item.mask = TVIF_TEXT | TVIF_SELECTEDIMAGE; // TVIF_IMAGE;
+	mItem = NULL;
+	mParent = NULL;
+	mNodeInfo.item.pszText = (char *)text;
+}
+XTreeNode* XTreeNode::append( XTreeNode *node ) {
+	if (node != NULL) {
+		node->mParent = this;
+		mChildren.push_back(node);
+	}
+	return this;
+}
+XTreeNode* XTreeNode::insert( int pos, XTreeNode *node ) {
+	if (node == NULL) return this;
+	if (pos < 0 || pos > mChildren.size())
+		pos = mChildren.size();
+	mChildren.insert(mChildren.begin() + pos, node);
+	node->mParent = this;
+	return this;
+}
+XTreeNode* XTreeNode::appendTo(XTreeNode *parent) {
+	if (parent) parent->append(this);
+	return this;
+}
+XTreeNode* XTreeNode::insertTo(int pos, XTreeNode *parent) {
+	if (parent) parent->insert(pos, this);
+	return this;
+}
+
+HWND XTreeNode::getWnd() {
+	if (mParent) return mParent->getWnd();
+	return NULL;
+}
+TV_ITEM * XTreeNode::getTvItem() {
+	return &mNodeInfo.item;
+}
+void XTreeNode::create(HWND wnd) {
+	if (wnd == NULL) return;
+	mItem = (HTREEITEM) TreeView_InsertItem(wnd, (LPARAM)&mNodeInfo);
+	for (int i = 0; i < mChildren.size(); ++i) {
+		XTreeNode *child = mChildren[i];
+		child->mNodeInfo.hParent = mItem;
+		child->create(wnd);
+	}
+}
+XTreeNode::~XTreeNode() {
+}
+XTreeRootNode::XTreeRootNode(HWND treeWnd) : XTreeNode(NULL) {
+	mTreeWnd = treeWnd;
+}
+HWND XTreeRootNode::getWnd() {
+	return mTreeWnd;
+}
+void XTreeRootNode::apply() {
+	if (mTreeWnd == NULL) return;
+	for (int i = 0; i < mChildren.size(); ++i) {
+		XTreeNode *child = mChildren[i];
+		if (i == 0) child->mNodeInfo.hInsertAfter = TVI_ROOT;
+		child->create(mTreeWnd);
+	}
+}
+
 XTab::XTab(XmlNode *node) : XComponent(node) {
 	mOldWndProc = NULL;
 }
@@ -909,6 +982,9 @@ bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 			moveChildrenPos(0, oldPos - GetScrollPos(mWnd, SB_HORZ));
 			return true;
 		}
+		return true;
+	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUTTLE) {
+		SetFocus(mWnd);
 		return true;
 	}
 	return XComponent::wndProc(msg, wParam, lParam, result);

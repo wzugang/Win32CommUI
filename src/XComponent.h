@@ -1,10 +1,12 @@
 #pragma once
 #include <windows.h>
 #include <CommCtrl.h>
+#include <vector>
 class XmlNode;
 class UIFactory;
 class XComponent;
 class XImage;
+class XTreeRootNode;
 
 class XListener {
 public:
@@ -27,7 +29,8 @@ public:
 	enum ReflectWM {
 		WM_COMMAND_SELF = 0x6000,
 		WM_NOTIFY_SELF,
-		WM_MOUSEWHEEL_BUBBLE
+		WM_MOUSEWHEEL_BUBBLE,
+		WM_LBUTTONDOWN_BUTTLE,
 	};
 	XComponent(XmlNode *node);
 	static void init();
@@ -176,6 +179,35 @@ class XTree : public XBasicWnd {
 public:
 	XTree(XmlNode *node);
 	virtual void createWnd();
+};
+
+class XTreeNode {
+public:
+	XTreeNode(const char *text);
+	XTreeNode * append(XTreeNode *node);
+	XTreeNode * insert(int pos, XTreeNode *node);
+	XTreeNode *appendTo(XTreeNode *parent);
+	XTreeNode *insertTo(int pos, XTreeNode *parent);
+	TVITEM *getTvItem();
+	void create(HWND wnd);
+	virtual ~XTreeNode();
+protected:
+	virtual HWND getWnd();
+	TV_INSERTSTRUCT mNodeInfo;
+	HTREEITEM mItem;
+	XTreeNode *mParent;
+	std::vector<XTreeNode*> mChildren;
+	friend class XTreeRootNode;
+};
+//根结点为虚拟结点，不显示
+class XTreeRootNode : public XTreeNode {
+public:
+	XTreeRootNode(HWND treeWnd);
+	void apply();
+protected:
+	virtual HWND getWnd();
+	HWND mTreeWnd;
+	friend class XTreeNode;
 };
 
 class XTab : public XComponent {

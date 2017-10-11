@@ -72,6 +72,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	XComponent::init();
 
 	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
+	InitMyTree();
 	win->findById("btn_1")->setListener(new ButtonListener());
 	win->findById("ext_btn_1")->setListener(new ButtonListener());
 	win->show(nCmdShow);
@@ -112,27 +113,16 @@ void InitMyTable() {
 }
 
 void InitMyTree() {
-	XTree * t = (XTree*) win->findById("tab");
+	XTree * t = (XTree*) win->findById("my-tree");
 	HWND tw = t->getWnd();
-	TV_INSERTSTRUCT tvinsert = {0};
-	tvinsert.hParent = NULL;
-	tvinsert.hInsertAfter = TVI_ROOT;
-	tvinsert.item.mask = TVIF_TEXT|TCIF_IMAGE|TVIF_SELECTEDIMAGE;
-	tvinsert.item.pszText = "Root 1";
-	HTREEITEM hParent = (HTREEITEM) SendMessage(tw, TVM_INSERTITEM, 0, (LPARAM)&tvinsert);
-	tvinsert.hParent = hParent;
-	tvinsert.hInsertAfter = TVI_LAST;
-	tvinsert.item.pszText = "Child A";
-	SendMessage(tw,TVM_INSERTITEM,0 ,(LPARAM)&tvinsert);
-	tvinsert.item.pszText = "Child B";
-	SendMessage(tw,TVM_INSERTITEM,0,(LPARAM)&tvinsert);
-
-	tvinsert.hParent = NULL;
-	tvinsert.item.pszText = "Root 2";
-	HTREEITEM hParent2 = (HTREEITEM) SendMessage(tw, TVM_INSERTITEM, 0, (LPARAM)&tvinsert);
-}
-
-void TestDecoderImage() {
-	// UINT decodersNum, size;
-	// GetImageDecodersSize(&decodersNum, &size);
+	XTreeRootNode *root = new XTreeRootNode(tw);
+	XTreeNode *n = (new XTreeNode("Root A"))->appendTo(root);
+	(new XTreeNode("Hello"))->appendTo(n);
+	(new XTreeNode("World"))->appendTo(n);
+	XTreeNode *n2 = (new XTreeNode("Root B"))->appendTo(root);
+	(new XTreeNode("How"))->appendTo(n2);
+	(new XTreeNode("Are"))->appendTo(n2);
+	(new XTreeNode("You"))->appendTo(n2);
+	n2->insert(1, new XTreeNode("Fine"));
+	root->apply();
 }
