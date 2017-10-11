@@ -791,10 +791,10 @@ bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 	if (XComponent::wndProc(msg, wParam, lParam, result))
 		return true;
 	if (msg == WM_SIZE && lParam > 0) {
-		RECT r = {0};
-		GetWindowRect(mWnd, &r);
-		onMeasure(LOWORD(lParam) | XComponent::MS_FIX, HIWORD(lParam) | XComponent::MS_FIX);
-		onLayout(LOWORD(lParam), HIWORD(lParam));
+		int w = LOWORD(lParam) , h = HIWORD(lParam);
+		onMeasure(w | XComponent::MS_FIX, h | XComponent::MS_FIX);
+		onLayout(w, h);
+		
 		return true;
 	} else if (msg == WM_DESTROY) {
 		PostQuitMessage(0);
@@ -821,8 +821,7 @@ void XWindow::show(int nCmdShow) {
 	GetClientRect(desk, &rect);
 	int x = (rect.right - getSpecSize(mAttrWidth)) / 2;
 	int y = (rect.bottom - getSpecSize(mAttrHeight)) / 2 - 30;
-	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER);
-	ShowWindow(mWnd, nCmdShow);
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER | SWP_SHOWWINDOW);
 	UpdateWindow(mWnd);
 }
 
@@ -886,9 +885,9 @@ int XDialog::showModal() {
 		x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
 		y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
 	}
-	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER);
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER | SWP_SHOWWINDOW);
 	EnableWindow(parent, FALSE);
-	ShowWindow(mWnd, SW_SHOWNORMAL);
+	// ShowWindow(mWnd, SW_SHOWNORMAL);
 
 	MSG msg;
 	int nRet = 0;

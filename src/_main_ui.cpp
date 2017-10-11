@@ -120,8 +120,8 @@ void InitMyTree() {
 	(new XTreeNode("Hello"))->appendTo(n);
 	(new XTreeNode("World"))->appendTo(n);
 	XTreeNode *n2 = (new XTreeNode("Root B"))->appendTo(root);
-	(new XTreeNode("How"))->appendTo(n2);
-	(new XTreeNode("Are"))->appendTo(n2);
+	n2->append(new XTreeNode("How"));
+	n2->append(new XTreeNode("Are"));
 	(new XTreeNode("You"))->appendTo(n2);
 	n2->insert(1, new XTreeNode("Fine"));
 	root->apply();

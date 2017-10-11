@@ -67,29 +67,39 @@ protected:
 	void unselectOthers();
 };
 
-class XScrollBar {
+class XScrollBar : public XExtComponent {
 public:
-	XScrollBar(XComponent *owner, bool horizontal);
-	virtual void onPaint(HDC hdc);
-	virtual void onEvent(UINT msg, WPARAM wParam, LPARAM lParam);
-	RECT getRect();
-	void setRange(int range);
-	void setVisible(bool visible);
+	XScrollBar(XmlNode *node, bool horizontal);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	int getMax();
+	int getPage();
+	void setMaxAndPage(int maxn, int page);
+	int getPos();
+	void setPos(int pos);
+	void setImages(XImage *track, XImage *thumb);
+	bool isNeedShow();
+	int getThumbSize();
 protected:
-	XComponent *mOwner;
+	void calcThumbInfo();
 	bool mHorizontal;
-	int mX, mY, mWidth, mHeight;
-	int mRange;
-	bool mVisible;
+	int mMax;
+	int mPage;
+	int mPos;
+	RECT mThumbRect;
+	XImage *mTrack, *mThumb;
 };
 
-class XExtScroll : public XScroll {
+class XExtScroll : public XExtComponent {
 public:
 	XExtScroll(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
 	virtual ~XExtScroll();
 protected:
+	void moveChildrenPos( int dx, int dy );
 	XScrollBar *mHorBar, *mVerBar;
+	XmlNode *mHorNode, *mVerNode;
 };
 
 class XExtPopup : public XComponent {

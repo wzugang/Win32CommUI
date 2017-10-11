@@ -257,6 +257,7 @@ static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
 static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
 static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
+static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 
 struct InitUIFactory {
 	InitUIFactory() {
@@ -286,6 +287,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
 		UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
 		UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
+		UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 	}
 
 	~InitUIFactory() {
