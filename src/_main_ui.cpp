@@ -72,7 +72,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	XComponent::init();
 
 	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
-	InitMyTree();
+	// InitMyTree();
+	InitMyTable();
 	win->findById("btn_1")->setListener(new ButtonListener());
 	win->findById("ext_btn_1")->setListener(new ButtonListener());
 	win->show(nCmdShow);
@@ -81,34 +82,38 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	return 0;
 }
 
-class MyTable : public XTableModel {
+class MyTableModel : public XExtTableModel {
 public:
-	virtual int getColumnCount() {
-		return 3;
+	virtual int getColumnCount() {return 4;}
+	virtual int getRowCount() {return 100;}
+	virtual ColumnWidth getColumnWidth(int col) {
+		ColumnWidth cw = {20|XComponent::MS_PERCENT, 0};
+		if (col == 3) cw.mWeight = 1;
+		return cw;
 	}
-	virtual int getRowCount() {
-		return 10;
+	virtual int getRowHeight(int row) {return 25;}
+	virtual int getHeaderHeight() {return 35;}
+	virtual XImage *getHeaderImage() {
+		static XImage *img = NULL;
+		if (img == NULL)
+			img = XImage::load("file://skin/ext_table_header.bmp");
+		return img;
 	}
-	virtual int getColumnWidth(int col) {
-		return 100;
+	virtual char *getHeaderText(int col) {
+		static char txtBuf[50];
+		sprintf(txtBuf, "Head %d", col);
+		return txtBuf;
 	}
-	virtual char *getColumnTitle(int col) {
-		if (col == 0) return (char *)"学号";
-		if (col == 1) return (char *)"姓名";
-		if (col == 2) return (char *)"性别";
-		return NULL;
-	}
-	virtual void getItem(int row, int col, LVITEM *item) {
-		static char v[128];
-		XTableModel::getItem(row, col, item);
-		sprintf(v, "%d  %d", row, col);
-		item->pszText = v;
+	virtual char *getCellData(int row, int col) {
+		static char txtBuf[50];
+		sprintf(txtBuf, "Cell(%d %d)", row, col);
+		return txtBuf;
 	}
 };
-
 void InitMyTable() {
-	MyTable *t = new MyTable();
-	t->apply(win->findById("tab")->getWnd());
+	XExtTable *table = (XExtTable*)win->findById("my-table");
+	MyTableModel *model = new MyTableModel();
+	table->setModel(model);
 }
 
 void InitMyTree() {

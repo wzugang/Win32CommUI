@@ -18,31 +18,7 @@ XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 
 bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
-		if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
-			HDC memDc = CreateCompatibleDC((HDC)wParam);
-			HWND parent = getParentWnd();
-			mBgImageForParnet = XImage::create(mWidth, mHeight);
-			SelectObject(memDc, mBgImageForParnet->getHBitmap());
-			HDC dc = GetDC(parent);
-			BitBlt(memDc, 0, 0, mWidth, mHeight, dc, mX, mY, SRCCOPY);
-			DeleteObject(memDc);
-			ReleaseDC(parent, dc);
-		}
-		if (mAttrFlags & AF_BG_COLOR) {
-			HDC dc = (HDC)wParam;
-			HBRUSH brush = CreateSolidBrush(mAttrBgColor);
-			RECT rc = {0, 0, mWidth, mHeight};
-			FillRect(dc, &rc, brush);
-			DeleteObject(brush);
-		}
-		XImage *bg = mBgImageForParnet != NULL ? mBgImageForParnet : mBgImage;
-		if (bg != NULL && bg->getHBitmap() != NULL) {
-			HDC dc = (HDC)wParam;
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, bg->getHBitmap());
-			BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-			DeleteObject(memDc);
-		}
+		eraseBackground((HDC)wParam);
 		return true;
 	}
 	return XComponent::wndProc(msg, wParam, lParam, result);
@@ -55,7 +31,31 @@ void XExtComponent::layout( int x, int y, int width, int height ) {
 		mBgImageForParnet = NULL;
 	}
 }
-
+void XExtComponent::eraseBackground(HDC dc) {
+	if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
+		HDC memDc = CreateCompatibleDC(dc);
+		HWND parent = getParentWnd();
+		mBgImageForParnet = XImage::create(mWidth, mHeight);
+		SelectObject(memDc, mBgImageForParnet->getHBitmap());
+		HDC dc = GetDC(parent);
+		BitBlt(memDc, 0, 0, mWidth, mHeight, dc, mX, mY, SRCCOPY);
+		DeleteObject(memDc);
+		ReleaseDC(parent, dc);
+	}
+	if (mAttrFlags & AF_BG_COLOR) {
+		HBRUSH brush = CreateSolidBrush(mAttrBgColor);
+		RECT rc = {0, 0, mWidth, mHeight};
+		FillRect(dc, &rc, brush);
+		DeleteObject(brush);
+	}
+	XImage *bg = mBgImageForParnet != NULL ? mBgImageForParnet : mBgImage;
+	if (bg != NULL && bg->getHBitmap() != NULL) {
+		HDC memDc = CreateCompatibleDC(dc);
+		SelectObject(memDc, bg->getHBitmap());
+		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+		DeleteObject(memDc);
+	}
+}
 XExtComponent::~XExtComponent() {
 	if (mBgImageForParnet) {
 		delete mBgImageForParnet;
@@ -320,22 +320,33 @@ XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mPage = 0;
 	mPressed = false;
 	mMouseX = mMouseY = 0;
+	mBuffer = NULL;
 }
 bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_PAINT) {
+	if (msg == WM_SIZE) {
+		if (mBuffer) delete mBuffer;
+		mBuffer = NULL;
+	} else if (msg == WM_ERASEBKGND) {
+		return true;
+	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
+		HDC memBufDc = CreateCompatibleDC(dc);
+		if (mBuffer == NULL) mBuffer = XImage::create(mWidth, mHeight);
+		SelectObject(memBufDc, mBuffer->getHBitmap());
 		if (mTrack != NULL) {
 			SelectObject(memDc, mTrack->getHBitmap());
-			StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
+			StretchBlt(memBufDc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
 		}
 		if (mThumb != NULL) {
 			SelectObject(memDc, mThumb->getHBitmap());
-			StretchBlt(dc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
+			StretchBlt(memBufDc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
 				mThumbRect.bottom - mThumbRect.top, memDc, 0, 0, mThumb->getWidth(), mThumb->getHeight(), SRCCOPY);
 		}
+		BitBlt(dc, 0, 0, mWidth, mHeight, memBufDc, 0, 0, SRCCOPY);
 		DeleteObject(memDc);
+		DeleteObject(memBufDc);
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
@@ -348,31 +359,38 @@ bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		}
 		return true;
 	} else if (msg == WM_MOUSEMOVE) {
-		if (mPressed) {
-			int x = short(lParam);
-			int y = short((lParam >> 16) & 0xffff);
-			int dx = x - mMouseX;
-			int dy = y - mMouseY;
-			if (mHorizontal) {
-				if (dx == 0) return true;
-				int sz = mPage - (mThumbRect.right - mThumbRect.left);
-				int newPos = -1;
-				if (sz > 0) newPos = (mThumbRect.left + dx) * (mMax - mPage) / sz;
-				if (newPos != -1 && newPos != mPos) {
-					mMouseX = x;
-					mMouseY = y;
-					SendMessage(getParentWnd(), WM_HSCROLL, newPos, 0);
-				}
-			} else {
-				if (dy == 0) return true;
-				int sz = mPage - (mThumbRect.bottom - mThumbRect.top);
-				int newPos = -1;
-				if (sz > 0) newPos = (mThumbRect.top + dy) * (mMax - mPage) / sz;
-				if (newPos != -1 && newPos != mPos) {
-					mMouseX = x;
-					mMouseY = y;
-					SendMessage(getParentWnd(), WM_VSCROLL, newPos, 0);
-				}
+		if (! mPressed) return true;
+		int x = short(lParam);
+		int y = short((lParam >> 16) & 0xffff);
+		int dx = x - mMouseX;
+		int dy = y - mMouseY;
+		if (mHorizontal) {
+			if (dx == 0) return true;
+			int sz = mPage - (mThumbRect.right - mThumbRect.left);
+			if (mThumbRect.left + dx < 0) dx = -mThumbRect.left;
+			else if (mThumbRect.right + dx > mWidth) dx = mWidth - mThumbRect.right;
+			int newPos = (mThumbRect.left + dx) * (mMax - mPage) / sz;
+			if (newPos != mPos) {
+				mMouseX = x;
+				mMouseY = y;
+				mPos = newPos;
+				OffsetRect(&mThumbRect, dx, y);
+				InvalidateRect(mWnd, NULL, TRUE);
+				SendMessage(getParentWnd(), WM_HSCROLL, newPos, 0);
+			}
+		} else {
+			if (dy == 0) return true;
+			int sz = mPage - (mThumbRect.bottom - mThumbRect.top);
+			if (mThumbRect.top + dy < 0) dy = -mThumbRect.top;
+			else if (mThumbRect.bottom + dy > mHeight) dy = mHeight - mThumbRect.bottom;
+			int newPos = (mThumbRect.top + dy) * (mMax - mPage) / sz;
+			if (newPos != mPos) {
+				mMouseX = x;
+				mMouseY = y;
+				mPos = newPos;
+				OffsetRect(&mThumbRect, 0, dy);
+				InvalidateRect(mWnd, NULL, TRUE);
+				SendMessage(getParentWnd(), WM_VSCROLL, newPos, 0);
 			}
 		}
 		return true;
@@ -402,7 +420,8 @@ void XScrollBar::setMaxAndPage( int maxn, int page ) {
 	mMax = maxn;
 	if (page < 0) page = 0;
 	mPage = page;
-	if (mPos > mMax - mPage) mPos = mMax - mPage;
+	if (maxn <= page) mPos = 0;
+	else if (mPos > mMax - mPage) mPos = mMax - mPage;
 	calcThumbInfo();
 }
 void XScrollBar::calcThumbInfo() {
@@ -441,9 +460,9 @@ XExtScroll::XExtScroll( XmlNode *node ) : XExtComponent(node) {
 	mHorBar->setImages(XImage::load(mNode->getAttrValue("hbarTrack")), XImage::load(mNode->getAttrValue("hbarThumb")));
 	mVerBar->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
 }
+#define WND_HIDE(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) & ~WS_VISIBLE)
+#define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
 void XExtScroll::onMeasure( int widthSpec, int heightSpec ) {
-	#define WND_HIDE(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) & ~WS_VISIBLE)
-	#define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
@@ -454,16 +473,9 @@ void XExtScroll::onMeasure( int widthSpec, int heightSpec ) {
 	mesureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
 
 	int childRight = 0, childBottom = 0;
-	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
-		XComponent *child = mNode->getChild(i)->getComponent();
-		if ((GetWindowLong(child->getWnd(), GWL_STYLE) & WS_VISIBLE) == 0)
-			continue;
-		int x = calcSize(child->getAttrX(), mMesureWidth | MS_ATMOST);
-		int y  = calcSize(child->getAttrY(), mMesureHeight | MS_ATMOST);
-		childRight = x + child->getMesureWidth();
-		childBottom = y = child->getMesureHeight();
-		break;
-	}
+	SIZE cs = calcDataSize();
+	childRight = cs.cx;
+	childBottom = cs.cy;
 	mHorBar->setMaxAndPage(childRight, clientWidth);
 	mVerBar->setMaxAndPage(childBottom, clientHeight);
 	if (mHorBar->isNeedShow()) 
@@ -478,6 +490,21 @@ void XExtScroll::onMeasure( int widthSpec, int heightSpec ) {
 	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
 		onMeasure(widthSpec, heightSpec);
 }
+SIZE XExtScroll::calcDataSize() {
+	int childRight = 0, childBottom = 0;
+	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		if ((GetWindowLong(child->getWnd(), GWL_STYLE) & WS_VISIBLE) == 0)
+			continue;
+		int x = calcSize(child->getAttrX(), mMesureWidth | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), mMesureHeight | MS_ATMOST);
+		childRight = x + child->getMesureWidth();
+		childBottom = y = child->getMesureHeight();
+		break;
+	}
+	SIZE sz = {childRight, childBottom};
+	return sz;
+}
 void XExtScroll::onLayout( int width, int height ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
@@ -489,17 +516,8 @@ void XExtScroll::onLayout( int width, int height ) {
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mHeight);
 }
 bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_HSCROLL) {
-		int oldPos = mHorBar->getPos();
-		mHorBar->setPos((int)wParam);
-		moveChildrenPos(oldPos - mHorBar->getPos(), 0);
-		InvalidateRect(mHorBar->getWnd(), NULL, TRUE);
-		return true;
-	} else if (msg == WM_VSCROLL) {
-		int oldPos = mVerBar->getPos();
-		mVerBar->setPos((int)wParam);
-		moveChildrenPos(0, oldPos - mVerBar->getPos());
-		InvalidateRect(mVerBar->getWnd(), NULL, TRUE);
+	if (msg == WM_HSCROLL || msg == WM_VSCROLL) {
+		moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
 		return true;
 	} else if (msg == WM_MOUSEWHEEL_BUBBLE) {
 		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
@@ -507,7 +525,7 @@ bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 			int old = mVerBar->getPos();
 			mVerBar->setPos(old - d);
 			if (old != mVerBar->getPos()) {
-				moveChildrenPos(0, old - mVerBar->getPos());
+				moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
 				InvalidateRect(mVerBar->getWnd(), NULL, TRUE);
 			}
 			return true;
@@ -528,19 +546,10 @@ bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
-void XExtScroll::moveChildrenPos( int dx, int dy ) {
-	if (dx == 0 && dy == 0)
-		return;
-	RECT pa, ch;
-	GetWindowRect(mWnd, &pa);
+void XExtScroll::moveChildrenPos( int x, int y ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		HWND wnd = child->getWnd();
-		if (GetWindowLong(wnd, GWL_STYLE) & WS_VISIBLE) {
-			GetWindowRect(wnd, &ch);
-			SetWindowPos(wnd, 0, ch.left - pa.left + dx, ch.top - pa.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-			// MoveWindow(wnd, ch.left - pa.left + dx, ch.top - pa.top + dy, ch.right - ch.left, ch.bottom - ch.top, TRUE);
-		}
+		SetWindowPos(child->getWnd(), 0, -x, -y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 	}
 	// invalide(this);
 }
@@ -657,3 +666,228 @@ void XExtPopup::close() {
 XExtPopup::~XExtPopup() {
 	if (mWnd) DestroyWindow(mWnd);
 }
+//-------------------XExtTable-------------------------------
+XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
+	mBuffer = NULL;
+	mDataSize.cx = mDataSize.cy = 0;
+	mLinePen = CreatePen(PS_SOLID, 1, RGB(110, 120, 250));
+}
+void XExtTable::setModel(XExtTableModel *model) {
+	mModel = model;
+}
+bool XExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_ERASEBKGND) {
+		// eraseBackground((HDC)wParam);
+		return true;
+	} if (msg == WM_SIZE) {
+		if (mBuffer != NULL) delete mBuffer;
+		mBuffer = NULL;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		if (mModel == NULL) goto _end;
+		HDC memDc = CreateCompatibleDC(dc);
+		SIZE sz = getClientSize();
+		if (mBuffer == NULL) {
+			mBuffer = XImage::create(mWidth, mHeight, 24);
+		}
+		SelectObject(memDc, mBuffer->getHBitmap());
+		// draw background
+		eraseBackground(memDc);
+		int hh = mModel->getHeaderHeight();
+		drawData(memDc, 0, hh, sz.cx, sz.cy);
+		drawHeader(memDc, mWidth, hh);
+		// copy header & data
+		BitBlt(dc, 0, 0, mWidth, hh, memDc, 0, 0, SRCCOPY);
+		BitBlt(dc, 0, hh, sz.cx, sz.cy, memDc, 0, hh, SRCCOPY);
+		DeleteObject(memDc);
+		_end:
+		EndPaint(mWnd, &ps);
+		return true;
+	}
+	return XExtScroll::wndProc(msg, wParam, lParam, result);
+}
+void XExtTable::drawHeader( HDC dc, int w, int h) {
+	if (mModel == NULL) return;
+	int x = 0;
+	HDC memDc = CreateCompatibleDC(dc);
+	SelectObject(dc, getFont());
+	SetBkMode(dc, TRANSPARENT);
+	XImage *bg = mModel->getHeaderImage();
+	if (bg && bg->getHBitmap()) {
+		SelectObject(memDc, bg->getHBitmap());
+		StretchBlt(dc, 0, 0, w, h, memDc, 0, 0, bg->getWidth(), bg->getHeight(), SRCCOPY);
+	}
+	DeleteObject(memDc);
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		char *txt = mModel->getHeaderText(i);
+		if (txt) {
+			RECT r = {x, 0, x + mColsWidth[i], h};
+			DrawText(dc, txt, strlen(txt), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
+		}
+		x += mColsWidth[i];
+	}
+	// draw split line
+	x = 0;
+	HGDIOBJ old = SelectObject(dc, mLinePen);
+	for (int i = 0; i < mModel->getColumnCount() - 1; ++i) {
+		x += mColsWidth[i];
+		MoveToEx(dc, x, 2, NULL);
+		LineTo(dc, x, h - 4);
+	}
+	if (mVerBar->isNeedShow()) {
+		x = mWidth - mVerBar->getThumbSize();
+		MoveToEx(dc, x, 2, NULL);
+		LineTo(dc, x, h - 4);
+	}
+	SelectObject(dc, old);
+}
+void XExtTable::drawData( HDC dc, int x, int y,  int w, int h ) {
+	int from = 0, to = 0;
+	getVisibleRows(&from, &to);
+	int y2 = -mVerBar->getPos();
+	for (int i = 0; i < from; ++i) {
+		y2 += mModel->getRowHeight(i);
+	}
+	SetBkMode(dc, TRANSPARENT);
+	int ry = y2;
+	for (int i = from; i <= to; ++i) {
+		int x2 = -mHorBar->getPos();
+		drawRow(dc, i, x + x2, y + y2, w, mModel->getRowHeight(i));
+		y2 += mModel->getRowHeight(i);
+	}
+	drawGridLine(dc, from, to, ry + y);
+}
+void XExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
+	int rh = mModel->getRowHeight(row);
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		drawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 2, rh - 2);
+		x += mColsWidth[i];
+	}
+}
+void XExtTable::drawCell(HDC dc, int row, int col, int x, int y, int w, int h ) {
+	char *txt = mModel->getCellData(row, col);
+	int len = txt == NULL ? 0 : strlen(txt);
+	RECT r = {x + 5, y, x + w - 5, y + h};
+	DrawText(dc, txt, len, &r, DT_SINGLELINE | DT_VCENTER);
+}
+void XExtTable::drawGridLine( HDC dc, int from, int to, int y ) {
+	SIZE sz = getClientSize();
+	HGDIOBJ old = SelectObject(dc, mLinePen);
+	int y2 = y;
+	for (int i = from; i <= to; ++i) {
+		y2 += mModel->getRowHeight(i);
+		MoveToEx(dc, 0, y2, NULL);
+		LineTo(dc, sz.cx, y2);
+	}
+	int x = -mHorBar->getPos();
+	y = mModel->getHeaderHeight();
+	for (int i = 0; i <= mModel->getColumnCount(); ++i) {
+		if (i == mModel->getColumnCount()) --x;
+		MoveToEx(dc, x, y, NULL);
+		LineTo(dc, x, sz.cy + y);
+		x += mColsWidth[i];
+	}
+	SelectObject(dc, old);
+}
+void XExtTable::getVisibleRows( int *from, int *to ) {
+	*from = *to = 0;
+	if (mModel == NULL) return;
+	int y = -mVerBar->getPos();
+	SIZE sz = getClientSize();
+	sz.cy -= mModel->getHeaderHeight();
+	for (int i = 0; i < mModel->getRowCount(); ++i) {
+		y += mModel->getRowHeight(i);
+		if (y > 0) {
+			*from = i;
+			break;
+		}
+	}
+	for (int i = *from + 1; i < mModel->getRowCount(); ++i) {
+		*to = i;
+		if (y >= sz.cy) {
+			break;
+		}
+	}
+	if (*to < *from) *to = *from;
+}
+void XExtTable::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	if (mModel == NULL) return;
+	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+	mesureColumn(clientWidth, clientHeight);
+
+	mDataSize = calcDataSize();
+	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
+	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight - mModel->getHeaderHeight());
+	if (mHorBar->isNeedShow())
+		WND_SHOW(mHorBar->getWnd());
+	else
+		WND_HIDE(mHorBar->getWnd());
+	if (mVerBar->isNeedShow())
+		WND_SHOW(mVerBar->getWnd());
+	else
+		WND_HIDE(mVerBar->getWnd());
+
+	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
+		onMeasure(widthSpec, heightSpec);
+}
+SIZE XExtTable::calcDataSize() {
+	SIZE sz = {0};
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		sz.cx += mColsWidth[i];
+	}
+	int rc = mModel->getRowCount();
+	for (int i = 0; i < rc; ++i) {
+		sz.cy += mModel->getRowHeight(i);
+	}
+	return sz;
+}
+SIZE XExtTable::getClientSize() {
+	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+	if (mModel != NULL) clientHeight -= mModel->getHeaderHeight();
+	SIZE sz = {clientWidth, clientHeight};
+	return sz;
+}
+void XExtTable::moveChildrenPos( int dx, int dy ) {
+	InvalidateRect(mWnd, NULL, TRUE);
+}
+void XExtTable::mesureColumn(int width, int height) {
+	int widthAll = 0, weightAll = 0;
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		XExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+		mColsWidth[i] = calcSize(cw.mWidthSpec, width | MS_ATMOST);
+		widthAll += mColsWidth[i];
+		weightAll += cw.mWeight;
+	}
+	int nw = 0;
+	if (width > widthAll && weightAll > 0) {
+		for (int i = 0; i < mModel->getColumnCount(); ++i) {
+			XExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+			mColsWidth[i] += cw.mWeight * (width - widthAll) / weightAll;
+			nw += mColsWidth[i];
+		}
+	}
+	// stretch last column
+	if (nw < width && mModel->getColumnCount() > 0) {
+		mColsWidth[mModel->getColumnCount() - 1] += width - nw;
+	}
+}
+void XExtTable::onLayout( int width, int height ) {
+	if (mModel == NULL) return;
+	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
+	mVerBar->layout(mWidth - mVerBar->getThumbSize(), mModel->getHeaderHeight(), mVerBar->getThumbSize(), mVerBar->getPage());
+}
+
+XExtTable::~XExtTable() {
+	if (mBuffer) delete mBuffer;
+}
+

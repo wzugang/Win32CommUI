@@ -8,6 +8,7 @@ public:
 	void layout(int x, int y, int width, int height);
 	virtual ~XExtComponent();
 protected:
+	void eraseBackground(HDC dc);
 	XImage *mBgImageForParnet;
 };
 
@@ -89,6 +90,7 @@ protected:
 	XImage *mTrack, *mThumb;
 	bool mPressed;
 	int mMouseX, mMouseY;
+	XImage *mBuffer;
 };
 
 class XExtScroll : public XExtComponent {
@@ -100,7 +102,8 @@ public:
 	virtual void onLayout(int width, int height);
 	virtual ~XExtScroll();
 protected:
-	void moveChildrenPos( int dx, int dy );
+	virtual SIZE calcDataSize();
+	virtual void moveChildrenPos( int x, int y );
 	void invalide(XComponent *c);
 	XScrollBar *mHorBar, *mVerBar;
 	XmlNode *mHorNode, *mVerNode;
@@ -118,4 +121,52 @@ protected:
 	virtual void onLayout(int width, int height);
 	virtual int messageLoop();
 	bool mMsgLooping;
+};
+
+class XExtTableModel {
+public:
+	struct ColumnWidth {
+		int mWidthSpec;
+		int mWeight;
+	};
+	virtual int getColumnCount() = 0;
+	virtual int getRowCount() = 0;
+	virtual ColumnWidth getColumnWidth(int col) = 0;
+	virtual int getRowHeight(int row) = 0;
+	virtual int getHeaderHeight() = 0;
+	virtual XImage *getHeaderImage() = 0;
+	virtual char *getHeaderText(int col) = 0;
+	virtual char *getCellData(int row, int col) = 0;
+};
+class XExtTable : public XExtScroll {
+public:
+	enum Attr {
+		ATTR_HAS_HEADER = 1,
+		ATTR_HAS_COL_LINE = 2,
+		ATTR_HAS_ROW_LINE = 4
+	};
+	XExtTable(XmlNode *node);
+	void setModel(XExtTableModel *model);
+	virtual ~XExtTable();
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void drawHeader(HDC dc, int w, int h);
+	void drawData( HDC dc, int x, int y, int w, int h );
+	virtual void drawRow(HDC dc, int row, int x, int y, int w, int h );
+	virtual void drawCell(HDC dc, int row, int col, int x, int y, int w, int h );
+	virtual void drawGridLine(HDC dc, int from, int to, int y);
+
+	void onMeasure( int widthSpec, int heightSpec );
+	void onLayout( int width, int height );
+	void mesureColumn(int width, int height);
+	virtual SIZE calcDataSize();
+	virtual void moveChildrenPos( int dx, int dy );
+	SIZE getClientSize();
+	void getVisibleRows(int *from, int *to);
+protected:
+	XExtTableModel *mModel;
+	int mColsWidth[50];
+	XImage *mBuffer;
+	SIZE mDataSize;
+	HPEN mLinePen;
 };

@@ -41,7 +41,7 @@ public:
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
 	virtual void layout(int x, int y, int width, int height);
-	void mesureChildren(int widthSpec, int heighSpec);
+	virtual void mesureChildren(int widthSpec, int heighSpec);
 	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
