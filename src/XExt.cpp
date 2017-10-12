@@ -311,13 +311,15 @@ XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	memset(&mThumbRect, 0, sizeof(mThumbRect));
 	mTrack = mThumb = NULL;
 	if (horizontal) {
-		mThumbRect.bottom = 15;
+		mThumbRect.bottom = 10;
 	} else {
-		mThumbRect.right = 15;
+		mThumbRect.right = 10;
 	}
 	mPos = 0;
 	mMax = 0;
 	mPage = 0;
+	mPressed = false;
+	mMouseX = mMouseY = 0;
 }
 bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_PAINT) {
@@ -326,27 +328,57 @@ bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		HDC memDc = CreateCompatibleDC(dc);
 		if (mTrack != NULL) {
 			SelectObject(memDc, mTrack->getHBitmap());
-			if (mTrack->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), bf);
-			} else {
-				StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
-			}
+			StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
 		}
 		if (mThumb != NULL) {
 			SelectObject(memDc, mThumb->getHBitmap());
-			if (mThumb->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
-					mThumbRect.bottom - mThumbRect.top, memDc, 0, 0, mThumb->getWidth(), mThumb->getHeight(), bf);
-			} else {
-				StretchBlt(dc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
-					mThumbRect.bottom - mThumbRect.top, memDc, 0, 0, mThumb->getWidth(), mThumb->getHeight(), SRCCOPY);
-			}
+			StretchBlt(dc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
+				mThumbRect.bottom - mThumbRect.top, memDc, 0, 0, mThumb->getWidth(), mThumb->getHeight(), SRCCOPY);
 		}
 		DeleteObject(memDc);
 		EndPaint(mWnd, &ps);
 		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		POINT pt = {(short)lParam, (short)(lParam >> 16)};
+		if (PtInRect(&mThumbRect, pt)) {
+			mPressed = true;
+			SetCapture(mWnd);
+			mMouseX = short(lParam);
+			mMouseY = short((lParam >> 16) & 0xffff);
+		}
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		if (mPressed) {
+			int x = short(lParam);
+			int y = short((lParam >> 16) & 0xffff);
+			int dx = x - mMouseX;
+			int dy = y - mMouseY;
+			if (mHorizontal) {
+				if (dx == 0) return true;
+				int sz = mPage - (mThumbRect.right - mThumbRect.left);
+				int newPos = -1;
+				if (sz > 0) newPos = (mThumbRect.left + dx) * (mMax - mPage) / sz;
+				if (newPos != -1 && newPos != mPos) {
+					mMouseX = x;
+					mMouseY = y;
+					SendMessage(getParentWnd(), WM_HSCROLL, newPos, 0);
+				}
+			} else {
+				if (dy == 0) return true;
+				int sz = mPage - (mThumbRect.bottom - mThumbRect.top);
+				int newPos = -1;
+				if (sz > 0) newPos = (mThumbRect.top + dy) * (mMax - mPage) / sz;
+				if (newPos != -1 && newPos != mPos) {
+					mMouseX = x;
+					mMouseY = y;
+					SendMessage(getParentWnd(), WM_VSCROLL, newPos, 0);
+				}
+			}
+		}
+		return true;
+	} else if (msg == WM_LBUTTONUP) {
+		mPressed = false;
+		ReleaseCapture();
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
@@ -414,12 +446,6 @@ void XExtScroll::onMeasure( int widthSpec, int heightSpec ) {
 	#define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	if (mHorBar->getWnd() == NULL || mVerBar->getWnd() == NULL) {
-		mHorBar->createWnd();
-		mVerBar->createWnd();
-		WND_HIDE(mHorBar->getWnd());
-		WND_HIDE(mVerBar->getWnd());
-	}
 	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 	
@@ -463,7 +489,19 @@ void XExtScroll::onLayout( int width, int height ) {
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mHeight);
 }
 bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_MOUSEWHEEL_BUBBLE) {
+	if (msg == WM_HSCROLL) {
+		int oldPos = mHorBar->getPos();
+		mHorBar->setPos((int)wParam);
+		moveChildrenPos(oldPos - mHorBar->getPos(), 0);
+		InvalidateRect(mHorBar->getWnd(), NULL, TRUE);
+		return true;
+	} else if (msg == WM_VSCROLL) {
+		int oldPos = mVerBar->getPos();
+		mVerBar->setPos((int)wParam);
+		moveChildrenPos(0, oldPos - mVerBar->getPos());
+		InvalidateRect(mVerBar->getWnd(), NULL, TRUE);
+		return true;
+	} else if (msg == WM_MOUSEWHEEL_BUBBLE) {
 		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
 		if (GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE) {
 			int old = mVerBar->getPos();
@@ -498,9 +536,28 @@ void XExtScroll::moveChildrenPos( int dx, int dy ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		HWND wnd = child->getWnd();
-		GetWindowRect(wnd, &ch);
-		SetWindowPos(wnd, HWND_NOTOPMOST, ch.left - pa.left + dx, ch.top - pa.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+		if (GetWindowLong(wnd, GWL_STYLE) & WS_VISIBLE) {
+			GetWindowRect(wnd, &ch);
+			SetWindowPos(wnd, 0, ch.left - pa.left + dx, ch.top - pa.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+			// MoveWindow(wnd, ch.left - pa.left + dx, ch.top - pa.top + dy, ch.right - ch.left, ch.bottom - ch.top, TRUE);
+		}
 	}
+	// invalide(this);
+}
+void XExtScroll::invalide( XComponent *c ) {
+	InvalidateRect(c->getWnd(), NULL, TRUE);
+	UpdateWindow(c->getWnd());
+	for (int i = 0; i < c->getNode()->getChildCount(); ++i) {
+		if (GetWindowLong(c->getChild(i)->getWnd(), GWL_STYLE) & WS_VISIBLE)
+			invalide(c->getChild(i));
+	}
+}
+void XExtScroll::createWnd() {
+	XComponent::createWnd();
+	mHorBar->createWnd();
+	mVerBar->createWnd();
+	WND_HIDE(mHorBar->getWnd());
+	WND_HIDE(mVerBar->getWnd());
 }
 XExtScroll::~XExtScroll() {
 	delete mHorNode;

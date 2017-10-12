@@ -70,16 +70,16 @@ protected:
 class XScrollBar : public XExtComponent {
 public:
 	XScrollBar(XmlNode *node, bool horizontal);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	int getMax();
 	int getPage();
 	void setMaxAndPage(int maxn, int page);
 	int getPos();
-	void setPos(int pos);
+	void setPos(int pos); // pos = [0 ... max - page]
 	void setImages(XImage *track, XImage *thumb);
 	bool isNeedShow();
 	int getThumbSize();
 protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void calcThumbInfo();
 	bool mHorizontal;
 	int mMax;
@@ -87,17 +87,21 @@ protected:
 	int mPos;
 	RECT mThumbRect;
 	XImage *mTrack, *mThumb;
+	bool mPressed;
+	int mMouseX, mMouseY;
 };
 
 class XExtScroll : public XExtComponent {
 public:
 	XExtScroll(XmlNode *node);
+	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
 	virtual ~XExtScroll();
 protected:
 	void moveChildrenPos( int dx, int dy );
+	void invalide(XComponent *c);
 	XScrollBar *mHorBar, *mVerBar;
 	XmlNode *mHorNode, *mVerNode;
 };

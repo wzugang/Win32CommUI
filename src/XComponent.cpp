@@ -112,7 +112,7 @@ XComponent::~XComponent() {
 void XComponent::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	mID = generateWndId();
-	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_CHILDWINDOW | WS_VISIBLE,
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS,
 		0, 0, 0, 0, getParentWnd(), (HMENU)mID, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
