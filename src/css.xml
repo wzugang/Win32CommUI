@@ -35,5 +35,9 @@
 	<ExtCheckBox  normalImage="" hoverImage="" pushImage="" disableImage="" selectImage=""/>
 	<ExtRadio  group="group-name" normalImage="file://xx.bmp" hoverImage="" pushImage="" disableImage="" selectImage=""/>
 	                   group-name 有相同名称的分组，选中一个，其它的会自动不选
+					   
 	<ExtPopup /> 只有一个子控件可见，可以有多个
+	
+	<ExtScroll hbarTrack="" hbarThumb="" hbarTrack="" hbarThumb=""  />
+	<ExtTable />  继承自ExtScroll
 

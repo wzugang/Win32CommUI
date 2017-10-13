@@ -545,6 +545,7 @@ bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		return true;
 	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUTTLE) {
 		SetFocus(mWnd);
+		// SetFocus(NULL);
 		return true;
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
