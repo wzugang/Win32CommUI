@@ -354,7 +354,7 @@ bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		if (PtInRect(&mThumbRect, pt)) {
 			mPressed = true;
 			SetCapture(mWnd);
-			mMouseX = short(lParam);
+			mMouseX = short(lParam & 0xffff);
 			mMouseY = short((lParam >> 16) & 0xffff);
 		}
 		return true;
@@ -374,7 +374,7 @@ bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 				mMouseX = x;
 				mMouseY = y;
 				mPos = newPos;
-				OffsetRect(&mThumbRect, dx, y);
+				OffsetRect(&mThumbRect, dx, 0);
 				InvalidateRect(mWnd, NULL, TRUE);
 				SendMessage(getParentWnd(), WM_HSCROLL, newPos, 0);
 			}
@@ -534,7 +534,7 @@ bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 			int old = mHorBar->getPos();
 			mHorBar->setPos(old - d);
 			if (old != mHorBar->getPos()) {
-				moveChildrenPos(0, old - mHorBar->getPos());
+				moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
 				InvalidateRect(mHorBar->getWnd(), NULL, TRUE);
 			}
 			return true;
@@ -709,7 +709,6 @@ bool XExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 }
 void XExtTable::drawHeader( HDC dc, int w, int h) {
 	if (mModel == NULL) return;
-	int x = 0;
 	HDC memDc = CreateCompatibleDC(dc);
 	SelectObject(dc, getFont());
 	SetBkMode(dc, TRANSPARENT);
@@ -719,6 +718,7 @@ void XExtTable::drawHeader( HDC dc, int w, int h) {
 		StretchBlt(dc, 0, 0, w, h, memDc, 0, 0, bg->getWidth(), bg->getHeight(), SRCCOPY);
 	}
 	DeleteObject(memDc);
+	int x = -mHorBar->getPos();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
 		char *txt = mModel->getHeaderText(i);
 		if (txt) {
@@ -728,7 +728,7 @@ void XExtTable::drawHeader( HDC dc, int w, int h) {
 		x += mColsWidth[i];
 	}
 	// draw split line
-	x = 0;
+	x = x = -mHorBar->getPos();
 	HGDIOBJ old = SelectObject(dc, mLinePen);
 	for (int i = 0; i < mModel->getColumnCount() - 1; ++i) {
 		x += mColsWidth[i];
@@ -836,6 +836,7 @@ void XExtTable::onMeasure( int widthSpec, int heightSpec ) {
 
 	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
 		onMeasure(widthSpec, heightSpec);
+	printf("onMeasure ver:[%d %d] hor:[%d %d] \n", mVerBar->getPage(), mVerBar->getMax(), mHorBar->getPage(), mHorBar->getMax());
 }
 SIZE XExtTable::calcDataSize() {
 	SIZE sz = {0};
@@ -869,12 +870,12 @@ void XExtTable::mesureColumn(int width, int height) {
 		weightAll += cw.mWeight;
 	}
 	int nw = 0;
-	if (width > widthAll && weightAll > 0) {
-		for (int i = 0; i < mModel->getColumnCount(); ++i) {
-			XExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		XExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+		if (width > widthAll && weightAll > 0) {
 			mColsWidth[i] += cw.mWeight * (width - widthAll) / weightAll;
-			nw += mColsWidth[i];
 		}
+		nw += mColsWidth[i];
 	}
 	// stretch last column
 	if (nw < width && mModel->getColumnCount() > 0) {

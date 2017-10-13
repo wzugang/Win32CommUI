@@ -85,10 +85,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 class MyTableModel : public XExtTableModel {
 public:
 	virtual int getColumnCount() {return 4;}
-	virtual int getRowCount() {return 100;}
+	virtual int getRowCount() {return 50;}
 	virtual ColumnWidth getColumnWidth(int col) {
-		ColumnWidth cw = {20|XComponent::MS_PERCENT, 0};
-		if (col == 3) cw.mWeight = 1;
+		ColumnWidth cw = {120 | XComponent::MS_FIX, 0};
+		// if (col == 3) {cw.mWeight = 1; }
 		return cw;
 	}
 	virtual int getRowHeight(int row) {return 25;}
