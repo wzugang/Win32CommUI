@@ -426,8 +426,11 @@ void XScrollBar::setMaxAndPage( int maxn, int page ) {
 }
 void XScrollBar::calcThumbInfo() {
 	if (mMax <= 0 || mPage <= 0 || mPage >= mMax) {
-		mThumbRect.left = mThumbRect.right = 0;
-		mThumbRect.top = mThumbRect.bottom = 0;
+		if (mHorizontal) {
+			mThumbRect.left = mThumbRect.right = 0;
+		} else {
+			mThumbRect.top = mThumbRect.bottom = 0;
+		}
 		return;
 	}
 	int sz = mPage * mPage / mMax;
@@ -671,6 +674,10 @@ XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
 	mBuffer = NULL;
 	mDataSize.cx = mDataSize.cy = 0;
 	mLinePen = CreatePen(PS_SOLID, 1, RGB(110, 120, 250));
+	mSelectedRow = -1;
+	mModel = NULL;
+	mSelectBgColor = RGB(0xE6, 0xE6, 0xFA);
+	mSelectBgBrush = NULL;
 }
 void XExtTable::setModel(XExtTableModel *model) {
 	mModel = model;
@@ -703,6 +710,13 @@ bool XExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 		DeleteObject(memDc);
 		_end:
 		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		int row = findCell((short)LOWORD(lParam), (short)HIWORD(lParam), NULL);
+		if (mSelectedRow != row) {
+			mSelectedRow = row;
+			InvalidateRect(mWnd, NULL, TRUE);
+		}
 		return true;
 	}
 	return XExtScroll::wndProc(msg, wParam, lParam, result);
@@ -753,15 +767,20 @@ void XExtTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 	int ry = y2;
 	for (int i = from; i <= to; ++i) {
 		int x2 = -mHorBar->getPos();
-		drawRow(dc, i, x + x2, y + y2, w, mModel->getRowHeight(i));
+		drawRow(dc, i, x + x2, y + y2, w - (x + x2), mModel->getRowHeight(i));
 		y2 += mModel->getRowHeight(i);
 	}
 	drawGridLine(dc, from, to, ry + y);
 }
 void XExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
 	int rh = mModel->getRowHeight(row);
+	if (mSelectedRow == row) {
+		if (mSelectBgBrush == NULL) mSelectBgBrush = CreateSolidBrush(mSelectBgColor); 
+		RECT r = {x + 1, y + 1, x + w - 1, y + h - 1};
+		FillRect(dc, &r, mSelectBgBrush);
+	}
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		drawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 2, rh - 2);
+		drawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
 		x += mColsWidth[i];
 	}
 }
@@ -836,7 +855,6 @@ void XExtTable::onMeasure( int widthSpec, int heightSpec ) {
 
 	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
 		onMeasure(widthSpec, heightSpec);
-	printf("onMeasure ver:[%d %d] hor:[%d %d] \n", mVerBar->getPage(), mVerBar->getMax(), mHorBar->getPage(), mHorBar->getMax());
 }
 SIZE XExtTable::calcDataSize() {
 	SIZE sz = {0};
@@ -887,8 +905,31 @@ void XExtTable::onLayout( int width, int height ) {
 	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), mModel->getHeaderHeight(), mVerBar->getThumbSize(), mVerBar->getPage());
 }
-
+int XExtTable::findCell( int x, int y, int *col ) {
+	if (mModel == NULL) return -1;
+	int row = -1;
+	int y2 = -mVerBar->getPos() + mModel->getHeaderHeight();
+	for (int i = 0; i < mModel->getRowCount(); ++i) {
+		if (y2 <= y && y2 + mModel->getRowHeight(i) > y) {
+			row = i;
+			break;
+		}
+		y2 += mModel->getRowHeight(i);
+	}
+	if (row != -1 && col != NULL) {
+		int x2 = -mHorBar->getPos();
+		for (int i = 0; i < mModel->getColumnCount(); ++i) {
+			if (x2 <= x && x2 + mColsWidth[i] > x) {
+				*col = i;
+				break;
+			}
+			x2 += mColsWidth[i];
+		}
+	}
+	return row;
+}
 XExtTable::~XExtTable() {
 	if (mBuffer) delete mBuffer;
+	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
 

@@ -163,10 +163,14 @@ protected:
 	virtual void moveChildrenPos( int dx, int dy );
 	SIZE getClientSize();
 	void getVisibleRows(int *from, int *to);
+	int findCell(int x, int y, int *col);
 protected:
 	XExtTableModel *mModel;
 	int mColsWidth[50];
 	XImage *mBuffer;
 	SIZE mDataSize;
 	HPEN mLinePen;
+	int mSelectedRow;
+	COLORREF mSelectBgColor;
+	HBRUSH mSelectBgBrush;
 };
