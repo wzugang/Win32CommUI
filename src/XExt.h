@@ -210,6 +210,7 @@ protected:
 	HPEN mCaretPen;
 	bool mCaretShowing;
 	int mScrollPos;
+	HPEN mBorderPen, mFocusBorderPen;
 };
 
 class XExtComboBox : public XComponent {
