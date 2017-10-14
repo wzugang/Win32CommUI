@@ -137,6 +137,7 @@ public:
 	virtual XImage *getHeaderImage() = 0;
 	virtual char *getHeaderText(int col) = 0;
 	virtual char *getCellData(int row, int col) = 0;
+	// virtual bool canSelect(int row) = 0;
 };
 class XExtTable : public XExtScroll {
 public:
@@ -173,4 +174,45 @@ protected:
 	int mSelectedRow;
 	COLORREF mSelectBgColor;
 	HBRUSH mSelectBgBrush;
+};
+
+class XExtEdit : public XComponent {
+public:
+	XExtEdit(XmlNode *node);
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	void onChar(wchar_t ch);
+	void onLButtonDown(int keyState, int x, int y);
+	void onLButtonUp(int keyState, int x, int y);
+	void onMouseMove(int x, int y);
+	void onPaint(HDC hdc);
+	void drawSelRange(HDC hdc, int begin, int end);
+	void onKeyDown(int key);
+	void insertText(int pos, char *txt);
+	void insertText(int pos, wchar_t *txt, int len);
+	int deleteText(int pos, int len);
+	int getPosAt(int x, int y);
+	BOOL getXYAt(int pos, POINT *pt);
+	void move(int key);
+	void ensureVisible(int pos);
+
+	void back();
+	void del();
+	void copy();
+	void paste();
+protected:
+	wchar_t *mText;
+	int mCapacity;
+	int mLen;
+	int mInsertPos;
+	int mBeginSelPos, mEndSelPos;
+	bool mReadOnly;
+	HPEN mCaretPen;
+	bool mCaretShowing;
+	int mScrollPos;
+};
+
+class XExtComboBox : public XComponent {
+public:
+	XExtComboBox(XmlNode *node);
 };

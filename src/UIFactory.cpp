@@ -259,6 +259,7 @@ static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
+static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtEdit(n);}
 
 struct InitUIFactory {
 	InitUIFactory() {
@@ -290,6 +291,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
 		UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 		UIFactory::registCreator("ExtTable", XExtTable_Creator);
+		UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
 	}
 
 	~InitUIFactory() {
@@ -298,3 +300,8 @@ struct InitUIFactory {
 
 static InitUIFactory s_init_ui_factory;
 
+#include <gdiplus.h>
+
+void aa() {
+	// Gdiplus::Image *a = Gdiplus::Image::FromFile("xx");
+}
