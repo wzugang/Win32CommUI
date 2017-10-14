@@ -179,6 +179,7 @@ protected:
 class XExtEdit : public XComponent {
 public:
 	XExtEdit(XmlNode *node);
+	void setEnableBorder(bool enable);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void onChar(wchar_t ch);
@@ -211,6 +212,7 @@ protected:
 	bool mCaretShowing;
 	int mScrollPos;
 	HPEN mBorderPen, mFocusBorderPen;
+	bool mEnableBorder;
 };
 
 class XExtComboBox : public XComponent {

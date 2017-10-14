@@ -952,6 +952,7 @@ XExtEdit::XExtEdit( XmlNode *node ) : XComponent(node) {
 	mScrollPos = 0;
 	mBorderPen = CreatePen(PS_SOLID, 1, RGB(0xAD, 0xAD, 0xAD));
 	mFocusBorderPen = CreatePen(PS_SOLID, 1, RGB(0xEE, 0x30, 0xA7));
+	mEnableBorder = false;
 }
 bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
 	if (msg == WM_CHAR || msg == WM_IME_CHAR) {
@@ -1054,10 +1055,12 @@ void XExtEdit::onPaint( HDC hdc ) {
 		LineTo(hdc, pt.x, mHeight - 4);
 	}
 	// draw border
-	bool hasFocus = mWnd == GetFocus();
-	SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
-	SelectObject(hdc, GetStockObject(NULL_BRUSH));
-	RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
+	if (mEnableBorder) {
+		bool hasFocus = mWnd == GetFocus();
+		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
+		SelectObject(hdc, GetStockObject(NULL_BRUSH));
+		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
+	}
 }
 void XExtEdit::drawSelRange( HDC hdc, int begin, int end ) {
 	static HBRUSH bg = 0;
@@ -1286,4 +1289,7 @@ void XExtEdit::copy() {
 	EmptyClipboard();
 	SetClipboardData(CF_TEXT, hd);
 	CloseClipboard();
+}
+void XExtEdit::setEnableBorder( bool enable ) {
+	mEnableBorder = enable;
 }
