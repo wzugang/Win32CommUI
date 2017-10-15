@@ -260,6 +260,7 @@ static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
 static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtEdit(n);}
+static XComponent *XExtList_Creator(XmlNode *n) {return new XExtList(n);}
 
 struct InitUIFactory {
 	InitUIFactory() {
@@ -292,6 +293,7 @@ struct InitUIFactory {
 		UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 		UIFactory::registCreator("ExtTable", XExtTable_Creator);
 		UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
+		UIFactory::registCreator("ExtList", XExtList_Creator);
 	}
 
 	~InitUIFactory() {

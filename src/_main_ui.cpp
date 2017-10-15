@@ -12,7 +12,7 @@ XExtPopup *popup;
 
 void InitMyTable();
 void InitMyTree();
-void TestDecoderImage();
+void InitMyList();
 
 class ButtonListener : public XListener {
 public:
@@ -74,6 +74,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
 	// InitMyTree();
 	InitMyTable();
+	InitMyList();
+
 	win->findById("btn_1")->setListener(new ButtonListener());
 	win->findById("ext_btn_1")->setListener(new ButtonListener());
 	win->show(nCmdShow);
@@ -91,7 +93,11 @@ public:
 		// if (col == 3) {cw.mWeight = 1; }
 		return cw;
 	}
-	virtual int getRowHeight(int row) {return 25;}
+	virtual int getRowHeight(int row) {
+		if (row % 5 == 4)
+			return 40;
+		return 25;
+	}
 	virtual int getHeaderHeight() {return 35;}
 	virtual XImage *getHeaderImage() {
 		static XImage *img = NULL;
@@ -116,6 +122,26 @@ void InitMyTable() {
 	table->setModel(model);
 }
 
+class MyListModel : public XListModel {
+public:
+	MyListModel() {}
+	virtual int getItemCount() {return 50;}
+	virtual int getItemHeight(int item) {return 25;}
+	virtual ItemData *getItemData(int item) {
+		static char buf[100];
+		sprintf(buf, "List Item %d", item);
+		mTmp.mSelectable =  true; // item % 5 != 0;
+		mTmp.mText = buf;
+		return &mTmp;
+	}
+	virtual bool isMouseTrack() {return true;}
+	ItemData mTmp;
+};
+void InitMyList() {
+	XExtList *table = (XExtList*)win->findById("list_1");
+	MyListModel *model = new MyListModel();
+	table->setModel(model);
+}
 void InitMyTree() {
 	XTree * t = (XTree*) win->findById("my-tree");
 	HWND tw = t->getWnd();

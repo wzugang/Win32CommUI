@@ -40,4 +40,4 @@
 	
 	<ExtScroll hbarTrack="" hbarThumb="" hbarTrack="" hbarThumb=""  />
 	<ExtTable />  继承自ExtScroll
-
+	<ExtList />   继承自ExtScroll

@@ -4,20 +4,21 @@
 class XExtComponent : public XComponent {
 public:
 	XExtComponent(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	void layout(int x, int y, int width, int height);
+	virtual void layout(int x, int y, int width, int height);
 	virtual ~XExtComponent();
 protected:
 	void eraseBackground(HDC dc);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	XImage *mBgImageForParnet;
 };
 
 class XExtLabel : public XExtComponent {
 public:
 	XExtLabel(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	char *getText();
 	void setText(char *text);
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 protected:
 	char *mText;
 };
@@ -25,8 +26,8 @@ protected:
 class XExtButton : public XExtComponent {
 public:
 	XExtButton(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	enum BtnImage {
 		BTN_IMG_NORMAL,
 		BTN_IMG_HOVER,
@@ -34,6 +35,7 @@ protected:
 		BTN_IMG_DISABLE
 	};
 	virtual BtnImage getBtnImage();
+protected:
 	XImage *mImages[8];
 	bool mIsMouseDown;
 	bool mIsMouseMoving;
@@ -43,10 +45,10 @@ protected:
 class XExtOption : public XExtButton {
 public:
 	XExtOption(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	bool isSelect();
 	void setSelect(bool select);
 protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual BtnImage getBtnImage();
 	enum {
 		BTN_IMG_SELECT = 5
@@ -57,14 +59,15 @@ protected:
 class XExtCheckBox : public XExtOption {
 public:
 	XExtCheckBox(XmlNode *node);
+protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 };
 
 class XExtRadio : public XExtCheckBox {
 public:
 	XExtRadio(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void unselectOthers();
 };
 
@@ -96,12 +99,12 @@ protected:
 class XExtScroll : public XExtComponent {
 public:
 	XExtScroll(XmlNode *node);
+	virtual ~XExtScroll();
+protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
-	virtual ~XExtScroll();
-protected:
 	virtual SIZE calcDataSize();
 	virtual void moveChildrenPos( int x, int y );
 	void invalide(XComponent *c);
@@ -141,6 +144,10 @@ public:
 };
 class XExtTable : public XExtScroll {
 public:
+	class CellRender {
+	public:
+		virtual void onDraw(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
+	};
 	enum Attr {
 		ATTR_HAS_HEADER = 1,
 		ATTR_HAS_COL_LINE = 2,
@@ -148,6 +155,7 @@ public:
 	};
 	XExtTable(XmlNode *node);
 	void setModel(XExtTableModel *model);
+	void setCellRender(CellRender *render);
 	virtual ~XExtTable();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -157,10 +165,10 @@ protected:
 	virtual void drawCell(HDC dc, int row, int col, int x, int y, int w, int h );
 	virtual void drawGridLine(HDC dc, int from, int to, int y);
 
-	void onMeasure( int widthSpec, int heightSpec );
-	void onLayout( int width, int height );
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
 	void mesureColumn(int width, int height);
-	virtual SIZE calcDataSize();
+	SIZE calcDataSize();
 	virtual void moveChildrenPos( int dx, int dy );
 	SIZE getClientSize();
 	void getVisibleRows(int *from, int *to);
@@ -174,6 +182,7 @@ protected:
 	int mSelectedRow;
 	COLORREF mSelectBgColor;
 	HBRUSH mSelectBgBrush;
+	CellRender *mCellRender;
 };
 
 class XExtEdit : public XComponent {
@@ -215,7 +224,54 @@ protected:
 	bool mEnableBorder;
 };
 
+class XListModel {
+public:
+	struct ItemData {
+		char *mText;
+		bool mSelectable;
+		bool mSelected;
+	};
+	virtual int getItemCount() = 0;
+	virtual int getItemHeight(int item) = 0;
+	virtual ItemData *getItemData(int item) = 0;
+	virtual bool isMouseTrack() = 0;
+};
+
+class XExtList : public XExtScroll {
+public:
+	class ItemRender {
+	public:
+		virtual void onDraw(HDC dc, int item, int x, int y, int w, int h) = 0;
+	};
+	XExtList(XmlNode *node);
+	void setModel(XListModel *model);
+	void setItemRender(ItemRender *render);
+	virtual ~XExtList();
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	virtual SIZE calcDataSize();
+	SIZE getClientSize();
+	virtual void moveChildrenPos( int dx, int dy );
+	virtual void drawData( HDC memDc, int x, int y,  int w, int h );
+	virtual void drawItem(HDC dc, int item, int x, int y, int w, int h);
+	void getVisibleRows(int *from, int *to);
+	int findItem(int x, int y);
+	void updateTrackItem(int x, int y);
+protected:
+	XListModel *mModel;
+	ItemRender *mItemRender;
+	XImage *mBuffer;
+	SIZE mDataSize;
+	int mMouseTrackItem;
+	HBRUSH mSelectBgBrush;
+};
+
+
 class XExtComboBox : public XComponent {
 public:
 	XExtComboBox(XmlNode *node);
+protected:
+	XExtEdit *mEdit;
 };

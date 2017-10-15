@@ -31,31 +31,31 @@ public:
 		WM_NOTIFY_SELF,
 		WM_MOUSEWHEEL_BUBBLE,
 		WM_LBUTTONDOWN_BUTTLE,
+		WM_EXT_LIST_CLICK_ITEM  // wParam is click item index, my be -1
 	};
 	XComponent(XmlNode *node);
 	static void init();
 	static HINSTANCE getInstance();
-	virtual void createWnd();
-	void createWndTree(HWND parent);
+	static int getSpecSize(int sizeSpec);
+	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
+	virtual void createWnd();
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
 	virtual void layout(int x, int y, int width, int height);
 	virtual void mesureChildren(int widthSpec, int heighSpec);
-	static int getSpecSize(int sizeSpec);
-	static int calcSize(int selfSizeSpec, int parentSizeSpec);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result); // return true: has deal
+	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+	void createWndTree(HWND parent);
 	HWND getWnd();
 	XmlNode *getNode() {return mNode;}
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result); // return true: has deal
 	XComponent* findById(const char *id);
 	XComponent* getChildById(const char *id);
 	XComponent* getChildById(DWORD wndId);
 	XComponent* getChild(int idx);
 	void setListener(XListener *v);
 	XListener* getListener();
-	static DWORD generateWndId();
-	virtual bool onCtrlColor(HDC dc, LRESULT *result);
 
 	int getMesureWidth();
 	int getMesureHeight();
@@ -63,14 +63,15 @@ public:
 	int getAttrY();
 	int getAttrWeight();
 	int *getAttrMargin();
-
-	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual ~XComponent();
 protected:
+	virtual bool onCtrlColor(HDC dc, LRESULT *result);
+	static DWORD generateWndId();
 	void parseAttrs();
 	void applyAttrs();
 	HWND getParentWnd();
 	HFONT getFont();
+protected:
 	DWORD mID;
 	HWND mWnd, mParentWnd;
 	XmlNode *mNode;
@@ -213,11 +214,11 @@ protected:
 class XTab : public XComponent {
 public:
 	XTab(XmlNode *node);
+protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
-protected:
 	WNDPROC mOldWndProc;
 };
 class XListBox : public XBasicWnd {
@@ -235,34 +236,36 @@ public:
 class XWindow : public XComponent {
 public:
 	XWindow(XmlNode *node);
+	virtual int messageLoop();
+	virtual void show(int nCmdShow);
+protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
-	virtual int messageLoop();
-	virtual void show(int nCmdShow);
 };
 
 // only has one child
 class XDialog : public XComponent {
 public:
 	XDialog(XmlNode *node);
+	int showModal();
+	void close(int nRet);
+protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
-	int showModal();
-	void close(int nRet);
 };
 
 // every time: only has one visible child; but can has many invisible child
 class XScroll : public XComponent {
 public:
 	XScroll(XmlNode *node);
+protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
-protected:
 	void moveChildrenPos(int dx, int dy);
 };
 
