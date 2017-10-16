@@ -3,11 +3,23 @@
 #include <ctype.h>
 #include "XComponent.h"
 
+static char *DupString(const char *str) {
+	if (str != NULL) {
+		char *s = (char *)malloc(strlen(str) + 1);
+		strcpy(s, str);
+		return s;
+	}
+	return NULL;
+}
+
 XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mName = name;
 	mParent = parent;
 	mComponent = NULL;
 	mParser = NULL;
+	mDefaultNode = NULL;
+	mHasCopyedDefault = false;
+	mSelfAttrNum = 0;
 }
 
 char * XmlNode::getName() {
@@ -24,16 +36,19 @@ XmlNode* XmlNode::getChild( int idx ) {
 }
 
 int XmlNode::getAttrsCount() {
+	copyDefault();
 	return mAttrs.size();
 }
 
 XmlNode::Attr* XmlNode::getAttr( int idx ) {
+	copyDefault();
 	if (idx >= getAttrsCount())
 		return NULL;
 	return & mAttrs.at(idx);
 }
 
 char * XmlNode::getAttrValue( const char *name ) {
+	copyDefault();
 	if (name == NULL) 
 		return NULL;
 	for (int i = 0; i < mAttrs.size(); ++i) {
@@ -53,6 +68,7 @@ void XmlNode::addAttr( char *name, char *val ) {
 	a.mName = name;
 	a.mValue = val;
 	mAttrs.push_back(a);
+	++mSelfAttrNum;
 }
 
 XmlNode::~XmlNode() {
@@ -60,6 +76,9 @@ XmlNode::~XmlNode() {
 	if (mParser != NULL)
 		delete mParser;
 	mParser = NULL;
+	for (int i = mSelfAttrNum; i < mAttrs.size(); ++i) {
+		free(mAttrs[i].mValue);
+	}
 }
 
 void XmlNode::print(int step) {
@@ -108,6 +127,28 @@ XmlNode* XmlNode::getChildById( const char *id ) {
 	}
 	return NULL;
 }
+XmlNode* XmlNode::getRoot() {
+	XmlNode *n = this;
+	while (n->mParent) n = n->mParent;
+	return n;
+}
+
+void XmlNode::copyDefault() {
+	if (mHasCopyedDefault) return;
+	mHasCopyedDefault = true;
+	XmlNode* root = getRoot();
+	if (root->mDefaultNode == NULL || mName == NULL) 
+		return;
+	std::map<std::string, XmlNode*>::iterator it = root->mDefaultNode->find(mName);
+	if (it != root->mDefaultNode->end()) {
+		XmlNode *cc = it->second;
+		for (int i = 0; i < cc->mAttrs.size(); ++i) {
+			Attr a = cc->mAttrs[i];
+			a.mValue = DupString(a.mValue);
+			mAttrs.push_back(a);
+		}
+	}
+}
 
 //----------------------------XmlParser---------------------
 XmlParser::XmlParser() {
@@ -142,6 +183,8 @@ void XmlParser::parseString( const char *xml, int xmlLen) {
 	doParse();
 	// replace all include node
 	replaceAllIncludeNode(mRoot);
+	// deal the root default node
+	dealDefaultNode(mRoot);
 }
 
 static char *ReadFileContent(const char *path, int *pLen) {
@@ -425,6 +468,19 @@ void XmlParser::replaceAllIncludeNode( XmlNode *n ) {
 			--i;
 		} else {
 			replaceAllIncludeNode(child);
+		}
+	}
+}
+
+void XmlParser::dealDefaultNode( XmlNode * root ) {
+	root->mDefaultNode = new std::map<std::string, XmlNode*>();
+	for (int i = root->mChildren.size() - 1; i >= 0; --i) {
+		XmlNode *child = root->mChildren.at(i);
+		if (strcmp(child->mName, "default") == 0) {
+			root->mChildren.erase(root->mChildren.begin() + i);
+			char *clazz = child->getAttrValue("class");
+			if (clazz == NULL) continue;
+			(*root->mDefaultNode)[clazz] = child;
 		}
 	}
 }

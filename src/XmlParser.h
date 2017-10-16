@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#include <map>
+#include <string>
 #include <windows.h>
 class XComponent;
 class XmlParser;
@@ -27,7 +29,8 @@ public:
 
 	XmlNode* findById(const char *id);
 	XmlNode* getChildById(const char *id);
-
+	XmlNode* getRoot();
+	void copyDefault();
 	void print(int step);
 	~XmlNode();
 protected:
@@ -37,6 +40,9 @@ protected:
 	XmlNode *mParent;
 	XComponent *mComponent;
 	XmlParser *mParser;
+	std::map<std::string, XmlNode*> *mDefaultNode;
+	bool mHasCopyedDefault;
+	int mSelfAttrNum;
 	friend class XmlParser;
 };
 
@@ -60,6 +66,7 @@ protected:
 	int nextWord();
 	void replaceIncludeNode(XmlNode *n);
 	void replaceAllIncludeNode(XmlNode *n);
+	void dealDefaultNode( XmlNode * root );
 	char *mXml;
 	char *mError;
 	XmlNode *mRoot;

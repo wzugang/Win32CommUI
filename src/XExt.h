@@ -268,7 +268,6 @@ protected:
 	HBRUSH mSelectBgBrush;
 };
 
-
 class XExtComboBox : public XComponent {
 public:
 	XExtComboBox(XmlNode *node);

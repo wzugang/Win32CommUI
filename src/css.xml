@@ -1,4 +1,6 @@
 
+	<default class="ExtButton" ...attrs... />  顶层结点都可以有多个 <default > 结点, 表示默认属性
+
 	<Component  id="xxx"
 				rect="x y width height"
 				font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" 
