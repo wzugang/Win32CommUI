@@ -14,6 +14,17 @@ public:
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret) = 0;
 };
 
+class XPopupManager {
+public:
+	static XPopupManager* getInstance();
+	void setPopupWnd(HWND wnd);
+	HWND getPopupWnd();
+	bool hasPopupShowing();
+private:
+	XPopupManager();
+	HWND mWnd;
+};
+
 class XComponent {
 public:
 	enum SizeSpec {
@@ -30,8 +41,9 @@ public:
 		WM_COMMAND_SELF = 0x6000,
 		WM_NOTIFY_SELF,
 		WM_MOUSEWHEEL_BUBBLE,
-		WM_LBUTTONDOWN_BUTTLE,
-		WM_EXT_LIST_CLICK_ITEM  // wParam is click item index, my be -1
+		WM_LBUTTONDOWN_BUBBLE,
+		WM_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
+		WM_EXT_POPUP_CANCELED, // canceled to close popup
 	};
 	XComponent(XmlNode *node);
 	static void init();
@@ -63,6 +75,7 @@ public:
 	int getAttrY();
 	int getAttrWeight();
 	int *getAttrMargin();
+	void setBgColor(COLORREF c);
 	virtual ~XComponent();
 protected:
 	virtual bool onCtrlColor(HDC dc, LRESULT *result);
@@ -71,6 +84,7 @@ protected:
 	void applyAttrs();
 	HWND getParentWnd();
 	HFONT getFont();
+	static bool bubbleMsg(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 protected:
 	DWORD mID;
 	HWND mWnd, mParentWnd;

@@ -141,6 +141,10 @@ void InitMyList() {
 	XExtList *table = (XExtList*)win->findById("list_1");
 	MyListModel *model = new MyListModel();
 	table->setModel(model);
+
+	XExtComboBox *box = (XExtComboBox*)win->findById("combox_1");
+	table = box->getExtList();
+	table->setModel(model);
 }
 void InitMyTree() {
 	XTree * t = (XTree*) win->findById("my-tree");

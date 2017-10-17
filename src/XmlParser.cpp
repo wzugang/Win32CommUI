@@ -669,6 +669,10 @@ int AttrUtils::parseSize(const char *str) {
 
 void AttrUtils::parseArraySize(const char *str, int *arr, int arrNum) {
 	for (int i = 0; i < arrNum; ++i) {
+		arr[i] = 0 | XComponent::MS_FIX;
+	}
+	if (str == NULL) return;
+	for (int i = 0; i < arrNum; ++i) {
 		while (*str == ' ') ++str;
 		arr[i] = parseSize(str);
 		while (*str != ' ' && *str) ++str;
@@ -730,6 +734,11 @@ std::vector<char*> AttrUtils::splitBy( char *data, char splitChar) {
 		if (p == NULL) break;
 	}
 	return arr;
+}
+
+bool AttrUtils::parseBool( char *str ) {
+	if (str == NULL) return false;
+	return strcmp(str, "true") == 0;
 }
 
 ResPath::ResPath() {

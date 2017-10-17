@@ -14,6 +14,7 @@ extern void MyRegisterClass(HINSTANCE ins, const char *className);
 //--------------------XExtComponent-------------------------------------
 XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mBgImageForParnet = NULL;
+	mEnableFocus = true;
 }
 
 bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -61,6 +62,9 @@ XExtComponent::~XExtComponent() {
 		delete mBgImageForParnet;
 		mBgImageForParnet = NULL;
 	}
+}
+void XExtComponent::setEnableFocus( bool enable ) {
+	mEnableFocus = enable;
 }
 
 //--------------------XExtLabel-------------------------------------
@@ -141,7 +145,7 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		mIsMouseLeave = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		SetCapture(mWnd);
-		SetFocus(mWnd);
+		if (mEnableFocus) SetFocus(mWnd);
 		return true;
 	} else if (msg == WM_LBUTTONUP) {
 		bool md = mIsMouseDown;
@@ -451,7 +455,6 @@ int XScrollBar::getThumbSize() {
 	if (mHorizontal) return mThumbRect.bottom;
 	return mThumbRect.right;
 }
-
 void XScrollBar::setImages( XImage *track, XImage *thumb ) {
 	mTrack = track;
 	mThumb = thumb;
@@ -544,9 +547,8 @@ bool XExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 			return true;
 		}
 		return true;
-	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUTTLE) {
-		SetFocus(mWnd);
-		// SetFocus(NULL);
+	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUBBLE) {
+		if (mEnableFocus) SetFocus(mWnd);
 		return true;
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
@@ -580,6 +582,12 @@ XExtScroll::~XExtScroll() {
 	delete mVerNode;
 	delete mHorBar;
 	delete mVerBar;
+}
+XScrollBar* XExtScroll::getHorBar() {
+	return mHorBar;
+}
+XScrollBar* XExtScroll::getVerBar() {
+	return mVerBar;
 }
 //-------------------XExtPopup-------------------------------
 XExtPopup::XExtPopup( XmlNode *node ) : XComponent(node) {
@@ -643,6 +651,7 @@ int XExtPopup::messageLoop() {
 				POINT pt;
 				GetCursorPos(&pt);
 				if (! PtInRect(&popupRect, pt)) { // click on other window
+					SendMessage(mWnd, WM_EXT_POPUP_CANCELED, 0, 0);
 					break;
 				}
 			} else if (msg.message == WM_QUIT) {
@@ -665,11 +674,17 @@ void XExtPopup::show( int x, int y ) {
 	UpdateWindow(mWnd);
 	messageLoop();
 }
-
+void XExtPopup::showNoSize(int screenX, int screenY) {
+	SetWindowPos(mWnd, 0, screenX, screenY, 0, 0, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOSIZE);
+	UpdateWindow(mWnd);
+	messageLoop();
+}
 void XExtPopup::close() {
 	ShowWindow(mWnd, SW_HIDE);
 }
+void XExtPopup::disableChildrenFocus() {
 
+}
 XExtPopup::~XExtPopup() {
 	if (mWnd) DestroyWindow(mWnd);
 }
@@ -722,7 +737,7 @@ bool XExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
-		SetFocus(mWnd);
+		if (mEnableFocus) SetFocus(mWnd);
 		int col = 0;
 		int row = findCell((short)LOWORD(lParam), (short)HIWORD(lParam), &col);
 		if (mSelectedRow != row) {
@@ -795,7 +810,7 @@ void XExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
 		if (mCellRender == NULL) {
 			drawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
 		} else {
-			mCellRender->onDraw(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
+			mCellRender->onDrawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
 		}
 		x += mColsWidth[i];
 	}
@@ -949,13 +964,13 @@ XExtTable::~XExtTable() {
 	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
 //----------------------------XExtEdit---------------------
-XExtEdit::XExtEdit( XmlNode *node ) : XComponent(node) {
+XExtEdit::XExtEdit( XmlNode *node ) : XExtComponent(node) {
 	mText = NULL;
 	mCapacity = 0;
 	mLen = 0;
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
-	mReadOnly = false;
+	mReadOnly = AttrUtils::parseBool(mNode->getAttrValue("readOnly"));
 	insertText(0, mNode->getAttrValue("text"));
 	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xBF, 0x3E, 0xFF));
 	mCaretShowing = false;
@@ -963,6 +978,7 @@ XExtEdit::XExtEdit( XmlNode *node ) : XComponent(node) {
 	mBorderPen = CreatePen(PS_SOLID, 1, RGB(0xAD, 0xAD, 0xAD));
 	mFocusBorderPen = CreatePen(PS_SOLID, 1, RGB(0xEE, 0x30, 0xA7));
 	mEnableBorder = false;
+	mEnableShowCaret = true;
 }
 bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
 	if (msg == WM_CHAR || msg == WM_IME_CHAR) {
@@ -970,8 +986,8 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
 		SetCapture(mWnd);
+		if (mEnableFocus) SetFocus(mWnd);
 		onLButtonDown(wParam, (short)lParam, (short)(lParam >> 16));
-		SetFocus(mWnd);
 		return true;
 	} else if (msg == WM_LBUTTONUP) {
 		ReleaseCapture();
@@ -992,7 +1008,7 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 		onKeyDown(wParam);
 		return true;
 	} else if (msg == WM_SETFOCUS) {
-		SetTimer(mWnd, 0x1000, 500, NULL);
+		if (mEnableShowCaret) SetTimer(mWnd, 0x1000, 500, NULL);
 		return true;
 	} else if (msg == WM_KILLFOCUS) {
 		mCaretShowing = false;
@@ -1302,6 +1318,13 @@ void XExtEdit::copy() {
 void XExtEdit::setEnableBorder( bool enable ) {
 	mEnableBorder = enable;
 }
+void XExtEdit::setReadOnly( bool r ) {
+	mReadOnly = r;
+}
+void XExtEdit::setEnableShowCaret( bool enable ) {
+	mEnableShowCaret = enable;
+}
+
 //----------------------------XExtList---------------------
 XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
 	mModel = NULL;
@@ -1344,7 +1367,7 @@ bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
-		SetFocus(mWnd);
+		if (mEnableFocus) SetFocus(mWnd);
 		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
 		SendMessage(mWnd, WM_EXT_LIST_CLICK_ITEM, idx, 0);
 		return true;
@@ -1434,7 +1457,7 @@ void XExtList::drawData( HDC memDc, int x, int y, int w, int h ) {
 		if (mItemRender == NULL) {
 			drawItem(memDc, i, x, y, w - x, rh);
 		} else {
-			mItemRender->onDraw(memDc, i, x, y, w - x, rh);
+			mItemRender->onDrawItem(memDc, i, x, y, w - x, rh);
 		}
 		y += rh;
 	}
@@ -1495,4 +1518,129 @@ void XExtList::updateTrackItem( int x, int y ) {
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
 	}
+}
+//------------------------------XExtComboBox--------------------
+XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
+	mEditNode = new XmlNode(NULL, mNode);
+	mPopupNode = new XmlNode(NULL, mNode->getRoot());
+	mListNode = new XmlNode(NULL, mPopupNode);
+	mEdit = new XExtEdit(mEditNode);
+	mPopup = new XExtPopup(mPopupNode);
+	// mPopup->setBgColor(RGB(0xF5, 0xFF, 0xFA));
+	mPopupNode->setComponent(mPopup);
+	mList = new XExtList(mListNode);
+	mListNode->setComponent(mList);
+	mList->setBgColor(RGB(0xF5, 0xFF, 0xFA));
+	mPopup->setListener(this);
+	mList->setListener(this);
+	mList->setEnableFocus(false);
+
+	mArrowRect.left = mArrowRect.top = 0;
+	mArrowRect.right = mArrowRect.bottom = 0;
+	mAttrArrowSize.cx = mAttrArrowSize.cy = 0;
+	AttrUtils::parseArraySize(mNode->getAttrValue("arrowSize"), (int *)&mAttrArrowSize, 2);
+	mAttrPopupSize.cx = mAttrPopupSize.cy = 0;
+	AttrUtils::parseArraySize(mNode->getAttrValue("popupSize"), (int *)&mAttrPopupSize, 2);
+	mEdit->setReadOnly(AttrUtils::parseBool(mNode->getAttrValue("readOnly")));
+	mEnableEditor = false;
+
+	mArrowNormalImage = XImage::load(mNode->getAttrValue("arrowNormal"));
+	mArrowDownImage = XImage::load(mNode->getAttrValue("arrowDown"));
+	mBoxRender = NULL;
+	mPoupShow = false;
+
+	mList->getHorBar()->setImages(XImage::load(mNode->getAttrValue("hbarTrack")), XImage::load(mNode->getAttrValue("hbarThumb")));
+	mList->getVerBar()->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
+}
+bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
+	return false;
+}
+bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		if (! mEnableEditor) {
+			if (mBoxRender != NULL)
+				mBoxRender->onDrawBox(dc, 0, 0, mArrowRect.left, mHeight);
+			else
+				drawBox(dc, 0, 0, mArrowRect.left, mHeight);
+		}
+		// draw arrow
+		XImage *img = mPoupShow ? mArrowDownImage : mArrowNormalImage;
+		if (img != NULL && img->getHBitmap() != NULL) {
+			HDC memDc = CreateCompatibleDC(dc);
+			SelectObject(memDc, img->getHBitmap());
+			if (img->hasAlphaChannel())  {
+				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, (mArrowRect.right - mArrowRect.left), 
+					(mArrowRect.bottom - mArrowRect.top), memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
+			} else {
+				StretchBlt(dc, mArrowRect.left, mArrowRect.top, (mArrowRect.right - mArrowRect.left), 
+					(mArrowRect.bottom - mArrowRect.top), memDc, 0, 0, img->getWidth(), img->getHeight(), SRCCOPY);
+			}
+			DeleteObject(memDc);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		if (mEnableFocus) SetFocus(mWnd);
+		SetCapture(mWnd);
+		return true;
+	} else if (msg == WM_LBUTTONUP) {
+		ReleaseCapture();
+		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
+		RECT r = {0, 0, mWidth, mHeight};
+		if (mEnableEditor) r = mArrowRect;
+		if (PtInRect(&r, pt)) {
+			openPopup();
+		}
+		return true;
+	}
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
+}
+void XExtComboBox::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	int aw = calcSize(mAttrArrowSize.cx, mMesureWidth | MS_ATMOST);
+	int ah = calcSize(mAttrArrowSize.cy, mMesureHeight | MS_ATMOST);
+	mArrowRect.left = mMesureWidth - aw;
+	mArrowRect.right = mMesureWidth;
+	mArrowRect.top = (mMesureHeight - ah) / 2;
+	mArrowRect.bottom = mArrowRect.top + ah;
+	mEdit->onMeasure((mMesureWidth - aw) | MS_FIX, mMesureHeight | MS_FIX);
+	int pw = calcSize(mAttrPopupSize.cx, mMesureWidth | MS_ATMOST);
+	int ph = calcSize(mAttrPopupSize.cy, mMesureHeight | MS_ATMOST);
+	mPopup->onMeasure(pw | MS_FIX, ph | MS_FIX);
+	mList->onMeasure(pw | MS_FIX, ph | MS_FIX);
+}
+void XExtComboBox::onLayout( int width, int height ) {
+	mEdit->layout(0, 0, mEdit->getMesureWidth(), mEdit->getMesureHeight());
+	mPopup->layout(0, 0, mPopup->getMesureWidth(), mPopup->getMesureHeight());
+	mList->layout(0, 0, mList->getMesureWidth(), mList->getMesureHeight());
+}
+void XExtComboBox::createWnd() {
+	XExtComponent::createWnd();
+	mEdit->createWnd();
+	mPopup->createWnd();
+	mList->createWnd();
+	WND_HIDE(mEdit->getWnd());
+}
+void XExtComboBox::setEnableEditor( bool enable ) {
+	mEnableEditor = enable;
+	if (enable) WND_SHOW(mEdit->getWnd());
+	else WND_HIDE(mEdit->getWnd());
+}
+XExtList * XExtComboBox::getExtList() {
+	return mList;
+}
+void XExtComboBox::setBoxRender( BoxRender *r ) {
+	mBoxRender = r;
+}
+void XExtComboBox::drawBox( HDC dc, int x, int y, int w, int h ) {
+
+}
+void XExtComboBox::openPopup() {
+	POINT pt = {0, mHeight};
+	ClientToScreen(mWnd, &pt);
+	mPopup->showNoSize(pt.x, pt.y);
 }

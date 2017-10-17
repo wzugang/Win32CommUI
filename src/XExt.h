@@ -6,10 +6,12 @@ public:
 	XExtComponent(XmlNode *node);
 	virtual void layout(int x, int y, int width, int height);
 	virtual ~XExtComponent();
+	void setEnableFocus(bool enable);
 protected:
 	void eraseBackground(HDC dc);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	XImage *mBgImageForParnet;
+	bool mEnableFocus;
 };
 
 class XExtLabel : public XExtComponent {
@@ -100,11 +102,14 @@ class XExtScroll : public XExtComponent {
 public:
 	XExtScroll(XmlNode *node);
 	virtual ~XExtScroll();
-protected:
+	XScrollBar* getHorBar();
+	XScrollBar* getVerBar();
+
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
+protected:
 	virtual SIZE calcDataSize();
 	virtual void moveChildrenPos( int x, int y );
 	void invalide(XComponent *c);
@@ -115,14 +120,17 @@ protected:
 class XExtPopup : public XComponent {
 public:
 	XExtPopup(XmlNode *node);
-	virtual void show(int x, int y);
+	virtual void show(int screenX, int screenY);
+	virtual void showNoSize(int screenX, int screenY);
 	virtual void close();
+	void disableChildrenFocus();
 	virtual ~XExtPopup();
-protected:
+
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onLayout(int width, int height);
 	virtual int messageLoop();
+protected:
 	bool mMsgLooping;
 };
 
@@ -146,7 +154,7 @@ class XExtTable : public XExtScroll {
 public:
 	class CellRender {
 	public:
-		virtual void onDraw(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
+		virtual void onDrawCell(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
 	};
 	enum Attr {
 		ATTR_HAS_HEADER = 1,
@@ -185,10 +193,12 @@ protected:
 	CellRender *mCellRender;
 };
 
-class XExtEdit : public XComponent {
+class XExtEdit : public XExtComponent {
 public:
 	XExtEdit(XmlNode *node);
 	void setEnableBorder(bool enable);
+	void setReadOnly(bool r);
+	void setEnableShowCaret(bool enable);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void onChar(wchar_t ch);
@@ -222,6 +232,7 @@ protected:
 	int mScrollPos;
 	HPEN mBorderPen, mFocusBorderPen;
 	bool mEnableBorder;
+	bool mEnableShowCaret;
 };
 
 class XListModel {
@@ -241,16 +252,17 @@ class XExtList : public XExtScroll {
 public:
 	class ItemRender {
 	public:
-		virtual void onDraw(HDC dc, int item, int x, int y, int w, int h) = 0;
+		virtual void onDrawItem(HDC dc, int item, int x, int y, int w, int h) = 0;
 	};
 	XExtList(XmlNode *node);
 	void setModel(XListModel *model);
 	void setItemRender(ItemRender *render);
 	virtual ~XExtList();
-protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+
 	virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayout( int width, int height );
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual SIZE calcDataSize();
 	SIZE getClientSize();
 	virtual void moveChildrenPos( int dx, int dy );
@@ -268,9 +280,35 @@ protected:
 	HBRUSH mSelectBgBrush;
 };
 
-class XExtComboBox : public XComponent {
+class XExtComboBox : public XExtComponent, public XListener {
 public:
+	class BoxRender {
+	public:
+		virtual void onDrawBox(HDC dc, int x, int y, int w, int h) = 0;
+	};
 	XExtComboBox(XmlNode *node);
+	void setEnableEditor(bool enable);
+	XExtList *getExtList();
+	void setBoxRender(BoxRender *r);
+
+	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	virtual void createWnd();
+protected:
+	virtual void drawBox(HDC dc, int x, int y, int w, int h);
+	void openPopup();
 protected:
 	XExtEdit *mEdit;
+	XExtPopup *mPopup;
+	XExtList *mList;
+	XmlNode *mEditNode, *mPopupNode, *mListNode;
+	RECT mArrowRect;
+	SIZE mAttrPopupSize;
+	SIZE mAttrArrowSize;
+	bool mEnableEditor;
+	XImage *mArrowNormalImage, *mArrowDownImage;
+	BoxRender *mBoxRender;
+	bool mPoupShow;
 };

@@ -12,6 +12,23 @@
 
 HINSTANCE XComponent::mInstance;
 
+XPopupManager::XPopupManager() {
+	mWnd = NULL;
+}
+XPopupManager* XPopupManager::getInstance() {
+	static XPopupManager *ins = NULL;
+	if (ins == NULL) ins = new XPopupManager();
+	return ins;
+}
+void XPopupManager::setPopupWnd(HWND wnd) {
+	mWnd = wnd;
+}
+HWND XPopupManager::getPopupWnd() {
+	return mWnd;
+}
+bool XPopupManager::hasPopupShowing() {
+	return mWnd != NULL;
+}
 void MyRegisterClass(HINSTANCE ins, const char *className) {
 	static std::map<std::string, bool> sCache;
 	if (sCache.find(className) != sCache.end())
@@ -44,38 +61,56 @@ LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM
 	} else {
 		cc = (XComponent *)GetWindowLong(wnd, GWL_USERDATA);
 	}
-	if (cc != NULL) {
-		LRESULT ret = 0;
-		if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam, &ret))
+	if (cc == NULL) goto _end;
+
+	LRESULT ret = 0;
+	// mouse wheel msg to popup
+	if ((msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL)) {
+		POINT pt;
+		GetCursorPos(&pt);
+		HWND ptWnd = WindowFromPoint(pt);
+		XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
+		if (pc != NULL && pc != cc) {
+			bubbleMsg(WM_MOUSEWHEEL_BUBBLE, wParam, lParam, &ret);
 			return ret;
-		if (cc->wndProc(msg, wParam, lParam, &ret))
-			return ret;
-		// bubble mouse wheel, mouse down msg
-		if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL || msg == WM_LBUTTONDOWN) {
-			POINT pt;
-			GetCursorPos(&pt);
-			HWND ptWnd = WindowFromPoint(pt);
-			XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
-			XmlNode *node = pc != NULL ? pc->getNode() : NULL;
-			UINT bmsg = 0;
-			switch (msg) {
-			case WM_MOUSEWHEEL:
-			case WM_MOUSEHWHEEL:
-				bmsg = WM_MOUSEWHEEL_BUBBLE;break;
-			case WM_LBUTTONDOWN:
-				bmsg = WM_LBUTTONDOWN_BUTTLE;break;
-			}
-			while (node != NULL) {
-				XComponent *x = node->getComponent();
-				if (x == NULL) break;
-				if (x->wndProc(bmsg, wParam, lParam, &ret))
-					return ret;
-				node = node->getParent();
-			}
 		}
+	}
+	if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam, &ret))
+		return ret;
+	if (cc->wndProc(msg, wParam, lParam, &ret))
+		return ret;
+	// bubble mouse wheel, mouse down msg
+	if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL || msg == WM_LBUTTONDOWN) {
+		UINT bmsg = 0;
+		switch (msg) {
+		case WM_MOUSEWHEEL:
+		case WM_MOUSEHWHEEL:
+			bmsg = WM_MOUSEWHEEL_BUBBLE;break;
+		case WM_LBUTTONDOWN:
+			bmsg = WM_LBUTTONDOWN_BUBBLE;break;
+		}
+		bubbleMsg(bmsg, wParam, lParam, &ret);
+		return ret;
 	}
 	_end:
 	return DefWindowProc(wnd, msg, wParam, lParam);
+}
+
+bool XComponent::bubbleMsg(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+	POINT pt;
+	GetCursorPos(&pt);
+	HWND ptWnd = WindowFromPoint(pt);
+	XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
+	XmlNode *node = pc != NULL ? pc->getNode() : NULL;
+	
+	while (node != NULL) {
+		XComponent *x = node->getComponent();
+		if (x == NULL) break;
+		if (x->wndProc(msg, wParam, lParam, result))
+			return true;
+		node = node->getParent();
+	}
+	return false;
 }
 
 XComponent::XComponent(XmlNode *node) {
@@ -394,7 +429,10 @@ int XComponent::getAttrWeight() {
 int * XComponent::getAttrMargin() {
 	return mAttrMargin;
 }
-
+void XComponent::setBgColor(COLORREF c) {
+	mAttrFlags |= AF_BG_COLOR;
+	mAttrBgColor = c;
+}
 //--------------------------XAbsLayout-----------------------------
 XAbsLayout::XAbsLayout( XmlNode *node ) : XComponent(node) {
 }
@@ -982,7 +1020,7 @@ bool XScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 			return true;
 		}
 		return true;
-	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUTTLE) {
+	} else if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDOWN_BUBBLE) {
 		SetFocus(mWnd);
 		return true;
 	}
