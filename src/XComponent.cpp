@@ -64,17 +64,6 @@ LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM
 	if (cc == NULL) goto _end;
 
 	LRESULT ret = 0;
-	// mouse wheel msg to popup
-	if ((msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL)) {
-		POINT pt;
-		GetCursorPos(&pt);
-		HWND ptWnd = WindowFromPoint(pt);
-		XComponent *pc = (XComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
-		if (pc != NULL && pc != cc) {
-			bubbleMsg(WM_MOUSEWHEEL_BUBBLE, wParam, lParam, &ret);
-			return ret;
-		}
-	}
 	if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam, &ret))
 		return ret;
 	if (cc->wndProc(msg, wParam, lParam, &ret))

@@ -643,7 +643,7 @@ int XExtPopup::messageLoop() {
 		if (GetForegroundWindow() != mWnd && GetForegroundWindow() != ownerWnd) {
 			break;
 		}
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+		if (GetMessage(&msg, NULL, 0, 0)) {
 			if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
 				// transfer the message to menu window
 				msg.hwnd = mWnd;
@@ -657,8 +657,6 @@ int XExtPopup::messageLoop() {
 			} else if (msg.message == WM_QUIT) {
 				break;
 			}
-		} else {
-			MsgWaitForMultipleObjects(0, 0, 0, 10, QS_ALLINPUT);
 		}
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -1549,8 +1547,14 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mBoxRender = NULL;
 	mPoupShow = false;
 
-	mList->getHorBar()->setImages(XImage::load(mNode->getAttrValue("hbarTrack")), XImage::load(mNode->getAttrValue("hbarThumb")));
-	mList->getVerBar()->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
+	XImage *track = XImage::load(mNode->getAttrValue("hbarTrack"));
+	XImage *thumb = XImage::load(mNode->getAttrValue("hbarThumb"));
+	if (track != NULL && thumb != NULL) 
+		mList->getHorBar()->setImages(track, thumb);
+	track = XImage::load(mNode->getAttrValue("vbarTrack"));
+	thumb = XImage::load(mNode->getAttrValue("vbarThumb"));
+	if (track != NULL && thumb != NULL) 
+		mList->getVerBar()->setImages(track, thumb);
 }
 bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
 	return false;
