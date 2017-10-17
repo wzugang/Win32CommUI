@@ -256,6 +256,7 @@ public:
 	};
 	XExtList(XmlNode *node);
 	void setModel(XListModel *model);
+	XListModel *getModel();
 	void setItemRender(ItemRender *render);
 	virtual ~XExtList();
 
@@ -290,6 +291,7 @@ public:
 	void setEnableEditor(bool enable);
 	XExtList *getExtList();
 	void setBoxRender(BoxRender *r);
+	int getSelectItem();
 
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -311,4 +313,5 @@ protected:
 	XImage *mArrowNormalImage, *mArrowDownImage;
 	BoxRender *mBoxRender;
 	bool mPoupShow;
+	int mSelectItem;
 };

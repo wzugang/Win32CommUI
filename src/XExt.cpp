@@ -657,9 +657,9 @@ int XExtPopup::messageLoop() {
 			} else if (msg.message == WM_QUIT) {
 				break;
 			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
 	}
 	ShowWindow(mWnd, SW_HIDE);
 	return 0;
@@ -1490,6 +1490,9 @@ void XExtList::getVisibleRows( int *from, int *to ) {
 void XExtList::setModel( XListModel *model ) {
 	mModel = model;
 }
+XListModel *XExtList::getModel() {
+	return mModel;
+}
 void XExtList::setItemRender( ItemRender *render ) {
 	mItemRender = render;
 }
@@ -1555,8 +1558,16 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	thumb = XImage::load(mNode->getAttrValue("vbarThumb"));
 	if (track != NULL && thumb != NULL) 
 		mList->getVerBar()->setImages(track, thumb);
+	mSelectItem = -1;
 }
 bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
+	if (msg == WM_EXT_LIST_CLICK_ITEM) {
+		mSelectItem = wParam;
+		mPopup->close();
+		InvalidateRect(mWnd, NULL, TRUE);
+		UpdateWindow(mWnd);
+		return true;
+	}
 	return false;
 }
 bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -1641,10 +1652,21 @@ void XExtComboBox::setBoxRender( BoxRender *r ) {
 	mBoxRender = r;
 }
 void XExtComboBox::drawBox( HDC dc, int x, int y, int w, int h ) {
-
+	if (mSelectItem == -1 || mList->getModel() == NULL)
+		return;
+	XListModel::ItemData *data = mList->getModel()->getItemData(mSelectItem);
+	if (data == NULL || data->mText == NULL)
+		return;
+	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
+	RECT r = {x + 10, y, x + w, y + h};
+	DrawText(dc, data->mText, strlen(data->mText), &r, DT_VCENTER | DT_SINGLELINE);
 }
 void XExtComboBox::openPopup() {
 	POINT pt = {0, mHeight};
 	ClientToScreen(mWnd, &pt);
 	mPopup->showNoSize(pt.x, pt.y);
+}
+int XExtComboBox::getSelectItem() {
+	return mSelectItem;
 }
