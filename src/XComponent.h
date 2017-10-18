@@ -59,7 +59,7 @@ public:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result); // return true: has deal
 	static LRESULT CALLBACK __WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-	void createWndTree(XComponent *parent);
+	void createWndTree();
 	HWND getWnd();
 	XmlNode *getNode() {return mNode;}
 	XComponent* findById(const char *id);

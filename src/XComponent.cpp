@@ -142,15 +142,11 @@ void XComponent::createWnd() {
 	applyAttrs();
 }
 
-void XComponent::createWndTree(XComponent *parent) {
-	if (parent) {
-		mParentWnd = parent->getWnd();
-		mNode->setParent(parent->getNode());
-	}
+void XComponent::createWndTree() {
 	createWnd();
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *cc = mNode->getChild(i)->getComponent();
-		cc->createWndTree(NULL);
+		cc->createWndTree();
 	}
 }
 

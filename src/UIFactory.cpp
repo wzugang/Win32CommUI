@@ -353,7 +353,7 @@ XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, XCo
 	if (root == NULL) return NULL;
 	if (parent) root->setParent(parent->getNode());
 	XComponent *cc = UIFactory::buildComponent(root);
-	cc->createWndTree(parent);
+	cc->createWndTree();
 	return cc;
 }
 
