@@ -15,6 +15,7 @@ public:
 	XmlNode(char *name, XmlNode *parent);
 	char *getName();
 	XmlNode *getParent() {return mParent;}
+	void setParent(XmlNode *parent) {mParent = parent;}
 	int getChildCount();
 	XmlNode* getChild(int idx);
 	void addChild(XmlNode *n);

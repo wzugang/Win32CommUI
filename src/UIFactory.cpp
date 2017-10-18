@@ -348,9 +348,10 @@ XmlNode* UIFactory::buildNode( const char *resPath, const char *partName ) {
 	return rootNode;
 }
 
-XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, HWND parent ) {
+XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, XComponent *parent ) {
 	XmlNode *root = UIFactory::buildNode(resPath, partName);
 	if (root == NULL) return NULL;
+	if (parent) root->setParent(parent->getNode());
 	XComponent *cc = UIFactory::buildComponent(root);
 	cc->createWndTree(parent);
 	return cc;
@@ -380,6 +381,42 @@ void UIFactory::destory( XmlNode *root ) {
 	}
 	delete root->getComponent();
 	delete root;
+}
+static void BuildMenu(XMenuItemList *menu, XmlNode *menuNode) {
+	for (int i = 0; i < menuNode->getChildCount(); ++i) {
+		XmlNode *child = menuNode->getChild(i);
+		XMenuItem *item = new XMenuItem(NULL, NULL);
+		for (int j = 0; j < child->getAttrsCount(); ++i) {
+			XmlNode::Attr *a = child->getAttr(j);
+			if (strcmp(a->mName, "name") == 0) strcpy(item->mName, a->mValue);
+			else if (strcmp(a->mName, "text") == 0) item->mText = a->mValue;
+			else if (strcmp(a->mName, "active") == 0) item->mActive = AttrUtils::parseBool(a->mValue);
+			else if (strcmp(a->mName, "visible") == 0) item->mVisible = AttrUtils::parseBool(a->mValue);
+			else if (strcmp(a->mName, "checkable") == 0) item->mCheckable = AttrUtils::parseBool(a->mValue);
+			else if (strcmp(a->mName, "checked") == 0) item->mChecked = AttrUtils::parseBool(a->mValue);
+			else if (strcmp(a->mName, "separator") == 0) item->mSeparator = AttrUtils::parseBool(a->mValue);
+		}
+		menu->add(item);
+		if (child->getChildCount() > 0) {
+			XMenuItemList *sub = new XMenuItemList();
+			item->mChildren = sub;
+			BuildMenu(sub, child);
+		}
+	}
+}
+
+XMenuItemList * UIFactory::buildMenu( XmlNode *rootMenu ) {
+	if (rootMenu == NULL) return NULL;
+	XMenuItemList *menu = new XMenuItemList();
+	BuildMenu(menu, rootMenu);
+	return menu;
+}
+
+XMenuItemList* UIFactory::fastMenu( const char *resPath, const char *partName ) {
+	XmlNode *root = UIFactory::buildNode(resPath, partName);
+	if (root == NULL) return NULL;
+	XMenuItemList *cc = buildMenu(root);
+	return cc;
 }
 
 static XComponent *XAbsLayout_Creator(XmlNode *n) {return new XAbsLayout(n);}

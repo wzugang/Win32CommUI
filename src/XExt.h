@@ -121,7 +121,6 @@ class XExtPopup : public XComponent {
 public:
 	XExtPopup(XmlNode *node);
 	virtual void show(int screenX, int screenY);
-	virtual void showNoSize(int screenX, int screenY);
 	virtual void close();
 	void disableChildrenFocus();
 	virtual ~XExtPopup();
@@ -318,14 +317,14 @@ protected:
 };
 class XMenuItemList;
 struct XMenuItem {
-	XMenuItem();
+	XMenuItem(const char *name, char *text);
 	char mName[40];
 	char *mText;
 	bool mActive;
 	bool mVisible;
 	bool mCheckable;
 	bool mChecked;
-	bool mSeperator;
+	bool mSeparator;
 	XMenuItemList *mChildren;
 };
 
@@ -345,6 +344,9 @@ protected:
 class XExtMenu : public XExtPopup {
 public:
 	XExtMenu(XmlNode *node);
-
+	void setModel(XMenuItemList *model);
 protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+protected:
+	XMenuItemList *mModel;
 };

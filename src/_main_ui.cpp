@@ -13,6 +13,7 @@ XExtPopup *popup;
 void InitMyTable();
 void InitMyTree();
 void InitMyList();
+void InitMyMenu();
 
 class ButtonListener : public XListener {
 public:
@@ -24,7 +25,7 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", id) == 0) {
-			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "dialog-page", win->getWnd());
+			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "dialog-page", win);
 			dlg->findById("tool_btn_1")->setListener(new ButtonListener());
 			rt = dlg->showModal();
 			UIFactory::destory(dlg->getNode());
@@ -35,7 +36,7 @@ public:
 			return true;
 		}
 		if (strcmp("ext_btn_1", id) == 0) {
-			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win->getWnd());
+			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win);
 			popup->findById("pop_btn_1")->setListener(this);
 			// set window owner
 			// SetWindowLong(popup->getWnd(), GWL_HWNDPARENT, (LONG)win->getWnd());
@@ -159,4 +160,8 @@ void InitMyTree() {
 	(new XTreeNode("You"))->appendTo(n2);
 	n2->insert(1, new XTreeNode("Fine"));
 	root->apply();
+}
+
+void InitMyMenu() {
+
 }

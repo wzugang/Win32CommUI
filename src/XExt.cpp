@@ -645,15 +645,13 @@ int XExtPopup::messageLoop() {
 	return 0;
 }
 
-void XExtPopup::show( int x, int y ) {
-	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), 
+void XExtPopup::show( int screenX, int screenY ) {
+	if (mAttrWidth == 0 || mAttrHeight == 0) {
+		SetWindowPos(mWnd, 0, screenX, screenY, 0, 0, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOSIZE);
+	} else {
+		SetWindowPos(mWnd, 0, screenX, screenY, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), 
 		SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
-	// ShowWindow(mWnd, SW_SHOWNOACTIVATE);
-	UpdateWindow(mWnd);
-	messageLoop();
-}
-void XExtPopup::showNoSize(int screenX, int screenY) {
-	SetWindowPos(mWnd, 0, screenX, screenY, 0, 0, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOSIZE);
+	}
 	UpdateWindow(mWnd);
 	messageLoop();
 }
@@ -1572,13 +1570,15 @@ bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 		if (img != NULL && img->getHBitmap() != NULL) {
 			HDC memDc = CreateCompatibleDC(dc);
 			SelectObject(memDc, img->getHBitmap());
+			int mw = min(mArrowRect.right - mArrowRect.left, img->getWidth());
+			int mh = min(mArrowRect.bottom - mArrowRect.top, img->getHeight());
 			if (img->hasAlphaChannel())  {
 				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, (mArrowRect.right - mArrowRect.left), 
-					(mArrowRect.bottom - mArrowRect.top), memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
+				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, mw, 
+					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
 			} else {
-				StretchBlt(dc, mArrowRect.left, mArrowRect.top, (mArrowRect.right - mArrowRect.left), 
-					(mArrowRect.bottom - mArrowRect.top), memDc, 0, 0, img->getWidth(), img->getHeight(), SRCCOPY);
+				StretchBlt(dc, mArrowRect.left, mArrowRect.top, mw, 
+					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), SRCCOPY);
 			}
 			DeleteObject(memDc);
 		}
@@ -1655,7 +1655,7 @@ void XExtComboBox::openPopup() {
 	mPoupShow = true;
 	InvalidateRect(mWnd, NULL, TRUE);
 	UpdateWindow(mWnd);
-	mPopup->showNoSize(pt.x, pt.y);
+	mPopup->show(pt.x, pt.y);
 }
 int XExtComboBox::getSelectItem() {
 	return mSelectItem;
@@ -1669,17 +1669,17 @@ XExtComboBox::~XExtComboBox() {
 	delete mListNode;
 }
 //--------------------MenuItem--------------------
-XMenuItem::XMenuItem() {
+XMenuItem::XMenuItem(const char *name, char *text) {
 	mName[0] = 0;
-	mText = NULL;
+	mText = text;
 	mActive = true;
 	mChildren = NULL;
-	mSeperator = false;
+	mSeparator = false;
 	mVisible = true;
 	mCheckable = false;
 	mChecked = false;
+	if (name) strcpy(mName, name);
 }
-
 XMenuItemList::XMenuItemList() {
 	mCount = 0;
 	mItems = (XMenuItem **)malloc(sizeof(XMenuItem *) * 50);
@@ -1709,4 +1709,14 @@ XMenuItemList::~XMenuItemList() {
 		delete mItems[i];
 	}
 	free(mItems);
+}
+
+XExtMenu::XExtMenu( XmlNode *node ) : XExtPopup(node) {
+	mModel = NULL;
+}
+bool XExtMenu::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	return XExtPopup::wndProc(msg, wParam, lParam, result);
+}
+void XExtMenu::setModel( XMenuItemList *model ) {
+	mModel = model;
 }
