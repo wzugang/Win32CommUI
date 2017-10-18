@@ -9,7 +9,7 @@
 				margin = "left top right bottom"
 				color="#rrggbb"
 				bgcolor="#rrggbb"
-				bgimage="file://xxx.bmp [x y w h] repeat-x repeat-y | res://..."   路径中不允许出现空格; repeat-x repeat-y为可选
+				bgimage="file://xxx.bmp [x y w h] repeat-x repeat-y stretch 9patch | res://..."   路径(file://xxx.bmp)中不允许出现空格; 路径之后的所有内容为可选
 				visible = "false"
 				roundConer="cx cy"
 				weight="15"  HLineLayout VLineLayout会用到

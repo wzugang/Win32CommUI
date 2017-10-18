@@ -230,28 +230,71 @@ void XImage::draw9Patch( HDC dc, int destX, int destY, int destW, int destH, HDC
 	if (hasAlphaChannel()) {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 		AlphaBlend(dc, destX + destW - mWidth/3, destY, mWidth/3, mHeight/3,
-			memDc, mWidth * 2/3, 0, mWidth/3, mHeight/3, bf);
+			memDc, mWidth-mWidth/3, 0, mWidth/3, mHeight/3, bf);
 	} else {
-		BitBlt(dc, destX + destW - mWidth/3, destY, mWidth/3, mHeight/3, memDc, mWidth * 2/3, 0, SRCCOPY);
+		BitBlt(dc, destX + destW - mWidth/3, destY, mWidth/3, mHeight/3, memDc, mWidth-mWidth/3, 0, SRCCOPY);
 	}
 	// draw left-bottom corner
 	if (hasAlphaChannel()) {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 		AlphaBlend(dc, destX, destY + destH - mHeight/3, mWidth/3, mHeight/3,
-			memDc, 0, mHeight*2/3, mWidth/3, mHeight/3, bf);
+			memDc, 0, mHeight-mHeight/3, mWidth/3, mHeight/3, bf);
 	} else {
-		BitBlt(dc, destX, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, 0, mHeight*2/3, SRCCOPY);
+		BitBlt(dc, destX, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, 0, mHeight-mHeight/3, SRCCOPY);
 	}
 	// draw right-bottom corner
 	if (hasAlphaChannel()) {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 		AlphaBlend(dc, destX + destW - mWidth/3, destY + destH - mHeight/3, mWidth/3, mHeight/3,
-			memDc, mWidth*2/3, mHeight*2/3, mWidth/3, mHeight/3, bf);
+			memDc, mWidth-mWidth/3, mHeight-mHeight/3, mWidth/3, mHeight/3, bf);
 	} else {
-		BitBlt(dc, destX + destW - mWidth/3, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, mWidth*2/3, mHeight*2/3, SRCCOPY);
+		BitBlt(dc, destX + destW - mWidth/3, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, mWidth-mWidth/3, mHeight-mHeight/3, SRCCOPY);
+	}
+	int cw = destW - mWidth / 3 * 2;
+	int ch = destH - mHeight / 3 * 2;
+	// draw top center
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX+mWidth/3, destY, destW-mWidth/3*2, mHeight/3, memDc, mWidth/3, 0, mWidth/3, mHeight/3, bf);
+	} else {
+		StretchBlt(dc, destX+mWidth/3, destY, destW-mWidth/3*2, mHeight/3, memDc, mWidth/3, 0, mWidth/3, mHeight/3, SRCCOPY);
+	}
+	// draw bottom center
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX+mWidth/3, destY+destH-mHeight/3, destW-mWidth/3*2, mHeight/3, 
+			memDc, mWidth/3, mHeight-mHeight/3, mWidth/3, mHeight/3, bf);
+	} else {
+		StretchBlt(dc, destX+mWidth/3, destY+destH-mHeight/3, destW-mWidth/3*2, mHeight/3, 
+			memDc, mWidth/3, mHeight-mHeight/3, mWidth/3, mHeight/3, SRCCOPY);
+	}
+	// draw left center
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX, destY+mHeight/3, mWidth/3, destH-mHeight/3*2, 
+			memDc, 0, mHeight/3, mWidth/3, mHeight-mHeight/3*2, bf);
+	} else {
+		StretchBlt(dc, destX, destY+mHeight/3, mWidth/3, destH-mHeight/3*2, 
+			memDc, 0, mHeight/3, mWidth/3, mHeight-mHeight/3*2, SRCCOPY);
+	}
+	// draw right center
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX+destW-mWidth/3, destY+mHeight/3, mWidth/3, destH-mHeight/3*2, 
+			memDc, mWidth-mWidth/3, mHeight/3, mWidth/3, mHeight-mHeight/3*2, bf);
+	} else {
+		StretchBlt(dc, destX+destW-mWidth/3, destY+mHeight/3, mWidth/3, destH-mHeight/3*2, 
+			memDc, mWidth-mWidth/3, mHeight/3, mWidth/3, mHeight-mHeight/3*2, SRCCOPY);
 	}
 	// draw center
-	// for (int y = destY; )
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX+mWidth/3, destY+mHeight/3, destW-mWidth/3*2, destH-mHeight/3*2, 
+			memDc, mWidth/3, mHeight/3, mWidth-mWidth/3*2, mHeight-mHeight/3*2, bf);
+	} else {
+		StretchBlt(dc, destX+mWidth/3, destY+mHeight/3, destW-mWidth/3*2, destH-mHeight/3*2, 
+			memDc, mWidth/3, mHeight/3, mWidth-mWidth/3*2, mHeight-mHeight/3*2, SRCCOPY);
+	}
 }
 void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	if (hasAlphaChannel())  {
