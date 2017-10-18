@@ -36,7 +36,7 @@ void XExtComponent::eraseBackground(HDC dc) {
 	if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
 		HDC memDc = CreateCompatibleDC(dc);
 		HWND parent = getParentWnd();
-		mBgImageForParnet = XImage::create(mWidth, mHeight);
+		mBgImageForParnet = XImage::create(mWidth, mHeight, 24);
 		SelectObject(memDc, mBgImageForParnet->getHBitmap());
 		HDC dc = GetDC(parent);
 		BitBlt(memDc, 0, 0, mWidth, mHeight, dc, mX, mY, SRCCOPY);
@@ -50,11 +50,8 @@ void XExtComponent::eraseBackground(HDC dc) {
 		DeleteObject(brush);
 	}
 	XImage *bg = mBgImageForParnet != NULL ? mBgImageForParnet : mBgImage;
-	if (bg != NULL && bg->getHBitmap() != NULL) {
-		HDC memDc = CreateCompatibleDC(dc);
-		SelectObject(memDc, bg->getHBitmap());
-		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-		DeleteObject(memDc);
+	if (bg != NULL) {
+		bg->draw(dc, 0, 0, mWidth, mHeight);
 	}
 }
 XExtComponent::~XExtComponent() {
@@ -120,18 +117,9 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		RECT r = {0, 0, mWidth, mHeight};
 
 		XImage *cur = mImages[getBtnImage()];
-		if (cur != NULL && cur->getHBitmap() != NULL) {
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, cur->getHBitmap());
-			if (cur->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, cur->getWidth(), cur->getHeight(), bf);
-			} else {
-				StretchBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, cur->getWidth(), cur->getHeight(), SRCCOPY);
-			}
-			DeleteObject(memDc);
-		}
-
+		if (cur != NULL)
+			cur->draw(dc, 0, 0, mWidth, mHeight);
+		
 		if (mAttrFlags & AF_COLOR)
 			SetTextColor(dc, mAttrColor);
 		SetBkMode(dc, TRANSPARENT);
@@ -251,17 +239,9 @@ bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {0, 0, mWidth, mHeight};
 		XImage *cur = mImages[getBtnImage()];
-		if (cur != NULL && cur->getHBitmap() != NULL) {
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, cur->getHBitmap());
+		if (cur != NULL) {
 			int y = (mHeight - cur->getHeight()) / 2;
-			if (cur->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, 0, y, cur->getWidth(), cur->getHeight(), memDc, 0, 0, cur->getWidth(), cur->getHeight(), bf);
-			} else {
-				BitBlt(dc, 0, y, cur->getWidth(), cur->getHeight(), memDc, 0, 0, SRCCOPY);
-			}
-			DeleteObject(memDc);
+			cur->draw(dc, 0, y, cur->getWidth(), cur->getHeight());
 			r.left = cur->getWidth() + 5 + mAttrPadding[0];
 		}
 

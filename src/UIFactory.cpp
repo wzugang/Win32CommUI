@@ -188,7 +188,7 @@ void XImage::draw( HDC dc, int destX, int destY, int destW, int destH ) {
 
 void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	for (int w = 0, lw = destW; w < destW; w += mWidth, lw -= mWidth) {
-		if (hasAlphaChannel())  {
+		if (hasAlphaChannel()) {
 			BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 			AlphaBlend(dc, destX + w, destY, min(mWidth, lw), min(destH, mHeight), 
 				memDc, 0, 0, min(mWidth, lw), min(destH, mHeight), bf);
@@ -199,7 +199,7 @@ void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HD
 }
 void XImage::drawRepeatY( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	for (int h = 0, lh = destH; h < destH; h += mHeight, lh -= mHeight) {
-		if (hasAlphaChannel())  {
+		if (hasAlphaChannel()) {
 			BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 			AlphaBlend(dc, destX, destY + h, min(destW, mWidth), min(mHeight, lh),
 				memDc, 0, 0, min(destW, mWidth), min(mHeight, lh), bf);
@@ -209,7 +209,7 @@ void XImage::drawRepeatY( HDC dc, int destX, int destY, int destW, int destH, HD
 	}
 }
 void XImage::drawStretch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
-	if (hasAlphaChannel())  {
+	if (hasAlphaChannel()) {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 		AlphaBlend(dc, destX, destY, destW, destH, memDc, 0, 0, mWidth, mHeight, bf);
 	} else {
@@ -217,7 +217,41 @@ void XImage::drawStretch( HDC dc, int destX, int destY, int destW, int destH, HD
 	}
 }
 void XImage::draw9Patch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
-
+	if (mWidth <= 0 || mHeight <= 0) return;
+	// draw left-top corner
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX, destY, mWidth/3, mHeight/3,
+			memDc, 0, 0, mWidth/3, mHeight/3, bf);
+	} else {
+		BitBlt(dc, destX, destY, mWidth/3, mHeight/3, memDc, 0, 0, SRCCOPY);
+	}
+	// draw right-top corner
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX + destW - mWidth/3, destY, mWidth/3, mHeight/3,
+			memDc, mWidth * 2/3, 0, mWidth/3, mHeight/3, bf);
+	} else {
+		BitBlt(dc, destX + destW - mWidth/3, destY, mWidth/3, mHeight/3, memDc, mWidth * 2/3, 0, SRCCOPY);
+	}
+	// draw left-bottom corner
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX, destY + destH - mHeight/3, mWidth/3, mHeight/3,
+			memDc, 0, mHeight*2/3, mWidth/3, mHeight/3, bf);
+	} else {
+		BitBlt(dc, destX, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, 0, mHeight*2/3, SRCCOPY);
+	}
+	// draw right-bottom corner
+	if (hasAlphaChannel()) {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX + destW - mWidth/3, destY + destH - mHeight/3, mWidth/3, mHeight/3,
+			memDc, mWidth*2/3, mHeight*2/3, mWidth/3, mHeight/3, bf);
+	} else {
+		BitBlt(dc, destX + destW - mWidth/3, destY + destH - mHeight/3, mWidth/3, mHeight/3, memDc, mWidth*2/3, mHeight*2/3, SRCCOPY);
+	}
+	// draw center
+	// for (int y = destY; )
 }
 void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	if (hasAlphaChannel())  {
