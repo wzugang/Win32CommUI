@@ -651,7 +651,7 @@ int XExtPopup::messageLoop() {
 				POINT pt;
 				GetCursorPos(&pt);
 				if (! PtInRect(&popupRect, pt)) { // click on other window
-					SendMessage(mWnd, WM_EXT_POPUP_CANCELED, 0, 0);
+					SendMessage(mWnd, WM_EXT_POPUP_CLOSED, 1, 0);
 					break;
 				}
 			} else if (msg.message == WM_QUIT) {
@@ -679,6 +679,7 @@ void XExtPopup::showNoSize(int screenX, int screenY) {
 }
 void XExtPopup::close() {
 	ShowWindow(mWnd, SW_HIDE);
+	SendMessage(mWnd, WM_EXT_POPUP_CLOSED, 0, 0);
 }
 void XExtPopup::disableChildrenFocus() {
 
@@ -1523,7 +1524,7 @@ void XExtList::updateTrackItem( int x, int y ) {
 //------------------------------XExtComboBox--------------------
 XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mEditNode = new XmlNode(NULL, mNode);
-	mPopupNode = new XmlNode(NULL, mNode->getRoot());
+	mPopupNode = new XmlNode(NULL, mNode);
 	mListNode = new XmlNode(NULL, mPopupNode);
 	mEdit = new XExtEdit(mEditNode);
 	mPopup = new XExtPopup(mPopupNode);
@@ -1564,6 +1565,12 @@ bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPAR
 	if (msg == WM_EXT_LIST_CLICK_ITEM) {
 		mSelectItem = wParam;
 		mPopup->close();
+		mPoupShow = false;
+		InvalidateRect(mWnd, NULL, TRUE);
+		UpdateWindow(mWnd);
+		return true;
+	} else if (msg == WM_EXT_POPUP_CLOSED) {
+		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
 		return true;
@@ -1665,8 +1672,19 @@ void XExtComboBox::drawBox( HDC dc, int x, int y, int w, int h ) {
 void XExtComboBox::openPopup() {
 	POINT pt = {0, mHeight};
 	ClientToScreen(mWnd, &pt);
+	mPoupShow = true;
+	InvalidateRect(mWnd, NULL, TRUE);
+	UpdateWindow(mWnd);
 	mPopup->showNoSize(pt.x, pt.y);
 }
 int XExtComboBox::getSelectItem() {
 	return mSelectItem;
+}
+XExtComboBox::~XExtComboBox() {
+	delete mEdit;
+	delete mPopup;
+	delete mList;
+	delete mEditNode;
+	delete mPopupNode;
+	delete mListNode;
 }

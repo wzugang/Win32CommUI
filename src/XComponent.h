@@ -43,7 +43,7 @@ public:
 		WM_MOUSEWHEEL_BUBBLE,
 		WM_LBUTTONDOWN_BUBBLE,
 		WM_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
-		WM_EXT_POPUP_CANCELED, // canceled to close popup
+		WM_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
 	};
 	XComponent(XmlNode *node);
 	static void init();

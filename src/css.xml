@@ -21,13 +21,15 @@
 	<Table .../>
 	<Tree ... />
 	<Tab data="tab1; tab2; tab3;" />  有多个子控件，但只有一个可见
-	<Edit multiline= "true" readonly="true"/>
+	<Edit multiline= "true" readOnly="true"/>
 	<CheckBox .../>
 	<Radio  group = "true" />
 	
 	<AbsLayout />
 	<HLineLayout />
 	<VLineLayout />
+	<Window text="" />
+	<Dialog text="" />
 	
 	<include src="file://abc.xml | res://abc " part="part-name" />
 	
@@ -43,8 +45,8 @@
 	<ExtScroll vbarTrack="" vbarThumb="" hbarTrack="" hbarThumb=""  />
 	<ExtTable />  继承自ExtScroll
 	<ExtList />   继承自ExtScroll
-	<ExtEdit  readonly="true" />
-	<ExtComboBox readonly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readonly:编辑框只读
+	<ExtEdit  readOnly="true" />
+	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
 	
 	
 	

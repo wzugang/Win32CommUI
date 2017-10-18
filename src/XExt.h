@@ -292,6 +292,7 @@ public:
 	XExtList *getExtList();
 	void setBoxRender(BoxRender *r);
 	int getSelectItem();
+	virtual ~XExtComboBox();
 
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -314,4 +315,21 @@ protected:
 	BoxRender *mBoxRender;
 	bool mPoupShow;
 	int mSelectItem;
+};
+
+class XExtMenuModel {
+public:
+	
+
+};
+struct MenuItem {
+	char *mText;
+	bool mActive;
+};
+
+class XExtMenu : public XExtPopup {
+public:
+	XExtMenu(XmlNode *node);
+
+protected:
 };

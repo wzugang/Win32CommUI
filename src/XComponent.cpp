@@ -564,7 +564,7 @@ void XEdit::createWnd() {
 	if (mNode->getAttrValue("multiline") != NULL) {
 		style |= ES_MULTILINE | ES_WANTRETURN | WS_VSCROLL;
 	}
-	if (mNode->getAttrValue("readonly") != NULL) {
+	if (mNode->getAttrValue("readOnly") != NULL) {
 		style |= ES_READONLY;
 	}
 	mID = generateWndId();
