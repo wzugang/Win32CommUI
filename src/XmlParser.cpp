@@ -748,6 +748,8 @@ ResPath::ResPath() {
 	mResType = RT_NONE;
 	mValidate = false;
 	mRepeatX = mRepeatY = false;
+	mStretch = false;
+	m9Patch = false;
 }
 
 bool ResPath::parse(const char *resPath) {
@@ -791,6 +793,8 @@ bool ResPath::parse(const char *resPath) {
 	}
 	if (strstr(ps, "repeat-x")) mRepeatX = true;
 	if (strstr(ps, "repeat-y")) mRepeatY = true;
+	if (strstr(ps, "stretch")) mStretch = true;
+	if (strstr(ps, "9patch")) m9Patch = true;
 	mValidate = true;
 	return true;
 }

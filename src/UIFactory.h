@@ -18,12 +18,22 @@ public:
 	int getHeight();
 	void *getRowBits(int row);
 	bool hasAlphaChannel();
+	void draw(HDC dc, int destX, int destY, int destW, int destH);
 	~XImage();
+	bool mRepeatX;
+	bool mRepeatY;
+	bool mStretch;
+	bool m9Patch;
 protected:
 	XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowBytes);
 	static XImage *createPart(XImage *org, int x, int y, int width, int height);
 	static XImage *loadImage(ResPath *info);
 	void buildAlphaChannel();
+	void drawRepeatX(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawRepeatY(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawStretch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void draw9Patch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawNormal(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
 
 	void *mBits;
 	HBITMAP mHBitmap;
@@ -35,6 +45,7 @@ protected:
 	// ¸º£ºdown-up image;
 	// Õý: up-down image
 	int mRowBytes;
+	bool mDeleteBitmap;
 };
 
 class UIFactory {

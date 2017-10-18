@@ -34,6 +34,8 @@ XImage::XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowByte
 	mRowBytes = rowBytes;
 	mHasAlphaChannel = (bitPerPix == 32);
 	mTransparentColor = -1;
+	mRepeatX = mRepeatY = mStretch = m9Patch = false;
+	mDeleteBitmap = false;
 }
 
 XImage * XImage::load( const char *resPath ) {
@@ -41,8 +43,9 @@ XImage * XImage::load( const char *resPath ) {
 	if (! info.parse(resPath))
 		return NULL;
 	XImage *img = findInCache(getCacheName(&info, false));
-	if (img != NULL)
-		return img;
+	if (img != NULL) {
+		goto _end;
+	}
 	img = findInCache(getCacheName(&info, true));
 	if (img == NULL) {
 		img = loadImage(&info);
@@ -50,12 +53,19 @@ XImage * XImage::load( const char *resPath ) {
 			return NULL;
 		mCache[getCacheName(&info, true)] = img;
 	}
-	if (! info.mHasRect)
-		return img;
+	if (! info.mHasRect) {
+		goto _end;
+	}
 	img = createPart(img, info.mX, info.mY, info.mWidth, info.mHeight);
 	if (img == NULL)
 		return NULL;
 	mCache[getCacheName(&info, false)] = img;
+_end:
+	img = new XImage(img->mHBitmap, img->mWidth, img->mHeight, img->mBits, img->mBitPerPix, img->mRowBytes);
+	img->mRepeatX = info.mRepeatX;
+	img->mRepeatY = info.mRepeatY;
+	img->mStretch = info.mStretch;
+	img->m9Patch = info.m9Patch;
 	return img;
 }
 
@@ -90,6 +100,7 @@ XImage * XImage::createPart( XImage *org, int x, int y, int width, int height ) 
 		BYTE* dst = (BYTE*)img->getRowBits(i);
 		memcpy(dst, src, org->mBitPerPix / 8 * width);
 	}
+	img->mDeleteBitmap = false;
 	return img;
 }
 
@@ -115,7 +126,9 @@ XImage * XImage::create( int width, int height, int bitPerPix ) {
 	HBITMAP bmp = CreateDIBSection(NULL, (PBITMAPINFO)&header, DIB_RGB_COLORS, &pvBits, NULL, 0);
 	if (bmp == NULL)
 		return NULL;
-	return new XImage(bmp, width, height, pvBits, bitPerPix, rowByteNum);
+	XImage *img = new XImage(bmp, width, height, pvBits, bitPerPix, rowByteNum);
+	img->mDeleteBitmap = true;
+	return img;
 }
 
 void XImage::buildAlphaChannel() {
@@ -147,13 +160,74 @@ int XImage::getHeight() {
 }
 
 XImage::~XImage() {
-	if (mHBitmap) DeleteObject(mHBitmap);
+	if (mHBitmap && mDeleteBitmap) 
+		DeleteObject(mHBitmap);
 }
 
 bool XImage::hasAlphaChannel() {
 	return mHasAlphaChannel;
 }
 
+void XImage::draw( HDC dc, int destX, int destY, int destW, int destH ) {
+	if (mHBitmap == NULL) return;
+	HDC memDc = CreateCompatibleDC(dc);
+	SelectObject(memDc, mHBitmap);
+	if (mRepeatX) {
+		drawRepeatX(dc, destX, destY, destW, destH, memDc);
+	} else if (mRepeatY) {
+		drawRepeatY(dc, destX, destY, destW, destH, memDc);
+	} else if (mStretch) {
+		drawStretch(dc, destX, destY, destW, destH, memDc);
+	} else if (m9Patch) {
+		draw9Patch(dc, destX, destY, destW, destH, memDc);
+	} else {
+		drawNormal(dc, destX, destY, destW, destH, memDc);
+	}
+	DeleteObject(memDc);
+}
+
+void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
+	for (int w = 0, lw = destW; w < destW; w += mWidth, lw -= mWidth) {
+		if (hasAlphaChannel())  {
+			BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+			AlphaBlend(dc, destX + w, destY, min(mWidth, lw), min(destH, mHeight), 
+				memDc, 0, 0, min(mWidth, lw), min(destH, mHeight), bf);
+		} else {
+			BitBlt(dc, destX + w, destY, min(mWidth, lw), min(destH, mHeight), memDc, 0, 0, SRCCOPY);
+		}
+	}
+}
+void XImage::drawRepeatY( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
+	for (int h = 0, lh = destH; h < destH; h += mHeight, lh -= mHeight) {
+		if (hasAlphaChannel())  {
+			BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+			AlphaBlend(dc, destX, destY + h, min(destW, mWidth), min(mHeight, lh),
+				memDc, 0, 0, min(destW, mWidth), min(mHeight, lh), bf);
+		} else {
+			BitBlt(dc, destX, destY + h, min(destW, mWidth), min(mHeight, lh), memDc, 0, 0, SRCCOPY);
+		}
+	}
+}
+void XImage::drawStretch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
+	if (hasAlphaChannel())  {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX, destY, destW, destH, memDc, 0, 0, mWidth, mHeight, bf);
+	} else {
+		StretchBlt(dc, destX, destY, destW, destH, memDc, 0, 0, mWidth, mHeight, SRCCOPY);
+	}
+}
+void XImage::draw9Patch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
+
+}
+void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
+	if (hasAlphaChannel())  {
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, destX, destY, min(destW, mWidth), min(destH, mHeight),
+			memDc, 0, 0,min(destW, mWidth), min(destH, mHeight), bf);
+	} else {
+		BitBlt(dc, destX, destY, min(destW, mWidth), min(destH, mHeight), memDc, 0, 0, SRCCOPY);
+	}
+}
 //----------------------------UIFactory-------------------------
 struct NodeCreator {
 	NodeCreator() {

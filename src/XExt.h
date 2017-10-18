@@ -316,15 +316,30 @@ protected:
 	bool mPoupShow;
 	int mSelectItem;
 };
-
-class XExtMenuModel {
-public:
-	
-
-};
-struct MenuItem {
+class XMenuItemList;
+struct XMenuItem {
+	XMenuItem();
+	char mName[40];
 	char *mText;
 	bool mActive;
+	bool mVisible;
+	bool mCheckable;
+	bool mChecked;
+	bool mSeperator;
+	XMenuItemList *mChildren;
+};
+
+class XMenuItemList {
+public:
+	XMenuItemList();
+	void add(XMenuItem *item);
+	void insert(int pos, XMenuItem *item);
+	int getCount();
+	XMenuItem *get(int idx);
+	~XMenuItemList();
+protected:
+	XMenuItem **mItems;
+	int mCount;
 };
 
 class XExtMenu : public XExtPopup {

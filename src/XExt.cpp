@@ -1688,3 +1688,45 @@ XExtComboBox::~XExtComboBox() {
 	delete mPopupNode;
 	delete mListNode;
 }
+//--------------------MenuItem--------------------
+XMenuItem::XMenuItem() {
+	mName[0] = 0;
+	mText = NULL;
+	mActive = true;
+	mChildren = NULL;
+	mSeperator = false;
+	mVisible = true;
+	mCheckable = false;
+	mChecked = false;
+}
+
+XMenuItemList::XMenuItemList() {
+	mCount = 0;
+	mItems = (XMenuItem **)malloc(sizeof(XMenuItem *) * 50);
+}
+void XMenuItemList::add( XMenuItem *item ) {
+	insert(mCount, item);
+}
+void XMenuItemList::insert( int pos, XMenuItem *item ) {
+	if (pos < 0 || pos > mCount || item == NULL)
+		return;
+	for (int i = mCount - 1; i >= pos; --i) {
+		mItems[i + 1] = mItems[i];
+	}
+	mItems[pos] = item;
+	++mCount;
+}
+int XMenuItemList::getCount() {
+	return mCount;
+}
+XMenuItem * XMenuItemList::get( int idx ) {
+	if (idx >= 0 && idx < mCount)
+		return mItems[idx];
+	return NULL;
+}
+XMenuItemList::~XMenuItemList() {
+	for (int i = 0; i < mCount; ++i) {
+		delete mItems[i];
+	}
+	free(mItems);
+}

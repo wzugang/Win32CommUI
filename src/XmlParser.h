@@ -114,6 +114,8 @@ public:
 	int mX, mY, mWidth, mHeight;
 	bool mRepeatX;
 	bool mRepeatY;
+	bool mStretch;
+	bool m9Patch;
 	bool mHasRect;
 	bool mValidate;
 };
