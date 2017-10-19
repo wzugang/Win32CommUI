@@ -382,11 +382,11 @@ void UIFactory::destory( XmlNode *root ) {
 	delete root->getComponent();
 	delete root;
 }
-static void BuildMenu(XMenuItemList *menu, XmlNode *menuNode) {
+static void BuildMenu(XExtMenuList *menu, XmlNode *menuNode) {
 	for (int i = 0; i < menuNode->getChildCount(); ++i) {
 		XmlNode *child = menuNode->getChild(i);
-		XMenuItem *item = new XMenuItem(NULL, NULL);
-		for (int j = 0; j < child->getAttrsCount(); ++i) {
+		XExtMenuItem *item = new XExtMenuItem(NULL, NULL);
+		for (int j = 0; j < child->getAttrsCount(); ++j) {
 			XmlNode::Attr *a = child->getAttr(j);
 			if (strcmp(a->mName, "name") == 0) strcpy(item->mName, a->mValue);
 			else if (strcmp(a->mName, "text") == 0) item->mText = a->mValue;
@@ -398,24 +398,24 @@ static void BuildMenu(XMenuItemList *menu, XmlNode *menuNode) {
 		}
 		menu->add(item);
 		if (child->getChildCount() > 0) {
-			XMenuItemList *sub = new XMenuItemList();
+			XExtMenuList *sub = new XExtMenuList();
 			item->mChildren = sub;
 			BuildMenu(sub, child);
 		}
 	}
 }
 
-XMenuItemList * UIFactory::buildMenu( XmlNode *rootMenu ) {
+XExtMenuList * UIFactory::buildMenu( XmlNode *rootMenu ) {
 	if (rootMenu == NULL) return NULL;
-	XMenuItemList *menu = new XMenuItemList();
+	XExtMenuList *menu = new XExtMenuList();
 	BuildMenu(menu, rootMenu);
 	return menu;
 }
 
-XMenuItemList* UIFactory::fastMenu( const char *resPath, const char *partName ) {
+XExtMenuList* UIFactory::fastMenu( const char *resPath, const char *partName ) {
 	XmlNode *root = UIFactory::buildNode(resPath, partName);
 	if (root == NULL) return NULL;
-	XMenuItemList *cc = buildMenu(root);
+	XExtMenuList *cc = buildMenu(root);
 	return cc;
 }
 

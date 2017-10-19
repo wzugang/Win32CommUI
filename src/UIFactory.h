@@ -3,7 +3,7 @@
 class XComponent;
 class XmlNode;
 class ResPath;
-class XMenuItemList;
+class XExtMenuList;
 
 class XImage {
 public:
@@ -54,13 +54,13 @@ public:
 	typedef XComponent * (*Creator)(XmlNode*);
 
 	static XComponent* buildComponent(XmlNode *root);
-	static XMenuItemList *buildMenu(XmlNode *rootMenu);
+	static XExtMenuList *buildMenu(XmlNode *rootMenu);
 
 	//@param resPath file://abc.xml  res://abc
 	static XmlNode* buildNode(const char *resPath, const char *partName);
 
 	static XComponent* fastBuild(const char *resPath, const char *partName, XComponent *parent);
-	static XMenuItemList* fastMenu(const char *resPath, const char *partName);
+	static XExtMenuList* fastMenu(const char *resPath, const char *partName);
 
 	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);

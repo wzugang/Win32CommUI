@@ -315,9 +315,11 @@ protected:
 	bool mPoupShow;
 	int mSelectItem;
 };
-class XMenuItemList;
-struct XMenuItem {
-	XMenuItem(const char *name, char *text);
+
+class XExtMenuList;
+class XExtMenuManager;
+struct XExtMenuItem {
+	XExtMenuItem(const char *name, char *text);
 	char mName[40];
 	char *mText;
 	bool mActive;
@@ -325,28 +327,61 @@ struct XMenuItem {
 	bool mCheckable;
 	bool mChecked;
 	bool mSeparator;
-	XMenuItemList *mChildren;
+	XExtMenuList *mChildren;
 };
 
-class XMenuItemList {
+class XExtMenuList {
 public:
-	XMenuItemList();
-	void add(XMenuItem *item);
-	void insert(int pos, XMenuItem *item);
+	XExtMenuList();
+	void add(XExtMenuItem *item);
+	void insert(int pos, XExtMenuItem *item);
 	int getCount();
-	XMenuItem *get(int idx);
-	~XMenuItemList();
+	XExtMenuItem *get(int idx);
+	XExtMenuItem *findByName(const char *name);
+	~XExtMenuList();
 protected:
-	XMenuItem **mItems;
+	XExtMenuItem **mItems;
 	int mCount;
 };
 
-class XExtMenu : public XExtPopup {
+class XExtMenu : public XExtComponent {
 public:
-	XExtMenu(XmlNode *node);
-	void setModel(XMenuItemList *model);
+	XExtMenu(XmlNode *node, XExtMenuManager *mgr);
+	void setMenuList(XExtMenuList *list);
+	XExtMenuList *getMenuList() {return mMenuList;}
+	virtual void show(int screenX, int screenY);
+	virtual ~XExtMenu();
 protected:
+	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	int getItemIndexAt(int x, int y);
+	void calcSize();
+	void drawItems(HDC dc);
+	RECT getItemRect(int idx);
 protected:
-	XMenuItemList *mModel;
+	XExtMenuList *mMenuList;
+	int mSelectItem;
+	HPEN mSeparatorPen;
+	HBRUSH mSelectBrush;
+	XExtMenuManager *mManager;
+};
+
+class XExtMenuManager {
+public:
+	XExtMenuManager(XExtMenuList *mlist, XComponent *owner);
+	void show(int screenX, int screenY);
+	virtual ~XExtMenuManager();
+
+	void notifyItemClicked(XExtMenuItem *item);
+	void closeMenu(XExtMenuList *mlist);
+	void openMenu(XExtMenuList *mlist, int x, int y);
+protected:
+	void messageLoop();
+	int whereIs(int x, int y);
+	void closeMenuTo(int idx);
+protected:
+	XExtMenuList *mMenuList;
+	XExtMenu *mMenus[10];
+	int mLevel;
+	XComponent *mOwner;
 };

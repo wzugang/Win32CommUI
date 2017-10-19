@@ -25,10 +25,6 @@ public:
 			return false;
 		}
 		if (strcmp("btn_1", id) == 0) {
-			dlg = (XDialog *) UIFactory::fastBuild("file://skin/base.xml", "dialog-page", win);
-			dlg->findById("tool_btn_1")->setListener(new ButtonListener());
-			rt = dlg->showModal();
-			UIFactory::destory(dlg->getNode());
 			return true;
 		}
 		if (strcmp("tool_btn_1", id) == 0) {
@@ -36,13 +32,11 @@ public:
 			return true;
 		}
 		if (strcmp("ext_btn_1", id) == 0) {
-			popup = (XExtPopup*) UIFactory::fastBuild("file://skin/base.xml", "my-popup", win);
-			popup->findById("pop_btn_1")->setListener(this);
-			// set window owner
-			// SetWindowLong(popup->getWnd(), GWL_HWNDPARENT, (LONG)win->getWnd());
 			POINT pt;
 			GetCursorPos(&pt);
-			popup->show(pt.x, pt.y);
+			XExtMenuList *mlist = UIFactory::fastMenu("file://skin/base.xml", "my-menu");
+			XExtMenuManager mgr(mlist, evtSource);
+			mgr.show(pt.x, pt.y);
 			return true;
 		}
 		if (strcmp("pop_btn_1", id) == 0) {
