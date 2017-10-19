@@ -34,8 +34,8 @@ public:
 		if (strcmp("ext_btn_1", id) == 0) {
 			POINT pt;
 			GetCursorPos(&pt);
-			XExtMenuList *mlist = UIFactory::fastMenu("file://skin/base.xml", "my-menu");
-			XExtMenuManager mgr(mlist, evtSource);
+			XExtMenuItemList *mlist = UIFactory::fastMenu("file://skin/base.xml", "my-menu");
+			XExtMenuManager mgr(mlist, evtSource, NULL);
 			mgr.show(pt.x, pt.y);
 			return true;
 		}

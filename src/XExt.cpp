@@ -1680,14 +1680,14 @@ XExtMenuItem::XExtMenuItem(const char *name, char *text) {
 	mChecked = false;
 	if (name) strcpy(mName, name);
 }
-XExtMenuList::XExtMenuList() {
+XExtMenuItemList::XExtMenuItemList() {
 	mCount = 0;
 	mItems = (XExtMenuItem **)malloc(sizeof(XExtMenuItem *) * 50);
 }
-void XExtMenuList::add( XExtMenuItem *item ) {
+void XExtMenuItemList::add( XExtMenuItem *item ) {
 	insert(mCount, item);
 }
-void XExtMenuList::insert( int pos, XExtMenuItem *item ) {
+void XExtMenuItemList::insert( int pos, XExtMenuItem *item ) {
 	if (pos < 0 || pos > mCount || item == NULL)
 		return;
 	for (int i = mCount - 1; i >= pos; --i) {
@@ -1696,22 +1696,22 @@ void XExtMenuList::insert( int pos, XExtMenuItem *item ) {
 	mItems[pos] = item;
 	++mCount;
 }
-int XExtMenuList::getCount() {
+int XExtMenuItemList::getCount() {
 	return mCount;
 }
-XExtMenuItem * XExtMenuList::get( int idx ) {
+XExtMenuItem * XExtMenuItemList::get( int idx ) {
 	if (idx >= 0 && idx < mCount)
 		return mItems[idx];
 	return NULL;
 }
-XExtMenuList::~XExtMenuList() {
+XExtMenuItemList::~XExtMenuItemList() {
 	for (int i = 0; i < mCount; ++i) {
 		delete mItems[i];
 	}
 	free(mItems);
 }
 
-XExtMenuItem * XExtMenuList::findByName( const char *name ) {
+XExtMenuItem * XExtMenuItemList::findByName( const char *name ) {
 	if (name == NULL)
 		return NULL;
 	for (int i = 0; i < mCount; ++i) {
@@ -1803,7 +1803,7 @@ bool XExtMenu::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
-void XExtMenu::setMenuList( XExtMenuList *model ) {
+void XExtMenu::setMenuList( XExtMenuItemList *model ) {
 	mMenuList = model;
 }
 int XExtMenu::getItemIndexAt( int x, int y ) {
@@ -1859,7 +1859,7 @@ void XExtMenu::drawItems( HDC dc ) {
 			if (item->mChildren != NULL && item->mChildren->getCount() > 0) {
 				// draw arrow
 				static HBRUSH arrowBrush = CreateSolidBrush(RGB(0x55, 0x55, 0x55));
-				int SJ = 4, LW = 10;
+				int SJ = 5, LW = 10;
 				POINT pts[3] = {{mWidth-LW, h+k/2-SJ}, {mWidth-LW, h+k/2+SJ}, {mWidth-LW+(int)(SJ/0.57735), h+k/2}};
 				HRGN rgn = CreatePolygonRgn(pts, 3, ALTERNATE);
 				FillRgn(dc, rgn, arrowBrush);
@@ -1890,10 +1890,11 @@ XExtMenu::~XExtMenu() {
 	DeleteObject(mSelectBrush);
 	DestroyWindow(mWnd);
 }
-XExtMenuManager::XExtMenuManager( XExtMenuList *mlist, XComponent *owner ) {
+XExtMenuManager::XExtMenuManager( XExtMenuItemList *mlist, XComponent *owner, ItemListener *listener ) {
 	mMenuList = mlist;
 	mOwner = owner;
 	mLevel = -1;
+	mListener = listener;
 	memset(mMenus, 0, sizeof(mMenus));
 }
 void XExtMenuManager::show( int screenX, int screenY ) {
@@ -1953,8 +1954,11 @@ void XExtMenuManager::closeMenuTo( int idx ) {
 void XExtMenuManager::notifyItemClicked( XExtMenuItem *item ) {
 	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
 	PostMessage(ownerWnd, WM_QUIT, 0, 0);
+	if (mListener != NULL) {
+		mListener->onClickItem(item);
+	}
 }
-void XExtMenuManager::closeMenu( XExtMenuList *mlist ) {
+void XExtMenuManager::closeMenu( XExtMenuItemList *mlist ) {
 	for (int i = 0; i <= mLevel; ++i) {
 		if (mMenus[i]->getMenuList() == mlist) {
 			closeMenuTo(i - 1);
@@ -1962,7 +1966,7 @@ void XExtMenuManager::closeMenu( XExtMenuList *mlist ) {
 		}
 	}
 }
-void XExtMenuManager::openMenu( XExtMenuList *mlist, int x, int y ) {
+void XExtMenuManager::openMenu( XExtMenuItemList *mlist, int x, int y ) {
 	if (mMenus[++mLevel] == NULL) {
 		mMenus[mLevel] = new XExtMenu(new XmlNode(NULL, mOwner->getNode()), this);
 	}

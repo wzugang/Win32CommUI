@@ -316,7 +316,7 @@ protected:
 	int mSelectItem;
 };
 
-class XExtMenuList;
+class XExtMenuItemList;
 class XExtMenuManager;
 struct XExtMenuItem {
 	XExtMenuItem(const char *name, char *text);
@@ -327,18 +327,18 @@ struct XExtMenuItem {
 	bool mCheckable;
 	bool mChecked;
 	bool mSeparator;
-	XExtMenuList *mChildren;
+	XExtMenuItemList *mChildren;
 };
 
-class XExtMenuList {
+class XExtMenuItemList {
 public:
-	XExtMenuList();
+	XExtMenuItemList();
 	void add(XExtMenuItem *item);
 	void insert(int pos, XExtMenuItem *item);
 	int getCount();
 	XExtMenuItem *get(int idx);
 	XExtMenuItem *findByName(const char *name);
-	~XExtMenuList();
+	~XExtMenuItemList();
 protected:
 	XExtMenuItem **mItems;
 	int mCount;
@@ -347,8 +347,8 @@ protected:
 class XExtMenu : public XExtComponent {
 public:
 	XExtMenu(XmlNode *node, XExtMenuManager *mgr);
-	void setMenuList(XExtMenuList *list);
-	XExtMenuList *getMenuList() {return mMenuList;}
+	void setMenuList(XExtMenuItemList *list);
+	XExtMenuItemList *getMenuList() {return mMenuList;}
 	virtual void show(int screenX, int screenY);
 	virtual ~XExtMenu();
 protected:
@@ -359,7 +359,7 @@ protected:
 	void drawItems(HDC dc);
 	RECT getItemRect(int idx);
 protected:
-	XExtMenuList *mMenuList;
+	XExtMenuItemList *mMenuList;
 	int mSelectItem;
 	HPEN mSeparatorPen;
 	HBRUSH mSelectBrush;
@@ -368,20 +368,26 @@ protected:
 
 class XExtMenuManager {
 public:
-	XExtMenuManager(XExtMenuList *mlist, XComponent *owner);
+	class ItemListener {
+	public:
+		virtual void onClickItem(XExtMenuItem *item) = 0;
+	};
+
+	XExtMenuManager(XExtMenuItemList *mlist, XComponent *owner, ItemListener *listener);
 	void show(int screenX, int screenY);
 	virtual ~XExtMenuManager();
 
 	void notifyItemClicked(XExtMenuItem *item);
-	void closeMenu(XExtMenuList *mlist);
-	void openMenu(XExtMenuList *mlist, int x, int y);
+	void closeMenu(XExtMenuItemList *mlist);
+	void openMenu(XExtMenuItemList *mlist, int x, int y);
 protected:
 	void messageLoop();
 	int whereIs(int x, int y);
 	void closeMenuTo(int idx);
 protected:
-	XExtMenuList *mMenuList;
+	XExtMenuItemList *mMenuList;
 	XExtMenu *mMenus[10];
 	int mLevel;
 	XComponent *mOwner;
+	ItemListener *mListener;
 };

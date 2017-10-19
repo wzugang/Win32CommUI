@@ -49,7 +49,8 @@
 	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
 	
 	<Menu>
-		<MenuItem name="" text="" active="false" visible="false" separator="true" checkable="true" checked="true" />
+		<MenuItem name="" text="" active="true" visible="true" separator="true" checkable="true" checked="true" />
+				active/visible default is true;  checkable/checked default is false
 		<MenuItem ... >
 			sub menu item here
 		</MenuItem>

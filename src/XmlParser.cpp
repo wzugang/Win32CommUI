@@ -283,13 +283,20 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 		return NULL;
 	}
 	mPos = px;
+	char ch = mXml[mPos];
+	int oldChPos = mPos;
 	mXml[mPos] = 0;
 	XmlNode *node = new XmlNode(name, parent);
 	// parse attrs
 	while (mPos < mXmlLen) {
-		++mPos;
-		skipSpace();
-		char *an = mXml + mPos;
+		char *an = NULL;
+		if (mPos == oldChPos && ch == '>') {
+			an = &ch;
+		} else {
+			++mPos;
+			skipSpace();
+			an = mXml + mPos;
+		}
 		if (*an == '>') {
 			mPos++;
 			if (parent != NULL) {
