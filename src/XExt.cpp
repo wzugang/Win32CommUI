@@ -2367,6 +2367,7 @@ static bool GetNodeRect(XExtTreeNode *n, XExtTreeNode *target, int *py) {
 			if (fd) break;
 		}
 	}
+	return false;
 }
 bool XExtTree::getNodeRect( XExtTreeNode *node, RECT *r ) {
 	if (r == NULL) return false;
