@@ -623,23 +623,22 @@ int XExtPopup::messageLoop() {
 		if (GetForegroundWindow() != mWnd && GetForegroundWindow() != ownerWnd) {
 			break;
 		}
-		if (GetMessage(&msg, NULL, 0, 0)) {
-			if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
-				// transfer the message to menu window
-				msg.hwnd = mWnd;
-			} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
-				POINT pt;
-				GetCursorPos(&pt);
-				if (! PtInRect(&popupRect, pt)) { // click on other window
-					SendMessage(mWnd, WM_EXT_POPUP_CLOSED, 1, 0);
-					break;
-				}
-			} else if (msg.message == WM_QUIT) {
+		GetMessage(&msg, NULL, 0, 0);
+		if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
+			// transfer the message to menu window
+			msg.hwnd = mWnd;
+		} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
+			POINT pt;
+			GetCursorPos(&pt);
+			if (! PtInRect(&popupRect, pt)) { // click on other window
+				SendMessage(mWnd, WM_EXT_POPUP_CLOSED, 1, 0);
 				break;
 			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+		} else if (msg.message == WM_QUIT) {
+			break;
 		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
 	}
 	ShowWindow(mWnd, SW_HIDE);
 	return 0;
