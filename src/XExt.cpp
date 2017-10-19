@@ -2381,7 +2381,7 @@ bool XExtTree::getNodeRect( XExtTreeNode *node, RECT *r ) {
 		if (finded) break;
 	}
 	if (finded) {
-		r->left = -mVerBar->getPos() + (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+		r->left = -mHorBar->getPos() + (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
 		r->right = r->left + node->getContentWidth();
 		r->top = y;
 		r->bottom = r->top + TREE_NODE_HEIGHT;
