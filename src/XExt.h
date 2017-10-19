@@ -432,10 +432,15 @@ protected:
 };
 class XExtTree : public XExtScroll {
 public:
+	class NodeRender {
+	public:
+		virtual void onDrawNode(HDC dc, XExtTreeNode *node, int x, int y, int w, int h) = 0;
+	};
 	XExtTree(XmlNode *node);
 	//根结点为虚拟结点，不显示
 	void setModel(XExtTreeNode *root);
 	void notifyChanged();
+	void setNodeRender(NodeRender *render);
 	virtual ~XExtTree();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -458,4 +463,5 @@ protected:
 	HBRUSH mSelectBgBrush;
 	XExtTreeNode *mSelectNode;
 	int mWidthSpec, mHeightSpec;
+	NodeRender *mNodeRender;
 };

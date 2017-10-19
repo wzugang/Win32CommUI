@@ -2089,12 +2089,16 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
+	mNodeRender = NULL;
 }
 void XExtTree::setModel( XExtTreeNode *root ) {
 	mModel = root;
 }
 XExtTree::~XExtTree() {
 	if (mBuffer) delete mBuffer;
+	DeleteObject(mBoxBrush);
+	DeleteObject(mLinePen);
+	DeleteObject(mSelectBgBrush);
 }
 bool XExtTree::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
@@ -2262,9 +2266,14 @@ void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, in
 	x += TREE_NODE_HEADER_WIDTH;
 	RECT r = {x, y, x+n->getContentWidth(), y+TREE_NODE_HEIGHT};
 	if (mSelectNode == n) FillRect(dc, &r, mSelectBgBrush);
-	if (n->getText()) {
-		DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER);
+	if (mNodeRender != NULL) {
+		mNodeRender->onDrawNode(dc, n, r.left, r.top, r.right-r.left, r.bottom-r.top);
+	} else {
+		if (n->getText()) {
+			DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER);
+		}
 	}
+	
 	_drawChild:
 	*py = *py + TREE_NODE_HEIGHT;
 	if (n->getChildCount() > 0 && n->isExpand()) {
@@ -2343,4 +2352,7 @@ void XExtTree::onLBtnDbClick( int x, int y ) {
 		node->setExpand(! node->isExpand());
 		notifyChanged();
 	}
+}
+void XExtTree::setNodeRender( NodeRender *render ) {
+	mNodeRender = render;
 }
