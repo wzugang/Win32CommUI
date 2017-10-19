@@ -1993,3 +1993,354 @@ XExtMenuManager::~XExtMenuManager() {
 		delete mMenus[i];
 	}
 }
+//-------------------------XExtTreeNode--------------------
+XExtTreeNode::XExtTreeNode( const char *text ) {
+	mText = (char *)text;
+	mParent = NULL;
+	mChildren = NULL;
+	mUserData = NULL;
+	mAttrFlags = 0;
+	mExpand = false;
+	mContentWidth = -1;// -1 表示宽度未定
+}
+void XExtTreeNode::insert( int pos, XExtTreeNode *child ) {
+	if (child == NULL || pos > getChildCount()) 
+		return;
+	if (mChildren == NULL) mChildren = new std::vector<XExtTreeNode*>();
+	if (pos < 0) pos = getChildCount();
+	mChildren->insert(mChildren->begin() + pos, child);
+	child->mParent = this;
+}
+void XExtTreeNode::remove( int pos ) {
+	if (pos >= 0 && pos < getChildCount()) {
+		mChildren->erase(mChildren->begin() + pos);
+	}
+}
+int XExtTreeNode::indexOf( XExtTreeNode *child ) {
+	if (child == NULL || mChildren == NULL) 
+		return -1;
+	for (int i = 0; i < mChildren->size(); ++i) {
+		if (mChildren->at(i) == child) 
+			return i;
+	}
+	return -1;
+}
+int XExtTreeNode::getChildCount() {
+	if (mChildren == NULL) return 0;
+	return mChildren->size();
+}
+XExtTreeNode * XExtTreeNode::getChild( int idx ) {
+	if (idx >= 0 && idx < getChildCount())
+		return mChildren->at(idx);
+	return NULL;
+}
+void * XExtTreeNode::getUserData() {
+	return mUserData;
+}
+void XExtTreeNode::setUserData( void *userData ) {
+	mUserData = userData;
+}
+int XExtTreeNode::getContentWidth() {
+	return mContentWidth;
+}
+void XExtTreeNode::setContentWidth( int w ) {
+	mContentWidth = w;
+}
+bool XExtTreeNode::isExpand() {
+	return mExpand;
+}
+void XExtTreeNode::setExpand( bool expand ) {
+	mExpand = expand;
+}
+char * XExtTreeNode::getText() {
+	return mText;
+}
+void XExtTreeNode::setText( char *text ) {
+	mText = text;
+	mContentWidth = -1;
+}
+XExtTreeNode::PosInfo XExtTreeNode::getPosInfo() {
+	if (mParent == NULL) return PI_FIRST;
+	int v = 0;
+	int idx = mParent->indexOf(this);
+	if (idx == 0) v |= PI_FIRST;
+	if (idx == mParent->getChildCount() - 1) v |= PI_LAST;
+	if (idx > 0 && idx < mParent->getChildCount() - 1) v |= PI_CENTER;
+	return PosInfo(v);
+}
+int XExtTreeNode::getLevel() {
+	XExtTreeNode *p = mParent;
+	int level = -1;
+	for (; p != NULL; p = p->mParent) ++level;
+	return level;
+}
+
+static const int TREE_NODE_HEIGHT = 30;
+static const int TREE_NODE_HEADER_WIDTH = 40;
+static const int TREE_NODE_BOX = 16;
+static const int TREE_NODE_BOX_LEFT = 5;
+
+XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
+	mBuffer = NULL;
+	mDataSize.cx = mDataSize.cy = 0;
+	mModel = NULL;
+	mBoxBrush = CreateSolidBrush(RGB(0xcc, 0xcc, 0xcc));
+	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x33,0x33,0x33));
+	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
+	mSelectNode = NULL;
+	mWidthSpec = mHeightSpec = 0;
+}
+void XExtTree::setModel( XExtTreeNode *root ) {
+	mModel = root;
+}
+XExtTree::~XExtTree() {
+	if (mBuffer) delete mBuffer;
+}
+bool XExtTree::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_ERASEBKGND) {
+		return true;
+	} if (msg == WM_SIZE) {
+		if (mBuffer != NULL) delete mBuffer;
+		mBuffer = NULL;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		HDC memDc = CreateCompatibleDC(dc);
+		SIZE sz = getClientSize();
+		if (mBuffer == NULL) {
+			mBuffer = XImage::create(mWidth, mHeight, 24);
+		}
+		SelectObject(memDc, mBuffer->getHBitmap());
+		// draw background
+		eraseBackground(memDc);
+		drawData(memDc, sz.cx, sz.cy);
+		BitBlt(dc, 0, 0, sz.cx, sz.cy, memDc, 0, 0, SRCCOPY);
+		DeleteObject(memDc);
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		if (mEnableFocus) SetFocus(mWnd);
+		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		onLBtnDown(x, y);
+		return true;
+	} else if (msg == WM_LBUTTONDBLCLK) {
+		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		onLBtnDbClick(x, y);
+		return true;
+	}
+	return XExtScroll::wndProc(msg, wParam, lParam, result);
+}
+void XExtTree::onMeasure( int widthSpec, int heightSpec ) {
+	mWidthSpec = widthSpec;
+	mHeightSpec = heightSpec;
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	if (mModel == NULL) return;
+	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+
+	mDataSize = calcDataSize();
+	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
+	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight);
+	if (mHorBar->isNeedShow())
+		WND_SHOW(mHorBar->getWnd());
+	else
+		WND_HIDE(mHorBar->getWnd());
+	if (mVerBar->isNeedShow())
+		WND_SHOW(mVerBar->getWnd());
+	else
+		WND_HIDE(mVerBar->getWnd());
+
+	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
+		onMeasure(widthSpec, heightSpec);
+}
+void XExtTree::onLayout( int width, int height ) {
+	if (mModel == NULL) return;
+	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
+	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
+}
+static void CalcDataSize(HDC dc, XExtTreeNode *n, int *nodeNum, int *maxWidth, int level) {
+	*nodeNum = *nodeNum + 1;
+	if (n->getContentWidth() < 0) {
+		SIZE sztw = {0};
+		if (n->getText() != NULL) {
+			GetTextExtentPoint32(dc, n->getText(), strlen(n->getText()), &sztw);
+		} else {
+			sztw.cx = 30;
+		}
+		n->setContentWidth(sztw.cx);
+	}
+	int mw = n->getContentWidth() + level * TREE_NODE_HEADER_WIDTH;
+	if (*maxWidth < mw) *maxWidth = mw;
+	if (n->isExpand()) {
+		for (int i = 0; i < n->getChildCount(); ++i) {
+			CalcDataSize(dc, n->getChild(i), nodeNum, maxWidth, level + 1);
+		}
+	}
+}
+SIZE XExtTree::calcDataSize() {
+	SIZE sz = {0};
+	if (mModel == NULL) return sz;
+	int nn = 0, mw = 0;
+	HDC dc = GetDC(mWnd);
+	SelectObject(dc, getFont());
+	mModel->setExpand(true); // always expand root node
+	CalcDataSize(dc, mModel, &nn, &mw, 0);
+	ReleaseDC(mWnd, dc);
+	sz.cy = (nn - 1) * TREE_NODE_HEIGHT;
+	sz.cx = mw + 5;
+	return sz;
+}
+SIZE XExtTree::getClientSize() {
+	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+	SIZE sz = {clientWidth, clientHeight};
+	return sz;
+}
+void XExtTree::moveChildrenPos( int dx, int dy ) {
+	InvalidateRect(mWnd, NULL, TRUE);
+}
+void XExtTree::drawData( HDC dc, int w, int h) {
+	if (mModel == NULL) return;
+	int y = -mVerBar->getPos();
+	SelectObject(dc, mLinePen);
+	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
+
+	for (int i = 0; i < mModel->getChildCount(); ++i) {
+		XExtTreeNode *child = mModel->getChild(i);
+		drawNode(dc, child, 0, w, h, &y);
+	}
+}
+void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, int clientHeight, int *py ) {
+	if (*py >= clientHeight) return;
+	if (*py + TREE_NODE_HEIGHT <= 0) goto _drawChild;
+	int y = *py;
+	// draw level ver line
+	for (int i = 0; i < level; ++i) {
+		int lx = -mHorBar->getPos() + i * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT + TREE_NODE_BOX / 2;
+		MoveToEx(dc, lx, y, NULL);
+		LineTo(dc, lx, y + TREE_NODE_HEIGHT);
+	}
+	// draw hor line
+	int x = -mHorBar->getPos() + level * TREE_NODE_HEADER_WIDTH;
+	MoveToEx(dc, x+TREE_NODE_BOX_LEFT+TREE_NODE_BOX/2, y+TREE_NODE_HEIGHT/2, NULL);
+	LineTo(dc, x+TREE_NODE_HEADER_WIDTH-2, y+TREE_NODE_HEIGHT/2);
+	// draw ver line
+	XExtTreeNode::PosInfo pi = n->getPosInfo();
+	int ly = y + TREE_NODE_HEIGHT, fy = y;
+	if (pi & XExtTreeNode::PI_LAST) {
+		ly = y + TREE_NODE_HEIGHT / 2;
+	}
+	if ((pi & XExtTreeNode::PI_FIRST) && level == 0) {
+		fy = y + TREE_NODE_HEIGHT / 2;
+	}
+	MoveToEx(dc, x+TREE_NODE_BOX_LEFT + TREE_NODE_BOX/2, fy, NULL);
+	LineTo(dc, x+TREE_NODE_BOX_LEFT + TREE_NODE_BOX/2, ly);
+	// draw box
+	if (n->getChildCount() > 0) {
+		int lx = x + TREE_NODE_BOX_LEFT;
+		int ly = y + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2;
+		Rectangle(dc, lx, ly, lx + TREE_NODE_BOX, ly + TREE_NODE_BOX);
+		ly += TREE_NODE_BOX / 2;
+		MoveToEx(dc, lx + 4, ly, NULL);
+		LineTo(dc, lx + TREE_NODE_BOX - 4, ly);
+		if (! n->isExpand()) {
+			lx += TREE_NODE_BOX / 2 - 1;
+			ly -= TREE_NODE_BOX / 2;
+			MoveToEx(dc, lx, ly + 5, NULL);
+			LineTo(dc, lx, ly + TREE_NODE_BOX - 4);
+		}
+	}
+
+	// draw node content
+	x += TREE_NODE_HEADER_WIDTH;
+	RECT r = {x, y, x+n->getContentWidth(), y+TREE_NODE_HEIGHT};
+	if (mSelectNode == n) FillRect(dc, &r, mSelectBgBrush);
+	if (n->getText()) {
+		DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER);
+	}
+	_drawChild:
+	*py = *py + TREE_NODE_HEIGHT;
+	if (n->getChildCount() > 0 && n->isExpand()) {
+		for (int i = 0; i < n->getChildCount(); ++i) {
+			XExtTreeNode *ss = n->getChild(i);
+			drawNode(dc, ss, level + 1, clientWidth, clientHeight, py);
+		}
+	}
+}
+void XExtTree::notifyChanged() {
+	if (mWidthSpec != 0 && mHeightSpec != 0) {
+		onMeasure(mWidthSpec, mHeightSpec);
+		InvalidateRect(mWnd, NULL, TRUE);
+		UpdateWindow(mWnd);
+	}
+}
+void XExtTree::onLBtnDown( int x, int y ) {
+	POINT pt = {x, y};
+	int y2 = 0;
+	XExtTreeNode * node = getNodeAtY(y, &y2);
+	if (node == NULL) return;
+	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
+	if (PtInRect(&cntRect, pt)) { // click in node content
+		if (mSelectNode != node) {
+			mSelectNode = node;
+			InvalidateRect(mWnd, NULL, TRUE);
+			UpdateWindow(mWnd);
+		}
+		return;
+	}
+	if (node->getChildCount() == 0) // has no child
+		return;
+	x2 = node->getLevel() * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT;
+	int yy = y2 + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2;
+	RECT r = {x2, yy, x2 + TREE_NODE_BOX, yy + TREE_NODE_BOX};
+	if (PtInRect(&r, pt)) { // click in box
+		node->setExpand(! node->isExpand());
+		notifyChanged();
+	}
+}
+static XExtTreeNode * GetNodeAtY(XExtTreeNode *n, int y, int *py) {
+	if (y >= *py && y < *py + TREE_NODE_HEIGHT) {
+		return n;
+	}
+	*py = *py + TREE_NODE_HEIGHT;
+	if (n->isExpand()) {
+		for (int i = 0; i < n->getChildCount(); ++i) {
+			XExtTreeNode *cc = GetNodeAtY(n->getChild(i), y, py);
+			if (cc != NULL) return cc;
+		}
+	}
+	return NULL;
+}
+XExtTreeNode * XExtTree::getNodeAtY( int y, int *py ) {
+	if (mModel == NULL) return NULL;
+	int y2 = -mVerBar->getPos();
+	XExtTreeNode *n = NULL;
+	for (int i = 0; i < mModel->getChildCount(); ++i) {
+		n = GetNodeAtY(mModel->getChild(i), y, &y2);
+		if (n != NULL) break;
+	}
+	*py = y2;
+	return n;
+}
+void XExtTree::onLBtnDbClick( int x, int y ) {
+	POINT pt = {x, y};
+	int y2 = 0;
+	XExtTreeNode * node = getNodeAtY(y, &y2);
+	if (node == NULL) return;
+	if (node->getChildCount() == 0) // has no child
+		return;
+	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
+	if (PtInRect(&cntRect, pt)) { // db-click in node content
+		node->setExpand(! node->isExpand());
+		notifyChanged();
+	}
+}

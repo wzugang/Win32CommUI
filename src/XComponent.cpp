@@ -383,14 +383,8 @@ HFONT XComponent::getFont() {
 	return mNode->getParent()->getComponent()->getFont();
 }
 
-void XComponent::init() {
-	INITCOMMONCONTROLSEX cc = {0};
-	cc.dwSize = sizeof(cc);
-	InitCommonControlsEx(&cc);
-	mInstance = GetModuleHandle(NULL);
-}
-
 HINSTANCE XComponent::getInstance() {
+	if (mInstance == NULL) mInstance = GetModuleHandle(NULL);
 	return mInstance;
 }
 

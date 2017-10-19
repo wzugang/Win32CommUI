@@ -51,6 +51,7 @@ protected:
 
 class UIFactory {
 public:
+	static void init();
 	typedef XComponent * (*Creator)(XmlNode*);
 
 	static XComponent* buildComponent(XmlNode *root);
@@ -65,7 +66,5 @@ public:
 	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);
 	static Creator getCreator(const char *nodeName);
-protected:
-	static int mNum;
 };
 

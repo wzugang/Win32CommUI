@@ -46,7 +46,6 @@ public:
 		WM_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
 	};
 	XComponent(XmlNode *node);
-	static void init();
 	static HINSTANCE getInstance();
 	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);

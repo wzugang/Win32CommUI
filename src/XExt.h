@@ -392,3 +392,70 @@ protected:
 	XComponent *mOwner;
 	ItemListener *mListener;
 };
+
+class XExtTreeNode {
+public:
+	enum AttrFlag {
+		AF_HAS_CHECKBOX = 1,
+		AF_ENABLE_CHECK = 2,
+	};
+	enum PosInfo {
+		PI_FIRST = 1,
+		PI_LAST = 2,
+		PI_CENTER = 4
+	};
+	XExtTreeNode(const char *text);
+	// pos : -1 means append
+	void insert(int pos, XExtTreeNode *child);
+	void remove(int pos);
+	int indexOf(XExtTreeNode *child);
+	int getChildCount();
+	void *getUserData();
+	void setUserData(void *userData);
+	int getContentWidth();
+	void setContentWidth(int w);
+	XExtTreeNode *getChild(int idx);
+	bool isExpand();
+	void setExpand(bool expand);
+	char *getText();
+	void setText(char *text);
+	PosInfo getPosInfo();
+	int getLevel();
+protected:
+	char *mText;
+	XExtTreeNode *mParent;
+	std::vector<XExtTreeNode*> *mChildren;
+	DWORD mAttrFlags;
+	bool mExpand;
+	void *mUserData;
+	int mContentWidth;
+};
+class XExtTree : public XExtScroll {
+public:
+	XExtTree(XmlNode *node);
+	//根结点为虚拟结点，不显示
+	void setModel(XExtTreeNode *root);
+	void notifyChanged();
+	virtual ~XExtTree();
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	SIZE calcDataSize();
+	SIZE getClientSize();
+	virtual void moveChildrenPos( int dx, int dy );
+	void drawData(HDC dc, int w, int h);
+	void drawNode(HDC dc, XExtTreeNode *n, int level, int clientWidth, int clientHeight, int *y);
+	void onLBtnDown(int x, int y);
+	void onLBtnDbClick(int x, int y);
+	XExtTreeNode *getNodeAtY(int y, int *py);
+protected:
+	XImage *mBuffer;
+	SIZE mDataSize;
+	XExtTreeNode *mModel;
+	HBRUSH mBoxBrush;
+	HPEN mLinePen;
+	HBRUSH mSelectBgBrush;
+	XExtTreeNode *mSelectNode;
+	int mWidthSpec, mHeightSpec;
+};

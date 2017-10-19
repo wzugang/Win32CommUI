@@ -65,10 +65,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	int mmLen = SizeofResource(NULL, mm);
 	FreeResource(hmm);*/
 
-	XComponent::init();
+	UIFactory::init();
 
 	win = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
-	// InitMyTree();
+	InitMyTree();
 	InitMyTable();
 	InitMyList();
 
@@ -143,18 +143,29 @@ void InitMyList() {
 	table->setModel(model);
 }
 void InitMyTree() {
-	XTree * t = (XTree*) win->findById("my-tree");
-	HWND tw = t->getWnd();
-	XTreeRootNode *root = new XTreeRootNode(tw);
-	XTreeNode *n = (new XTreeNode("Root A"))->appendTo(root);
-	(new XTreeNode("Hello"))->appendTo(n);
-	(new XTreeNode("World"))->appendTo(n);
-	XTreeNode *n2 = (new XTreeNode("Root B"))->appendTo(root);
-	n2->append(new XTreeNode("How"));
-	n2->append(new XTreeNode("Are"));
-	(new XTreeNode("You"))->appendTo(n2);
-	n2->insert(1, new XTreeNode("Fine"));
-	root->apply();
+	XExtTree * t = (XExtTree*) win->findById("ext_tree");
+	XExtTreeNode *root = new XExtTreeNode(NULL);
+	root->setExpand(false);
+	XExtTreeNode *n = new XExtTreeNode("Hello");
+		n->setExpand(true);
+		root->insert(-1, n);
+		n->insert(-1, new XExtTreeNode("AAAA"));
+			XExtTreeNode *n2 = new XExtTreeNode("BBBBB");
+			n2->setExpand(true);
+			n->insert(-1, n2);
+			n2->insert(-1, new XExtTreeNode("SSS"));
+			n2->insert(-1, new XExtTreeNode("Pick"));
+		n->insert(-1, new XExtTreeNode("CCC"));
+		n->insert(-1, new XExtTreeNode("DDDDD"));
+	n = new XExtTreeNode("World");
+		n->setExpand(true);
+		root->insert(-1, n);
+		n->insert(-1, new XExtTreeNode("KKKK"));
+		n->insert(-1, new XExtTreeNode("JJJJ"));
+		n->insert(-1, new XExtTreeNode("VVVVVVV"));
+
+	root->insert(-1, new XExtTreeNode("ÍÆÏúÊ²Ã´"));
+	t->setModel(root);
 }
 
 void InitMyMenu() {

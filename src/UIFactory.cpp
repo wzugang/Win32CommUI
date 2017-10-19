@@ -316,13 +316,13 @@ struct NodeCreator {
 };
 
 static NodeCreator g_creators[64];
-int UIFactory::mNum = 0;
+static int g_creatorNum = 0;
 
 XComponent* UIFactory::buildComponent( XmlNode *root) {
 	if (root == NULL) return NULL;
 	Creator c = getCreator(root->getName());
 	if (c == NULL) {
-		printf("UIFactory.buildingTree: node name %s has no creator\n", root->getName());
+		printf("UIFactory.buildingTree: node name [%s] has no creator\n", root->getName());
 		return NULL;
 	}
 	XComponent *x = c(root);
@@ -360,17 +360,18 @@ XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, XCo
 void UIFactory::registCreator( const char *nodeName, Creator c ) {
 	if (nodeName == NULL || c == NULL)
 		return;
-	strcpy(g_creators[mNum].mNodeName, nodeName);
-	g_creators[mNum].mCreator = c;
-	++mNum;
+	strcpy(g_creators[g_creatorNum].mNodeName, nodeName);
+	g_creators[g_creatorNum].mCreator = c;
+	++g_creatorNum;
 }
 
 UIFactory::Creator UIFactory::getCreator( const char *nodeName ) {
 	if (nodeName == NULL) return NULL;
-	for (int i = 0; i < mNum; ++i) {
+	for (int i = 0; i < g_creatorNum; ++i) {
 		if (strcmp(nodeName, g_creators[i].mNodeName) == 0)
 			return g_creators[i].mCreator;
 	}
+	printf("Node: [%s] has no Creator\n", nodeName);
 	return NULL;
 }
 
@@ -450,50 +451,44 @@ static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
 static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtEdit(n);}
 static XComponent *XExtList_Creator(XmlNode *n) {return new XExtList(n);}
 static XComponent *XExtComboBox_Creator(XmlNode *n) {return new XExtComboBox(n);}
+static XComponent *XExtTree_Creator(XmlNode *n) {return new XExtTree(n);}
 
-struct InitUIFactory {
-	InitUIFactory() {
-		UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
-		UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
-		UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
+void UIFactory::init() {
+	INITCOMMONCONTROLSEX cc = {0};
+	cc.dwSize = sizeof(cc);
+	InitCommonControlsEx(&cc);
 
-		UIFactory::registCreator("Button", XButton_Creator);
-		UIFactory::registCreator("Label", XLabel_Creator);
-		UIFactory::registCreator("CheckBox", XCheckBox_Creator);
-		UIFactory::registCreator("Radio", XRadio_Creator);
-		UIFactory::registCreator("GroupBox", XGroupBox_Creator);
-		UIFactory::registCreator("Edit", XEdit_Creator);
-		UIFactory::registCreator("ComboBox", XComboBox_Creator);
-		UIFactory::registCreator("Table", XTable_Creator);
-		UIFactory::registCreator("Tree", XTree_Creator);
-		UIFactory::registCreator("Tab", XTab_Creator);
-		UIFactory::registCreator("ListBox", XListBox_Creator);
-		UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
-		UIFactory::registCreator("Window", XWindow_Creator);
-		UIFactory::registCreator("Dialog", XDialog_Creator);
-		UIFactory::registCreator("Scroll", XScroller_Creator);
+	UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
+	UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
+	UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
+#if 0
+	UIFactory::registCreator("Button", XButton_Creator);
+	UIFactory::registCreator("Label", XLabel_Creator);
+	UIFactory::registCreator("CheckBox", XCheckBox_Creator);
+	UIFactory::registCreator("Radio", XRadio_Creator);
+	UIFactory::registCreator("GroupBox", XGroupBox_Creator);
+	UIFactory::registCreator("Edit", XEdit_Creator);
+	UIFactory::registCreator("ComboBox", XComboBox_Creator);
+	UIFactory::registCreator("Table", XTable_Creator);
+	UIFactory::registCreator("Tree", XTree_Creator);
+	UIFactory::registCreator("ListBox", XListBox_Creator);
+	UIFactory::registCreator("Scroll", XScroller_Creator);
+#endif
+	UIFactory::registCreator("Tab", XTab_Creator);
+	UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
+	UIFactory::registCreator("Window", XWindow_Creator);
+	UIFactory::registCreator("Dialog", XDialog_Creator);
 
-		UIFactory::registCreator("ExtButton", XExtButton_Creator);
-		UIFactory::registCreator("ExtOption", XExtOption_Creator);
-		UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
-		UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
-		UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
-		UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
-		UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
-		UIFactory::registCreator("ExtTable", XExtTable_Creator);
-		UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
-		UIFactory::registCreator("ExtList", XExtList_Creator);
-		UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
-	}
-
-	~InitUIFactory() {
-	}
-};
-
-static InitUIFactory s_init_ui_factory;
-
-#include <gdiplus.h>
-
-void aa() {
-	// Gdiplus::Image *a = Gdiplus::Image::FromFile("xx");
+	UIFactory::registCreator("ExtButton", XExtButton_Creator);
+	UIFactory::registCreator("ExtOption", XExtOption_Creator);
+	UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
+	UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
+	UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
+	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
+	UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
+	UIFactory::registCreator("ExtTable", XExtTable_Creator);
+	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
+	UIFactory::registCreator("ExtList", XExtList_Creator);
+	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
+	UIFactory::registCreator("ExtTree", XExtTree_Creator);
 }
