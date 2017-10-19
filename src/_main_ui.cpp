@@ -9,6 +9,7 @@
 XWindow *win;
 XDialog *dlg;
 XExtPopup *popup;
+XExtMenuItemList *mlist;
 
 void InitMyTable();
 void InitMyTree();
@@ -34,7 +35,7 @@ public:
 		if (strcmp("ext_btn_1", id) == 0) {
 			POINT pt;
 			GetCursorPos(&pt);
-			XExtMenuItemList *mlist = UIFactory::fastMenu("file://skin/base.xml", "my-menu");
+			if (mlist == NULL) mlist = UIFactory::fastMenu("file://skin/base.xml", "my-menu");
 			XExtMenuManager mgr(mlist, evtSource, NULL);
 			mgr.show(pt.x, pt.y);
 			return true;

@@ -1682,7 +1682,7 @@ XExtMenuItem::XExtMenuItem(const char *name, char *text) {
 }
 XExtMenuItemList::XExtMenuItemList() {
 	mCount = 0;
-	mItems = (XExtMenuItem **)malloc(sizeof(XExtMenuItem *) * 50);
+	memset(mItems, 0, sizeof(mItems));
 }
 void XExtMenuItemList::add( XExtMenuItem *item ) {
 	insert(mCount, item);
@@ -1737,6 +1737,7 @@ XExtMenu::XExtMenu( XmlNode *node, XExtMenuManager *mgr) : XExtComponent(node) {
 	mAttrFlags |= AF_BG_COLOR;
 	mAttrBgColor = RGB(0xfa, 0xfa, 0xfa);
 	mSeparatorPen = CreatePen(PS_SOLID, 1, RGB(0xcc, 0xcc, 0xcc));
+	mCheckedPen = CreatePen(PS_SOLID, 1, RGB(0x64, 0x95, 0xED));
 	mSelectBrush = CreateSolidBrush(RGB(0xB2, 0xDF, 0xEE));
 	createWnd();
 }
@@ -1843,10 +1844,10 @@ void XExtMenu::drawItems( HDC dc ) {
 		int k = item->mSeparator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
 		if (item->mSeparator) {
 			SelectObject(dc, mSeparatorPen);
-			MoveToEx(dc, 10, h + k / 2 - 1, NULL);
+			MoveToEx(dc, 30, h + k / 2 - 1, NULL);
 			LineTo(dc, mWidth - 10, h + k / 2 - 1);
 		} else {
-			RECT r = {10, h, mWidth - 10, h + k};
+			RECT r = {30, h, mWidth - 20, h + k};
 			int len = item->mText == NULL ? 0 : strlen(item->mText);
 			if (item->mActive)
 				SetTextColor(dc, RGB(0x20, 0x20, 0x20));
@@ -1859,11 +1860,25 @@ void XExtMenu::drawItems( HDC dc ) {
 			if (item->mChildren != NULL && item->mChildren->getCount() > 0) {
 				// draw arrow
 				static HBRUSH arrowBrush = CreateSolidBrush(RGB(0x55, 0x55, 0x55));
-				int SJ = 5, LW = 10;
+				int SJ = 5, LW = 15;
 				POINT pts[3] = {{mWidth-LW, h+k/2-SJ}, {mWidth-LW, h+k/2+SJ}, {mWidth-LW+(int)(SJ/0.57735), h+k/2}};
 				HRGN rgn = CreatePolygonRgn(pts, 3, ALTERNATE);
 				FillRgn(dc, rgn, arrowBrush);
 				DeleteObject(rgn);
+			}
+			if (item->mCheckable && item->mChecked) {
+				int LH = 3, x = 5, y = h + k/2-3;
+				SelectObject(dc, mCheckedPen);
+				for (int i = 0; i < 4; ++i) {
+					MoveToEx(dc, x + i, y + i, NULL);
+					LineTo(dc, x + i, y + LH + i);
+				}
+				x += 4;
+				y += 4;
+				for (int i = 0; i < 8; ++i) {
+					MoveToEx(dc, x + i, y - i, NULL);
+					LineTo(dc, x + i, y + LH - i);
+				}
 			}
 			DrawText(dc, item->mText, len, &r, DT_SINGLELINE | DT_VCENTER);
 		}
@@ -1888,6 +1903,7 @@ RECT XExtMenu::getItemRect( int idx ) {
 XExtMenu::~XExtMenu() {
 	DeleteObject(mSeparatorPen);
 	DeleteObject(mSelectBrush);
+	DeleteObject(mCheckedPen);
 	DestroyWindow(mWnd);
 }
 XExtMenuManager::XExtMenuManager( XExtMenuItemList *mlist, XComponent *owner, ItemListener *listener ) {

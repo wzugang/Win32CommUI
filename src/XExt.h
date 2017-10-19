@@ -340,7 +340,7 @@ public:
 	XExtMenuItem *findByName(const char *name);
 	~XExtMenuItemList();
 protected:
-	XExtMenuItem **mItems;
+	XExtMenuItem *mItems[50];
 	int mCount;
 };
 
@@ -362,6 +362,7 @@ protected:
 	XExtMenuItemList *mMenuList;
 	int mSelectItem;
 	HPEN mSeparatorPen;
+	HPEN mCheckedPen;
 	HBRUSH mSelectBrush;
 	XExtMenuManager *mManager;
 };
