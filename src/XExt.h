@@ -441,6 +441,8 @@ public:
 	void setModel(XExtTreeNode *root);
 	void notifyChanged();
 	void setNodeRender(NodeRender *render);
+	// @return false:表示node是被折叠的，没有大小; true:表示node是未折叠的，取得了rect
+	bool getNodeRect(XExtTreeNode *node, RECT *r);
 	virtual ~XExtTree();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);

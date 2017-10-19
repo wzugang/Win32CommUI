@@ -2356,3 +2356,35 @@ void XExtTree::onLBtnDbClick( int x, int y ) {
 void XExtTree::setNodeRender( NodeRender *render ) {
 	mNodeRender = render;
 }
+static bool GetNodeRect(XExtTreeNode *n, XExtTreeNode *target, int *py) {
+	if (n == target) {
+		return true;
+	}
+	*py = *py + TREE_NODE_HEIGHT;
+	if (n->isExpand()) {
+		for (int i = 0; i < n->getChildCount(); ++i) {
+			bool fd = GetNodeRect(n->getChild(i), target, py);
+			if (fd) break;
+		}
+	}
+}
+bool XExtTree::getNodeRect( XExtTreeNode *node, RECT *r ) {
+	if (r == NULL) return false;
+	r->left = r->right = r->top = r->bottom = 0;
+	if (mModel == NULL || node == NULL) {
+		return false;
+	}
+	int y = -mVerBar->getPos();
+	bool finded = false;
+	for (int i = 0; i < mModel->getChildCount(); ++i) {
+		finded = GetNodeRect(mModel->getChild(i), node, &y);
+		if (finded) break;
+	}
+	if (finded) {
+		r->left = -mVerBar->getPos() + (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+		r->right = r->left + node->getContentWidth();
+		r->top = y;
+		r->bottom = r->top + TREE_NODE_HEIGHT;
+	}
+	return finded;
+}
