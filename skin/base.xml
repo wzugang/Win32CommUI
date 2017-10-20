@@ -1,0 +1,103 @@
+#################### main-page ############
+<Window text = "Test App" rect = "0 0 800 600"  >
+	<default class="ExtButton" roundConer="5 5" font="size:18"  normalImage="file://skin/ext_button.bmp [0 48 75 24] 9patch" hoverImage="file://skin/ext_button.bmp [0 24 75 24] 9patch" pushImage="file://skin/ext_button.bmp [0 0 75 24] 9patch" />
+	<default class="ExtCheckBox" normalImage="file://skin/ext_checkbox_normal.bmp" hoverImage="file://skin/ext_checkbox_hover.bmp" pushImage="file://skin/ext_checkbox_hover.bmp" selectImage="file://skin/ext_checkbox_select.bmp" />
+	<default class="ExtRadio" normalImage="file://skin/radio_normal.png" hoverImage="file://skin/radio_normal.png" pushImage="file://skin/radio_normal.png" selectImage="file://skin/radio_select.png" />
+	<default class="ExtList"  vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" />
+	<default class="ExtTable"  vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" />
+	<default class="ExtScroll"  vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" />
+	<default class="ExtComboBox"  arrowNormal="file://skin/ext_combobox_arrow_normal.png" arrowDown="file://skin/ext_combobox_arrow_down.png" 
+		vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" 
+		hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" bgimage="file://skin/ext_combobox_bg.bmp"/>
+	<default class="ExtTree"  vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" />
+	
+<AbsLayout id = "main-layout" rect="0  0 100% 100%" font="size:18;"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp" >
+	<Tab id="tab" rect = "10% 10% 80% 80%" data = "早上; 中午; 下午;"  >
+		<AbsLayout  bgcolor="#dFB6C1" bgimage="file://skin/b.bmp" rect="0 0 100% 100%">
+			<ExtButton id = "ext_btn_1" text = "ExtBtn"  rect = "20 60 75 24"    />
+			<ExtLabel text = "This is a ExtLabel" rect="150 50 200 25"   padding="5 5 5 5" font="name:宋体; size:18; "/>
+			<ExtCheckBox text="It a ExtCheckBox" rect = "150 90 200 30" color="#ff4f70" />
+			<ExtRadio text="It a ExtRadio A" rect="150 130 200 30" group="XX-VV" />
+			<ExtRadio text="It a ExtRadio B" rect="150 160 200 30" group="XX-VV" />
+			<ExtRadio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
+			<ExtButton id = "ext_btn_2" text = "ExtBtn"  rect = "20 200 100 24"  />
+			<ExtCalendar rect = "350 20 220 200" bgcolor="#F5FFFA" />
+		</AbsLayout>
+
+		<AbsLayout  bgimage="file://skin/c.bmp" visible = "false" rect="0 0 100% 100%" >
+			<ExtEdit text = "Hello World B!" bgcolor="#F5FFFA" color="#880000" rect = "20 20 200 30" roundConer="5 5" margin="10 0 20 0" />
+			<ExtButton id = "btn_1" text = "ClickMe"  rect = "250 20 75 24"  margin="0 0 20 0" />
+			<ExtList id = "list_1" bgcolor="#F5FFFA" rect="350 20 170 250"/>
+			<ExtComboBox id="combox_1" rect="20 100 150 25" readOnly="true" arrowSize="20 15" popupSize="100% 120"/>
+			<ExtTree id="ext_tree" rect="20 150 300 200" bgcolor="#F5FFFA" />
+		</AbsLayout>
+
+		<AbsLayout  bgimage="file://skin/d.bmp" visible = "false" rect="0 0 100% 100%">
+			<ExtTable id="my-table" rect="10% 10% 80% 80%" bgcolor="#cccccc" />
+		</AbsLayout>
+		
+	</Tab>
+</AbsLayout>
+</Window>
+
+#################### dialog-page ############
+<Dialog text="Tool" rect = "0 0 300 200" >
+<AbsLayout rect="0  0  100% 100%"  bgimage="file://skin/a.bmp" font="size:15;" >
+	<ExtButton id = "tool_btn_1"text = "What"  rect = "20 120 75 24"  margin="0 0 20 0" />
+</AbsLayout>
+</Dialog>
+
+#################### tab-page-3 ############
+<AbsLayout  bgcolor="#dFB6C1" bgimage = "file://skin/c.bmp" visible="false" rect="0 0 100% 100%">
+	<Label text = "This is tab-page-3 !" color="#ffff00" bgcolor="#a0489d" rect = "20 20 250 30" />
+</AbsLayout>
+
+#################### my-popup ############
+<ExtPopup  rect="0 0 200 300">
+<AbsLayout rect="0  0  100% 100%"  bgimage="file://skin/a.bmp" font="size:18;" >
+	<ExtLabel id = "pop_lab_1" text = "I an ok" color="#ffff00"  rect = "20 10 100 30" />
+	<ExtButton id = "pop_btn_1" text = "ExtBtn"  rect = "20 60 75 24"   />
+</AbsLayout>
+</ExtPopup>
+
+#################### scroll-page ############
+<ExtScroll rect="0 0 100% 100%" bgcolor="#aFB6C1" >
+	<AbsLayout bgimage="file://skin/a.bmp" rect="0 0 100% 1000" >
+		<ExtLabel text = "She is sdfffff dd" color="#d80860"   rect = "420 40 150 50"  />
+	</AbsLayout>
+</ExtScroll>
+
+#################### my-menu ############
+<Menu>
+	<MenuItem name="A" text="AAAAA"    />
+	<MenuItem name="B" text="BBBBBB"   />
+	<MenuItem separator="true"  />
+	<MenuItem name="C" text="姓别"  >
+		<MenuItem name="C1" text="男" checkable="true"  />
+		<MenuItem  name="C2" text="女" checkable="true" />
+	</MenuItem>
+	<MenuItem separator="true"  />
+	<MenuItem name="D" text="DDDD"   />
+</Menu>
+
+#################### my-tree ############
+<Tree>
+	<TreeNode text="San tai hu" />
+	<TreeNode text="Bai Du" expand="true">
+		<TreeNode text="Good" />
+		<TreeNode text="Bad" />
+	</TreeNode>
+	<TreeNode text="My Fav" >
+		<TreeNode text="Simple" />
+		<TreeNode text="Many" >
+			<TreeNode text="Many A" />
+			<TreeNode text="Many B" />
+			<TreeNode text="Many C" />
+		</TreeNode>
+		<TreeNode text="Love" >
+			<TreeNode text="Love Me" />
+			<TreeNode text="Love You" />
+			<TreeNode text="Love She" />
+		</TreeNode>
+	</TreeNode>
+</Tree>
