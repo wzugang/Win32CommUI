@@ -2424,8 +2424,11 @@ XExtCalendar::XExtCalendar( XmlNode *node ) : XExtComponent(node) {
 	mSelectLeftArrow = false;
 	mSelectRightArrow = false;
 	mSelectHeadTitle = false;
+	mTrackSelectIdx = -1;
 	mArrowNormalBrush = CreateSolidBrush(RGB(0x5c, 0x5c, 0x6c));
 	mArrowSelBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
+	mSelectBgBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
+	mTrackBgBrush = CreateSolidBrush(RGB(0xA4, 0xD3, 0xEE));
 	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x5c, 0x5c, 0x6c));
 	time_t cur = time(NULL);
 	struct tm *st = localtime(&cur);
@@ -2437,6 +2440,8 @@ XExtCalendar::XExtCalendar( XmlNode *node ) : XExtComponent(node) {
 	fillViewDates(mYearInDayMode, mMonthInDayMode);
 	mNormalColor = RGB(0x35, 0x35, 0x35);
 	mGreyColor = RGB(0xcc, 0xcc, 0xcc);
+	mBuffer = NULL;
+	mTrackMouseLeave = false;
 }
 void XExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
@@ -2451,13 +2456,26 @@ void XExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
 	mHeadTitleRect.bottom = CALENDER_HEAD_HEIGHT;
 }
 bool XExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_PAINT) {
+	if (msg == WM_ERASEBKGND) {
+		return true;
+	} else if (msg == WM_SIZE) {
+		if (mBuffer) delete mBuffer;
+		mBuffer = NULL;
+		return true;
+	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
-		drawHeader(dc);
-		if (mViewMode == VM_SEL_DAY) drawSelDay(dc);
-		else if (mViewMode == VM_SEL_MONTH) drawSelMonth(dc);
-		else drawSelYear(dc);
+		HDC memDc = CreateCompatibleDC(dc);
+		if (mBuffer == NULL) mBuffer = XImage::create(mWidth, mHeight, 24);
+		SelectObject(memDc, mBuffer->getHBitmap());
+		eraseBackground(memDc);
+		SelectObject(memDc, getFont());
+		drawHeader(memDc);
+		if (mViewMode == VM_SEL_DAY) drawSelDay(memDc);
+		else if (mViewMode == VM_SEL_MONTH) drawSelMonth(memDc);
+		else drawSelYear(memDc);
+		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+		DeleteObject(memDc);
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
@@ -2466,6 +2484,11 @@ bool XExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 		POINT pt = {x, y};
 		if (PtInRect(&mHeadTitleRect, pt)) {
 			mViewMode = ViewMode((mViewMode + 1) % VM_NUM);
+			if (mViewMode == VM_SEL_DAY) {
+				mYearInMonthMode = mYearInDayMode;
+				mBeginYearInYearMode = mYearInDayMode / 10 * 10;
+				mEndYearInYearMode = mBeginYearInYearMode + 9;
+			}
 			InvalidateRect(mWnd, NULL, TRUE);
 			return true;
 		}
@@ -2474,10 +2497,43 @@ bool XExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 			onLButtonDownInDayMode(x, y);
 			break;
 		case VM_SEL_MONTH:
+			onLButtonDownInMonthMode(x, y);
 			break;
 		case VM_SEL_YEAR:
+			onLButtonDownInYearMode(x, y);
 			break;
 		}
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		POINT pt = {x, y};
+		if (! mTrackMouseLeave) {
+			mTrackMouseLeave = true;
+			TRACKMOUSEEVENT a = {0};
+			a.cbSize = sizeof(TRACKMOUSEEVENT);
+			a.dwFlags = TME_LEAVE;
+			a.hwndTrack = mWnd;
+			TrackMouseEvent(&a);
+		}
+		resetSelect();
+		if (PtInRect(&mLeftArrowRect, pt)) {
+			mSelectLeftArrow = true;
+		}
+		if (PtInRect(&mRightArowRect, pt)) {
+			mSelectRightArrow = true;
+		}
+		if (PtInRect(&mHeadTitleRect, pt)) {
+			mSelectHeadTitle = true;
+		}
+		if (mViewMode == VM_SEL_DAY) onMouseMoveInDayMode(x, y);
+		else if (mViewMode == VM_SEL_MONTH) onMouseMoveInMonthMode(x, y);
+		else if (mViewMode == VM_SEL_YEAR) onMouseMoveInYearMode(x, y);
+		InvalidateRect(mWnd, NULL, TRUE);
+		return true;
+	} else if (msg == WM_MOUSELEAVE) {
+		mTrackMouseLeave = false;
+		resetSelect();
+		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
@@ -2495,6 +2551,12 @@ void XExtCalendar::drawSelDay( HDC dc ) {
 	RECT rc = {0, CALENDER_HEAD_HEIGHT + H, W, CALENDER_HEAD_HEIGHT + H * 2};
 	char buf[4];
 	for (int i = 0; i < 42; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &rc, mTrackBgBrush);
+		}
+		if (mSelectDate.equals(mViewDates[i])) {
+			FillRect(dc, &rc, mSelectBgBrush);
+		}
 		sprintf(buf, "%d", mViewDates[i].mDay);
 		SetTextColor(dc, (mViewDates[i].mMonth == mMonthInDayMode ? mNormalColor : mGreyColor));
 		DrawText(dc, buf, strlen(buf), &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
@@ -2503,8 +2565,34 @@ void XExtCalendar::drawSelDay( HDC dc ) {
 	}
 }
 void XExtCalendar::drawSelMonth( HDC dc ) {
+	static const char *hd[12] = {"一月", "二月", "三月", "四月", "五月", "六月", "七月", 
+		"八月", "九月", "十月", "十一月", "十二月"};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	SetTextColor(dc, mNormalColor);
+	for (int i = 0; i < 12; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &r, mTrackBgBrush);
+		}
+		DrawText(dc, hd[i], strlen(hd[i]), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
 }
 void XExtCalendar::drawSelYear( HDC dc ) {
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	SetTextColor(dc, mNormalColor);
+	char buf[8];
+	for (int i = 0; i < 10; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &r, mTrackBgBrush);
+		}
+		sprintf(buf, "%d", mBeginYearInYearMode + i);
+		DrawText(dc, buf, strlen(buf), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
 }
 void XExtCalendar::drawHeader( HDC dc ) {
 	// draw left arrow
@@ -2521,7 +2609,6 @@ void XExtCalendar::drawHeader( HDC dc ) {
 	DeleteObject(rgn);
 	// draw header title
 	SetBkMode(dc, TRANSPARENT);
-	SelectObject(dc, getFont());
 	SetTextColor(dc, (mSelectHeadTitle ? RGB(0x64, 0x95, 0xED) : mNormalColor));
 	char buf[30];
 	if (mViewMode == VM_SEL_DAY) {
@@ -2604,9 +2691,7 @@ void XExtCalendar::onLButtonDownInDayMode( int x, int y ) {
 		}
 		fillViewDates(mYearInDayMode, mMonthInDayMode);
 		InvalidateRect(mWnd, NULL, TRUE);
-		return;
-	}
-	if (PtInRect(&mRightArowRect, pt)) {
+	}  else if (PtInRect(&mRightArowRect, pt)) {
 		if (mMonthInDayMode == 12) {
 			mMonthInDayMode = 1;
 			++mYearInDayMode;
@@ -2615,6 +2700,128 @@ void XExtCalendar::onLButtonDownInDayMode( int x, int y ) {
 		}
 		fillViewDates(mYearInDayMode, mMonthInDayMode);
 		InvalidateRect(mWnd, NULL, TRUE);
-		return;
+	} else {
+		int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+		pt.y -= CALENDER_HEAD_HEIGHT + H;
+		RECT rc = {0, 0, W, H};
+		for (int i = 0; i < 42; ++i) {
+			if (PtInRect(&rc, pt)) {
+				mSelectDate = mViewDates[i];
+				InvalidateRect(mWnd, NULL, TRUE);
+				SendMessage(mWnd, WM_EXT_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
+				break;
+			}
+			if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+			else OffsetRect(&rc, -6 * W, H);
+		}
+	}
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = mYearInDayMode / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+}
+void XExtCalendar::onLButtonDownInMonthMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		--mYearInMonthMode;
+		InvalidateRect(mWnd, NULL, TRUE);
+	} else if (PtInRect(&mRightArowRect, pt)) {
+		++mYearInMonthMode;
+		InvalidateRect(mWnd, NULL, TRUE);
+	} else {
+		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+		for (int i = 0; i < 12; ++i) {
+			if (PtInRect(&r, pt)) {
+				mViewMode = VM_SEL_DAY;
+				mYearInDayMode = mYearInMonthMode;
+				mMonthInDayMode = i + 1;
+				fillViewDates(mYearInDayMode, mMonthInDayMode);
+				InvalidateRect(mWnd, NULL, TRUE);
+				break;
+			}
+			if ((i + 1) % 4) OffsetRect(&r, W, 0);
+			else OffsetRect(&r, -3 * W, H);
+		}
+	}
+	mBeginYearInYearMode = mYearInMonthMode / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+}
+void XExtCalendar::onLButtonDownInYearMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		mBeginYearInYearMode -= 10;
+		mEndYearInYearMode -= 10;
+		InvalidateRect(mWnd, NULL, TRUE);
+	} else if (PtInRect(&mRightArowRect, pt)) {
+		mBeginYearInYearMode += 10;
+		mEndYearInYearMode += 10;
+		InvalidateRect(mWnd, NULL, TRUE);
+	} else {
+		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+		for (int i = 0; i < 10; ++i) {
+			if (PtInRect(&r, pt)) {
+				mViewMode = VM_SEL_MONTH;
+				mYearInMonthMode = mBeginYearInYearMode + i;
+				InvalidateRect(mWnd, NULL, TRUE);
+				break;
+			}
+			if ((i + 1) % 4) OffsetRect(&r, W, 0);
+			else OffsetRect(&r, -3 * W, H);
+		}
+	}
+}
+XExtCalendar::~XExtCalendar() {
+	if (mBuffer) delete mBuffer;
+	DeleteObject(mArrowNormalBrush);
+	DeleteObject(mArrowSelBrush);
+	DeleteObject(mSelectBgBrush);
+	DeleteObject(mTrackBgBrush);
+	DeleteObject(mLinePen);
+}
+void XExtCalendar::resetSelect() {
+	mSelectLeftArrow = false;
+	mSelectRightArrow = false;
+	mSelectHeadTitle = false;
+	mTrackSelectIdx = -1;
+}
+void XExtCalendar::onMouseMoveInDayMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+	pt.y -= CALENDER_HEAD_HEIGHT + H;
+	RECT rc = {0, 0, W, H};
+	for (int i = 0; i < 42; ++i) {
+		if (PtInRect(&rc, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+		else OffsetRect(&rc, -6 * W, H);
+	}
+}
+void XExtCalendar::onMouseMoveInMonthMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 12; ++i) {
+		if (PtInRect(&r, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
+}
+void XExtCalendar::onMouseMoveInYearMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 10; ++i) {
+		if (PtInRect(&r, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
 	}
 }

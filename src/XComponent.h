@@ -44,6 +44,7 @@ public:
 		WM_LBUTTONDOWN_BUBBLE,
 		WM_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
 		WM_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
+		WM_EXT_CALENDAR_SEL_DATE, // calendar select a date wParam = XExtCalenar::Date pointer
 	};
 	XComponent(XmlNode *node);
 	static HINSTANCE getInstance();

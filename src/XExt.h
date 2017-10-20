@@ -480,7 +480,7 @@ public:
 	XExtCalendar(XmlNode *node);
 	Date getSelectDate();
 	void setSelectDate(Date d);
-
+	virtual ~XExtCalendar();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure( int widthSpec, int heightSpec );
@@ -491,6 +491,12 @@ protected:
 	void fillViewDates(int year, int month);
 	int getDaysNum(int year, int month);
 	void onLButtonDownInDayMode(int x, int y);
+	void onLButtonDownInMonthMode(int x, int y);
+	void onLButtonDownInYearMode(int x, int y);
+	void resetSelect();
+	void onMouseMoveInDayMode( int x, int y );
+	void onMouseMoveInMonthMode( int x, int y );
+	void onMouseMoveInYearMode( int x, int y );
 protected:
 	enum ViewMode {
 		VM_SEL_DAY, VM_SEL_MONTH, VM_SEL_YEAR, VM_NUM
@@ -499,7 +505,8 @@ protected:
 	RECT mLeftArrowRect, mRightArowRect;
 	RECT mHeadTitleRect;
 	bool mSelectLeftArrow, mSelectRightArrow, mSelectHeadTitle;
-	HBRUSH mArrowNormalBrush, mArrowSelBrush;
+	int mTrackSelectIdx;
+	HBRUSH mArrowNormalBrush, mArrowSelBrush, mSelectBgBrush, mTrackBgBrush;
 	HPEN mLinePen;
 	int mYearInDayMode, mMonthInDayMode;
 	int mYearInMonthMode;
@@ -507,4 +514,6 @@ protected:
 	Date mSelectDate;
 	Date mViewDates[42];
 	COLORREF mNormalColor, mGreyColor;
+	XImage *mBuffer;
+	bool mTrackMouseLeave;
 };
