@@ -468,3 +468,43 @@ protected:
 	int mWidthSpec, mHeightSpec;
 	NodeRender *mNodeRender;
 };
+
+class XExtCalendar : public XExtComponent {
+public:
+	struct Date {
+		Date();
+		bool isValid();
+		bool equals(const Date &d);
+		int mYear; int mMonth; int mDay;
+	};
+	XExtCalendar(XmlNode *node);
+	Date getSelectDate();
+	void setSelectDate(Date d);
+
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	void drawSelDay( HDC dc );
+	void drawSelMonth( HDC dc );
+	void drawSelYear( HDC dc );
+	void drawHeader(HDC dc);
+	void fillViewDates(int year, int month);
+	int getDaysNum(int year, int month);
+	void onLButtonDownInDayMode(int x, int y);
+protected:
+	enum ViewMode {
+		VM_SEL_DAY, VM_SEL_MONTH, VM_SEL_YEAR, VM_NUM
+	};
+	ViewMode mViewMode;
+	RECT mLeftArrowRect, mRightArowRect;
+	RECT mHeadTitleRect;
+	bool mSelectLeftArrow, mSelectRightArrow, mSelectHeadTitle;
+	HBRUSH mArrowNormalBrush, mArrowSelBrush;
+	HPEN mLinePen;
+	int mYearInDayMode, mMonthInDayMode;
+	int mYearInMonthMode;
+	int mBeginYearInYearMode, mEndYearInYearMode;
+	Date mSelectDate;
+	Date mViewDates[42];
+	COLORREF mNormalColor, mGreyColor;
+};

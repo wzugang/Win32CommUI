@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <WinGDI.h>
+#include <time.h>
 #include "XComponent.h"
 #include "XmlParser.h"
 #include "UIFactory.h"
@@ -2394,4 +2395,226 @@ bool XExtTree::getNodeRect( XExtTreeNode *node, RECT *r ) {
 		r->bottom = r->top + TREE_NODE_HEIGHT;
 	}
 	return finded;
+}
+//---------------------------XExtCalender--------------
+static const int CALENDER_HEAD_HEIGHT = 30;
+XExtCalendar::Date::Date() {
+	mYear = mMonth = mDay = 0;
+}
+bool XExtCalendar::Date::isValid() {
+	if (mYear <= 0 || mMonth <= 0 || mDay <= 0)
+		return false;
+	struct tm t = {0};
+	t.tm_year = mYear - 1900;
+	t.tm_mon = mMonth - 1;
+	t.tm_mday = mDay;
+	time_t mt = mktime(&t);
+	struct tm *t2 = localtime(&mt);
+	return t2->tm_year == t.tm_year && t2->tm_mon == t.tm_mon && t2->tm_mday == t.tm_mday;
+}
+bool XExtCalendar::Date::equals( const Date &d ) {
+	return mYear == d.mYear && mMonth == d.mMonth && mDay == d.mDay;
+}
+
+XExtCalendar::XExtCalendar( XmlNode *node ) : XExtComponent(node) {
+	mViewMode = VM_SEL_DAY;
+	memset(&mLeftArrowRect, 0, sizeof(mLeftArrowRect));
+	memset(&mRightArowRect, 0, sizeof(mRightArowRect));
+	memset(&mHeadTitleRect, 0, sizeof(mHeadTitleRect));
+	mSelectLeftArrow = false;
+	mSelectRightArrow = false;
+	mSelectHeadTitle = false;
+	mArrowNormalBrush = CreateSolidBrush(RGB(0x5c, 0x5c, 0x6c));
+	mArrowSelBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
+	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x5c, 0x5c, 0x6c));
+	time_t cur = time(NULL);
+	struct tm *st = localtime(&cur);
+	mYearInDayMode = 1900 + st->tm_year;
+	mMonthInDayMode = st->tm_mon + 1;
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = (st->tm_year + 1900) / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+	fillViewDates(mYearInDayMode, mMonthInDayMode);
+	mNormalColor = RGB(0x35, 0x35, 0x35);
+	mGreyColor = RGB(0xcc, 0xcc, 0xcc);
+}
+void XExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	mLeftArrowRect.right = CALENDER_HEAD_HEIGHT;
+	mLeftArrowRect.bottom = CALENDER_HEAD_HEIGHT;
+	mRightArowRect.left = mMesureWidth - CALENDER_HEAD_HEIGHT;
+	mRightArowRect.right = mMesureWidth;
+	mRightArowRect.bottom = CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.left = CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.right = mMesureWidth - CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.bottom = CALENDER_HEAD_HEIGHT;
+}
+bool XExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		drawHeader(dc);
+		if (mViewMode == VM_SEL_DAY) drawSelDay(dc);
+		else if (mViewMode == VM_SEL_MONTH) drawSelMonth(dc);
+		else drawSelYear(dc);
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		if (mEnableFocus) SetFocus(mWnd);
+		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		POINT pt = {x, y};
+		if (PtInRect(&mHeadTitleRect, pt)) {
+			mViewMode = ViewMode((mViewMode + 1) % VM_NUM);
+			InvalidateRect(mWnd, NULL, TRUE);
+			return true;
+		}
+		switch (mViewMode) {
+		case VM_SEL_DAY:
+			onLButtonDownInDayMode(x, y);
+			break;
+		case VM_SEL_MONTH:
+			break;
+		case VM_SEL_YEAR:
+			break;
+		}
+		return true;
+	}
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
+}
+void XExtCalendar::drawSelDay( HDC dc ) {
+	static const char *hd[7] = {"一", "二", "三", "四", "五", "六", "日"};
+	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+	SetTextColor(dc, mNormalColor);
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 7; ++i) {
+		DrawText(dc, hd[i], 2, &r, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+		OffsetRect(&r, W, 0);
+	}
+
+	RECT rc = {0, CALENDER_HEAD_HEIGHT + H, W, CALENDER_HEAD_HEIGHT + H * 2};
+	char buf[4];
+	for (int i = 0; i < 42; ++i) {
+		sprintf(buf, "%d", mViewDates[i].mDay);
+		SetTextColor(dc, (mViewDates[i].mMonth == mMonthInDayMode ? mNormalColor : mGreyColor));
+		DrawText(dc, buf, strlen(buf), &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+		else OffsetRect(&rc, -6 * W, H);
+	}
+}
+void XExtCalendar::drawSelMonth( HDC dc ) {
+}
+void XExtCalendar::drawSelYear( HDC dc ) {
+}
+void XExtCalendar::drawHeader( HDC dc ) {
+	// draw left arrow
+	int X = 6, H = 16, MH = CALENDER_HEAD_HEIGHT;
+	POINT pt[3] = {{X, MH/2}, {X+H/(2*0.57735), (MH-H)/2}, {X+H/(2*0.57735), (MH+H)/2}};
+	HRGN rgn = CreatePolygonRgn(pt, 3, ALTERNATE);
+	FillRgn(dc, rgn, (mSelectLeftArrow ? mArrowSelBrush : mArrowNormalBrush));
+	DeleteObject(rgn);
+	// draw right arrow
+	X = mRightArowRect.left + 10;
+	POINT pt2[3] = {{X, (MH-H)/2}, {X, (MH+H)/2}, {X+H/(2*0.57735), MH/2}};
+	rgn = CreatePolygonRgn(pt2, 3, ALTERNATE);
+	FillRgn(dc, rgn, (mSelectRightArrow ? mArrowSelBrush : mArrowNormalBrush));
+	DeleteObject(rgn);
+	// draw header title
+	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
+	SetTextColor(dc, (mSelectHeadTitle ? RGB(0x64, 0x95, 0xED) : mNormalColor));
+	char buf[30];
+	if (mViewMode == VM_SEL_DAY) {
+		sprintf(buf, "%d年%d月", mYearInDayMode, mMonthInDayMode);
+	} else if (mViewMode == VM_SEL_MONTH) {
+		sprintf(buf, "%d年",mYearInMonthMode);
+	} else {
+		sprintf(buf, "%d - %d",mBeginYearInYearMode, mEndYearInYearMode);
+	}
+	DrawText(dc, buf, strlen(buf), &mHeadTitleRect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+	// draw header line
+	SelectObject(dc, mLinePen);
+	MoveToEx(dc, 0, MH - 1, NULL);
+	LineTo(dc, mMesureWidth, MH - 1);
+}
+XExtCalendar::Date XExtCalendar::getSelectDate() {
+	return mSelectDate;
+}
+void XExtCalendar::setSelectDate( Date d ) {
+	if (! d.isValid()) return;
+	mSelectDate = d;
+	mYearInDayMode = d.mYear;
+	mMonthInDayMode = d.mMonth;
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = d.mYear / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+}
+void XExtCalendar::fillViewDates( int year, int month ) {
+	struct tm _z = {0};
+	_z.tm_year = year - 1900;
+	_z.tm_mon = month - 1;
+	_z.tm_mday = 1;
+	time_t _zt = mktime(&_z);
+	struct tm *_pz = localtime(&_zt);
+	int week = _pz->tm_wday;
+	if (week == 0) week = 7;
+	--week; // week = 0 ~ 6
+	int daysNum = getDaysNum(year, month);
+	int skipRow = 0;
+	if (daysNum + week < 42 - 14) skipRow = 1;
+
+	int lastYear = month == 1 ? year - 1 : year;
+	int lastMonth = month == 1 ? 12 : month - 1;
+	int lastMonthDaysNum = getDaysNum(lastYear, lastMonth);
+	int lastIn = skipRow * 7 + week;
+	for (int i = lastMonthDaysNum - lastIn + 1, j = 0; j < lastIn; ++j, ++i) {
+		mViewDates[j].mYear = lastYear;
+		mViewDates[j].mMonth = lastMonth;
+		mViewDates[j].mDay = i;
+	}
+	int i = lastIn;
+	for (int j = 0; j < daysNum; ++j, ++i) {
+		mViewDates[i].mYear = year;
+		mViewDates[i].mMonth = month;
+		mViewDates[i].mDay = j + 1;
+	}
+	int nextYear = month == 12 ? year + 1 : year;
+	int nextMonth = month == 12 ? 1 : month + 1;
+	for (int j = 0; i < 42; ++i, ++j) {
+		mViewDates[i].mYear = nextYear;
+		mViewDates[i].mMonth = nextMonth;
+		mViewDates[i].mDay = j + 1;
+	}
+}
+int XExtCalendar::getDaysNum( int year, int month ) {
+	static int DAYS_NUM[12] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	if (month != 2) return DAYS_NUM[month - 1];
+	if (year % 100 != 0 && year % 4 == 0)
+		return 29;
+	return 28;
+}
+void XExtCalendar::onLButtonDownInDayMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		if (mMonthInDayMode == 1) {
+			mMonthInDayMode = 12;
+			--mYearInDayMode;
+		} else {
+			--mMonthInDayMode;
+		}
+		fillViewDates(mYearInDayMode, mMonthInDayMode);
+		InvalidateRect(mWnd, NULL, TRUE);
+		return;
+	}
+	if (PtInRect(&mRightArowRect, pt)) {
+		if (mMonthInDayMode == 12) {
+			mMonthInDayMode = 1;
+			++mYearInDayMode;
+		} else {
+			++mMonthInDayMode;
+		}
+		fillViewDates(mYearInDayMode, mMonthInDayMode);
+		InvalidateRect(mWnd, NULL, TRUE);
+		return;
+	}
 }
