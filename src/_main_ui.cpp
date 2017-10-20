@@ -144,27 +144,7 @@ void InitMyList() {
 }
 void InitMyTree() {
 	XExtTree * t = (XExtTree*) win->findById("ext_tree");
-	XExtTreeNode *root = new XExtTreeNode(NULL);
-	root->setExpand(false);
-	XExtTreeNode *n = new XExtTreeNode("Hello");
-		n->setExpand(true);
-		root->insert(-1, n);
-		n->insert(-1, new XExtTreeNode("AAAA"));
-			XExtTreeNode *n2 = new XExtTreeNode("BBBBB");
-			n2->setExpand(true);
-			n->insert(-1, n2);
-			n2->insert(-1, new XExtTreeNode("SSS"));
-			n2->insert(-1, new XExtTreeNode("Pick"));
-		n->insert(-1, new XExtTreeNode("CCC"));
-		n->insert(-1, new XExtTreeNode("DDDDD"));
-	n = new XExtTreeNode("World");
-		n->setExpand(true);
-		root->insert(-1, n);
-		n->insert(-1, new XExtTreeNode("KKKK"));
-		n->insert(-1, new XExtTreeNode("JJJJ"));
-		n->insert(-1, new XExtTreeNode("VVVVVVV"));
-
-	root->insert(-1, new XExtTreeNode("ÍÆÏúÊ²Ã´"));
+	XExtTreeNode *root = UIFactory::fastTree("file://skin/base.xml", "my-tree");
 	t->setModel(root);
 }
 

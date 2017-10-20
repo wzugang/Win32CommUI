@@ -2074,6 +2074,9 @@ int XExtTreeNode::getLevel() {
 	for (; p != NULL; p = p->mParent) ++level;
 	return level;
 }
+XExtTreeNode * XExtTreeNode::getParent() {
+	return mParent;
+}
 
 static const int TREE_NODE_HEIGHT = 30;
 static const int TREE_NODE_HEADER_WIDTH = 40;
@@ -2226,8 +2229,11 @@ void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, in
 	if (*py + TREE_NODE_HEIGHT <= 0) goto _drawChild;
 	int y = *py;
 	// draw level ver line
-	for (int i = 0; i < level; ++i) {
-		int lx = -mHorBar->getPos() + i * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT + TREE_NODE_BOX / 2;
+	XExtTreeNode *pa = n->getParent();
+	for (int i = 0, j = level - 1; i < level; ++i, --j, pa = pa->getParent()) {
+		if (pa->getPosInfo() & XExtTreeNode::PI_LAST)
+			continue;
+		int lx = -mHorBar->getPos() + j * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT + TREE_NODE_BOX / 2;
 		MoveToEx(dc, lx, y, NULL);
 		LineTo(dc, lx, y + TREE_NODE_HEIGHT);
 	}

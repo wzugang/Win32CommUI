@@ -4,6 +4,7 @@ class XComponent;
 class XmlNode;
 class ResPath;
 class XExtMenuItemList;
+class XExtTreeNode;
 
 class XImage {
 public:
@@ -56,12 +57,14 @@ public:
 
 	static XComponent* buildComponent(XmlNode *root);
 	static XExtMenuItemList *buildMenu(XmlNode *rootMenu);
+	static XExtTreeNode *buildTree(XmlNode *rootTree);
 
 	//@param resPath file://abc.xml  res://abc
 	static XmlNode* buildNode(const char *resPath, const char *partName);
 
 	static XComponent* fastBuild(const char *resPath, const char *partName, XComponent *parent);
 	static XExtMenuItemList* fastMenu(const char *resPath, const char *partName);
+	static XExtTreeNode* fastTree(const char *resPath, const char *partName);
 
 	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);

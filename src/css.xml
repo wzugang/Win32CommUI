@@ -47,6 +47,7 @@
 	<ExtList />   继承自ExtScroll
 	<ExtEdit  readOnly="true" />
 	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
+	<ExtTree />  继承自ExtScroll
 	
 	<Menu>
 		<MenuItem name="" text="" active="true" visible="true" separator="true" checkable="true" checked="true" />
@@ -56,4 +57,9 @@
 		</MenuItem>
 	</Menu>
 	
+	<Tree>
+		<TreeNode text="" expand="true" />
+		expand default is false
+			...sub tree node here...
+	</Tree>
 	

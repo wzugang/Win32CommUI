@@ -414,9 +414,33 @@ XExtMenuItemList * UIFactory::buildMenu( XmlNode *rootMenu ) {
 }
 
 XExtMenuItemList* UIFactory::fastMenu( const char *resPath, const char *partName ) {
-	XmlNode *root = UIFactory::buildNode(resPath, partName);
+	XmlNode *root = buildNode(resPath, partName);
 	if (root == NULL) return NULL;
 	XExtMenuItemList *cc = buildMenu(root);
+	return cc;
+}
+static void BuildTree(XExtTreeNode *tn, XmlNode *node) {
+	for (int i = 0; i < node->getChildCount(); ++i) {
+		XmlNode *child = node->getChild(i);
+		XExtTreeNode *sub = new XExtTreeNode(child->getAttrValue("text"));
+		sub->setExpand(AttrUtils::parseBool(child->getAttrValue("expand")));
+		sub->setUserData(node);
+		tn->insert(-1, sub);
+		if (child->getChildCount() > 0) {
+			BuildTree(sub, child);
+		}
+	}
+}
+XExtTreeNode * UIFactory::buildTree( XmlNode *rootTree ) {
+	if (rootTree == NULL) return NULL;
+	XExtTreeNode *node = new XExtTreeNode("Root");
+	BuildTree(node, rootTree);
+	return node;
+}
+XExtTreeNode* UIFactory::fastTree(const char *resPath, const char *partName) {
+	XmlNode *root = buildNode(resPath, partName);
+	if (root == NULL) return NULL;
+	XExtTreeNode *cc = buildTree(root);
 	return cc;
 }
 

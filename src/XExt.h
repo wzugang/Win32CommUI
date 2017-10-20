@@ -421,6 +421,7 @@ public:
 	void setText(char *text);
 	PosInfo getPosInfo();
 	int getLevel();
+	XExtTreeNode *getParent();
 protected:
 	char *mText;
 	XExtTreeNode *mParent;
