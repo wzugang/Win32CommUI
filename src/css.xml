@@ -54,6 +54,8 @@
 	
 	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
 	
+	<ExtCalendar />
+	<ExtDatePicker readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" />
 	
 	<Menu>
 		<MenuItem name="" text="" active="true" visible="true" separator="true" checkable="true" checked="true" />

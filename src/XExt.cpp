@@ -1317,12 +1317,13 @@ void XExtEdit::setEnableShowCaret( bool enable ) {
 }
 char * XExtEdit::getText() {
 	if (mText == NULL) return NULL;
-	int len = WideCharToMultiByte(CP_ACP, 0, mText, -1, NULL, 0, NULL, NULL);
+	int len = WideCharToMultiByte(CP_ACP, 0, mText, mLen, NULL, 0, NULL, NULL);
 	if (len + 1 > mTextBufferLen) {
 		mTextBufferLen = len;
 		mTextBuffer = (char *)malloc(len + 1);
 	}
 	WideCharToMultiByte(CP_ACP, 0, mText, -1, mTextBuffer, len, NULL, NULL);
+	mTextBuffer[len] = 0;
 	return mTextBuffer;
 }
 XExtEdit::~XExtEdit() {
@@ -1619,8 +1620,7 @@ bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, mw, 
 					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
 			} else {
-				StretchBlt(dc, mArrowRect.left, mArrowRect.top, mw, 
-					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), SRCCOPY);
+				BitBlt(dc, mArrowRect.left, mArrowRect.top, mw, mh, memDc, 0, 0, SRCCOPY);
 			}
 			DeleteObject(memDc);
 		}
@@ -2357,6 +2357,7 @@ void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, in
 		mNodeRender->onDrawNode(dc, n, r.left, r.top, r.right-r.left, r.bottom-r.top);
 	} else {
 		if (n->getText()) {
+			if (mAttrFlags & AF_COLOR) SetTextColor(dc, mAttrColor);
 			DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER);
 		}
 	}
@@ -2493,9 +2494,9 @@ bool XExtCalendar::Date::isValid() {
 	t.tm_year = mYear - 1900;
 	t.tm_mon = mMonth - 1;
 	t.tm_mday = mDay;
-	time_t mt = mktime(&t);
-	struct tm *t2 = localtime(&mt);
-	return t2->tm_year == t.tm_year && t2->tm_mon == t.tm_mon && t2->tm_mday == t.tm_mday;
+	struct tm bak = t;
+	mktime(&t);
+	return t.tm_year == bak.tm_year && t.tm_mon == bak.tm_mon && t.tm_mday == bak.tm_mday;
 }
 bool XExtCalendar::Date::equals( const Date &d ) {
 	return mYear == d.mYear && mMonth == d.mMonth && mDay == d.mDay;
@@ -2715,6 +2716,7 @@ void XExtCalendar::setSelectDate( Date d ) {
 	mYearInMonthMode = mYearInDayMode;
 	mBeginYearInYearMode = d.mYear / 10 * 10;
 	mEndYearInYearMode = mBeginYearInYearMode + 9;
+	fillViewDates(mYearInDayMode, mMonthInDayMode);
 }
 void XExtCalendar::fillViewDates( int year, int month ) {
 	struct tm _z = {0};
@@ -3146,4 +3148,139 @@ void XExtPassword::onPaint( HDC hdc ) {
 		SelectObject(hdc, GetStockObject(NULL_BRUSH));
 		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
 	}
+}
+// --------------------XExtDatePicker-------------------
+XExtDatePicker::XExtDatePicker( XmlNode *node ) : XExtComponent(node) {
+	mEditNode = new XmlNode("ExtMaskEdit", mNode);
+	mPopupNode = new XmlNode("ExtPopup", mNode);
+	mCalendarNode = new XmlNode("ExtCalendar", mPopupNode);
+	mEdit = new XExtMaskEdit(mEditNode);
+	mPopup = new XExtPopup(mPopupNode);
+	mCalendar = new XExtCalendar(mCalendarNode);
+	mEditNode->setComponent(mEdit);
+	mPopupNode->setComponent(mPopup);
+	mCalendarNode->setComponent(mCalendar);
+	mCalendar->setBgColor(RGB(0xF5, 0xFF, 0xFA));
+	mPopup->setListener(this);
+	mCalendar->setListener(this);
+	mCalendar->setEnableFocus(false);
+	mEdit->setMask("0000-00-00");
+
+	mArrowRect.left = mArrowRect.top = 0;
+	mArrowRect.right = mArrowRect.bottom = 0;
+	mAttrArrowSize.cx = mAttrArrowSize.cy = 0;
+	AttrUtils::parseArraySize(mNode->getAttrValue("arrowSize"), (int *)&mAttrArrowSize, 2);
+	mAttrPopupSize.cx = mAttrPopupSize.cy = 0;
+	AttrUtils::parseArraySize(mNode->getAttrValue("popupSize"), (int *)&mAttrPopupSize, 2);
+	mEdit->setReadOnly(AttrUtils::parseBool(mNode->getAttrValue("readOnly")));
+
+	mArrowNormalImage = XImage::load(mNode->getAttrValue("arrowNormal"));
+	mArrowDownImage = XImage::load(mNode->getAttrValue("arrowDown"));
+	mPoupShow = false;
+}
+XExtDatePicker::~XExtDatePicker() {
+	delete mEditNode;
+	delete mPopupNode;
+	delete mCalendarNode;
+}
+void XExtDatePicker::createWnd() {
+	XExtComponent::createWnd();
+	XComponent *cc = mEdit;
+	cc->createWnd();
+	cc = mPopup;
+	cc->createWnd();
+	mCalendar->createWnd();
+}
+bool XExtDatePicker::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
+	if (msg == WM_EXT_CALENDAR_SEL_DATE) {
+		XExtCalendar::Date *val = (XExtCalendar::Date *)wParam;
+		char buf[20];
+		sprintf(buf, "%d-%02d-%02d", val->mYear, val->mMonth, val->mDay);
+		mEdit->setText(buf);
+		mPopup->close();
+		mPoupShow = false;
+		InvalidateRect(mWnd, NULL, TRUE);
+		return true;
+	} else if (msg == WM_EXT_POPUP_CLOSED) {
+		mPoupShow = false;
+		InvalidateRect(mWnd, NULL, TRUE);
+		return true;
+	}
+	return false;
+}
+bool XExtDatePicker::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		// draw arrow
+		XImage *img = mPoupShow ? mArrowDownImage : mArrowNormalImage;
+		if (img != NULL && img->getHBitmap() != NULL) {
+			HDC memDc = CreateCompatibleDC(dc);
+			SelectObject(memDc, img->getHBitmap());
+			int mw = min(mArrowRect.right - mArrowRect.left, img->getWidth());
+			int mh = min(mArrowRect.bottom - mArrowRect.top, img->getHeight());
+			if (img->hasAlphaChannel())  {
+				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, mw, 
+					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
+			} else {
+				BitBlt(dc, mArrowRect.left, mArrowRect.top, mw, mh, memDc, 0, 0, SRCCOPY);
+			}
+			DeleteObject(memDc);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		if (mEnableFocus) SetFocus(mWnd);
+		SetCapture(mWnd);
+		return true;
+	} else if (msg == WM_LBUTTONUP) {
+		ReleaseCapture();
+		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
+		if (PtInRect(&mArrowRect, pt)) {
+			openPopup();
+		}
+		return true;
+	}
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
+}
+void XExtDatePicker::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	int aw = calcSize(mAttrArrowSize.cx, mMesureWidth | MS_ATMOST);
+	int ah = calcSize(mAttrArrowSize.cy, mMesureHeight | MS_ATMOST);
+	mArrowRect.left = mMesureWidth - aw;
+	mArrowRect.right = mMesureWidth;
+	mArrowRect.top = (mMesureHeight - ah) / 2;
+	mArrowRect.bottom = mArrowRect.top + ah;
+	mEdit->onMeasure((mMesureWidth - aw) | MS_FIX, mMesureHeight | MS_FIX);
+	int pw = calcSize(mAttrPopupSize.cx, mMesureWidth | MS_ATMOST);
+	int ph = calcSize(mAttrPopupSize.cy, mMesureHeight | MS_ATMOST);
+	XComponent *cc = mPopup;
+	cc->onMeasure(pw | MS_FIX, ph | MS_FIX);
+	cc = mCalendar;
+	cc->onMeasure(pw | MS_FIX, ph | MS_FIX);
+}
+void XExtDatePicker::onLayout( int width, int height ) {
+	mEdit->layout(0, 0, mEdit->getMesureWidth(), mEdit->getMesureHeight());
+	mPopup->layout(0, 0, mPopup->getMesureWidth(), mPopup->getMesureHeight());
+	mCalendar->layout(0, 0, mCalendar->getMesureWidth(), mCalendar->getMesureHeight());
+}
+void XExtDatePicker::openPopup() {
+	POINT pt = {0, mHeight};
+	ClientToScreen(mWnd, &pt);
+	mPoupShow = true;
+	InvalidateRect(mWnd, NULL, TRUE);
+	UpdateWindow(mWnd);
+	char str[24];
+	strcpy(str, mEdit->getText());
+	XExtCalendar::Date cur;
+	cur.mYear = atoi(str);
+	cur.mMonth = atoi(str + 5);
+	cur.mDay = atoi(str + 8);
+	mCalendar->setSelectDate(cur);
+	mPopup->show(pt.x, pt.y);
+}
+char * XExtDatePicker::getText() {
+	return mEdit->getText();
 }

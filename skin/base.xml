@@ -10,6 +10,7 @@
 		vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" 
 		hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" bgimage="file://skin/ext_combobox_bg.bmp"/>
 	<default class="ExtTree"  vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" hbarTrack="file://skin/ext_hscrollbar_track.bmp" hbarThumb="file://skin/ext_hscrollbar_thumb.bmp" />
+	<default class="ExtDatePicker" arrowNormal="file://skin/ext_combobox_arrow_normal.png" arrowDown="file://skin/ext_combobox_arrow_down.png" />
 	
 <AbsLayout id = "main-layout" rect="0  0 100% 100%" font="size:18;"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp" >
 	<Tab id="tab" rect = "10% 10% 80% 80%" data = "ÔçÉÏ; ÖÐÎç; ÏÂÎç;"  >
@@ -22,6 +23,7 @@
 			<ExtRadio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
 			<ExtButton id = "ext_btn_2" text = "ExtBtn"  rect = "20 200 100 24"  />
 			<ExtCalendar rect = "350 20 220 200"  />
+			<ExtDatePicker rect="20 250 150 30" bgimage="file://skin/ext_combobox_bg.bmp 9patch" readOnly="false" arrowSize="20 15" popupSize="220 200" />
 		</AbsLayout>
 
 		<AbsLayout  bgimage="file://skin/c.bmp" visible = "false" rect="0 0 100% 100%" >
@@ -30,7 +32,7 @@
 			<ExtButton id = "btn_1" text = "ClickMe"  rect = "250 20 75 24"  margin="0 0 20 0" />
 			<ExtList id = "list_1" bgcolor="#F5FFFA" rect="350 20 170 250"/>
 			<ExtComboBox id="combox_1" rect="20 100 150 25" readOnly="true" arrowSize="20 15" popupSize="100% 120"/>
-			<ExtTree id="ext_tree" rect="20 150 300 200" bgcolor="#F5FFFA" />
+			<ExtTree id="ext_tree" rect="20 150 300 200" bgcolor="#F5FFFA"  />
 		</AbsLayout>
 
 		<AbsLayout  bgimage="file://skin/d.bmp" visible = "false" rect="0 0 100% 100%">

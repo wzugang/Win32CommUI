@@ -553,3 +553,27 @@ protected:
 	virtual void paste();
 	virtual void onPaint(HDC hdc);
 };
+
+class XExtDatePicker : public XExtComponent, public XListener {
+public:
+	XExtDatePicker(XmlNode *node);
+	char *getText();
+	virtual ~XExtDatePicker();
+protected:
+	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	virtual void createWnd();
+	void openPopup();
+protected:
+	XExtMaskEdit *mEdit;
+	XExtPopup *mPopup;
+	XExtCalendar *mCalendar;
+	XmlNode *mEditNode, *mPopupNode, *mCalendarNode;
+	RECT mArrowRect;
+	SIZE mAttrPopupSize;
+	SIZE mAttrArrowSize;
+	XImage *mArrowNormalImage, *mArrowDownImage;
+	bool mPoupShow;
+};
