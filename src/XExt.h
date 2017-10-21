@@ -124,7 +124,7 @@ public:
 	virtual void close();
 	void disableChildrenFocus();
 	virtual ~XExtPopup();
-
+protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onLayout(int width, int height);
@@ -186,7 +186,6 @@ protected:
 	SIZE mDataSize;
 	HPEN mLinePen;
 	int mSelectedRow;
-	COLORREF mSelectBgColor;
 	HBRUSH mSelectBgBrush;
 	CellRender *mCellRender;
 };
@@ -463,7 +462,6 @@ protected:
 protected:
 	SIZE mDataSize;
 	XExtTreeNode *mModel;
-	HBRUSH mBoxBrush;
 	HPEN mLinePen, mCheckPen;
 	HBRUSH mSelectBgBrush;
 	XExtTreeNode *mSelectNode;

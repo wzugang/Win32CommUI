@@ -660,8 +660,17 @@ void XExtPopup::close() {
 	ShowWindow(mWnd, SW_HIDE);
 	SendMessage(mWnd, WM_EXT_POPUP_CLOSED, 0, 0);
 }
+static void DisableFocus(XmlNode *n) {
+	XExtComponent *ext = dynamic_cast<XExtComponent*>(n->getComponent());
+	if (ext == NULL) return;
+	ext->setEnableFocus(false);
+	for (int i = 0; i < n->getChildCount(); ++i) {
+		XmlNode *child = n->getChild(i);
+		DisableFocus(child);
+	}
+}
 void XExtPopup::disableChildrenFocus() {
-
+	DisableFocus(mNode);
 }
 XExtPopup::~XExtPopup() {
 	if (mWnd) DestroyWindow(mWnd);
@@ -669,12 +678,15 @@ XExtPopup::~XExtPopup() {
 //-------------------XExtTable-------------------------------
 XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;
-	mLinePen = CreatePen(PS_SOLID, 1, RGB(110, 120, 250));
 	mSelectedRow = -1;
 	mModel = NULL;
-	mSelectBgColor = 0xE6E0B0; // RGB(0xE6, 0xE6, 0xFA);
-	mSelectBgBrush = NULL;
 	mCellRender = NULL;
+	COLORREF color = 0xE6E0B0;
+	AttrUtils::parseColor(mNode->getAttrValue("selRowBgColor"), &color);
+	mSelectBgBrush = CreateSolidBrush(color);
+	color = RGB(110, 120, 250);
+	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
+	mLinePen = CreatePen(PS_SOLID, 1, color);
 }
 void XExtTable::setModel(XExtTableModel *model) {
 	mModel = model;
@@ -776,7 +788,6 @@ void XExtTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 void XExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
 	int rh = mModel->getRowHeight(row);
 	if (mSelectedRow == row) {
-		if (mSelectBgBrush == NULL) mSelectBgBrush = CreateSolidBrush(mSelectBgColor); 
 		RECT r = {x + 1, y + 1, x + w - 1, y + h - 1};
 		FillRect(dc, &r, mSelectBgBrush);
 	}
@@ -947,11 +958,16 @@ XExtEdit::XExtEdit( XmlNode *node ) : XExtComponent(node) {
 	mBeginSelPos = mEndSelPos = 0;
 	mReadOnly = AttrUtils::parseBool(mNode->getAttrValue("readOnly"));
 	insertText(0, mNode->getAttrValue("text"));
-	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xBF, 0x3E, 0xFF));
 	mCaretShowing = false;
 	mScrollPos = 0;
-	mBorderPen = CreatePen(PS_SOLID, 1, RGB(0xAD, 0xAD, 0xAD));
-	mFocusBorderPen = CreatePen(PS_SOLID, 1, RGB(0xEE, 0x30, 0xA7));
+	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xBF, 0x3E, 0xFF));
+
+	COLORREF color = 0xE6E0B0;
+	AttrUtils::parseColor(mNode->getAttrValue("borderColor"), &color);
+	mBorderPen = CreatePen(PS_SOLID, 1, color);
+	color = RGB(0xEE, 0x30, 0xA7);
+	AttrUtils::parseColor(mNode->getAttrValue("focusBorderColor"), &color);
+	mFocusBorderPen = CreatePen(PS_SOLID, 1, color);
 	mEnableBorder = AttrUtils::parseBool(mNode->getAttrValue("enableBorder"));;
 	mEnableShowCaret = true;
 }
@@ -1337,7 +1353,9 @@ XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
 	mItemRender = NULL;
 	mDataSize.cx = mDataSize.cy = 0;
 	mMouseTrackItem = -1;
-	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
+	COLORREF color = RGB(0xA2, 0xB5, 0xCD);
+	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
+	mSelectBgBrush = CreateSolidBrush(color);
 }
 XExtList::~XExtList() {
 	DeleteObject(mSelectBgBrush);
@@ -1646,8 +1664,10 @@ void XExtComboBox::onLayout( int width, int height ) {
 }
 void XExtComboBox::createWnd() {
 	XExtComponent::createWnd();
-	mEdit->createWnd();
-	mPopup->createWnd();
+	XComponent *cc = mEdit;
+	cc->createWnd();
+	cc = mPopup;
+	cc->createWnd();
 	mList->createWnd();
 	WND_HIDE(mEdit->getWnd());
 }
@@ -2125,10 +2145,15 @@ static const int TREE_NODE_BOX_LEFT = 5;
 XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;
 	mModel = NULL;
-	mBoxBrush = CreateSolidBrush(RGB(0xcc, 0xcc, 0xcc));
-	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x3A, 0x9D, 0xF9));
-	mCheckPen = CreatePen(PS_SOLID, 1, RGB(0x64, 0x95, 0xED));
-	mSelectBgBrush = CreateSolidBrush(0xE6E0B0);
+	COLORREF color = RGB(0x3A, 0x9D, 0xF9);
+	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
+	mLinePen = CreatePen(PS_SOLID, 1, color);
+	color = RGB(0x64, 0x95, 0xED);
+	AttrUtils::parseColor(mNode->getAttrValue("checkBoxColor"), &color);
+	mCheckPen = CreatePen(PS_SOLID, 1, color);
+	color = 0xE6E0B0;
+	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
+	mSelectBgBrush = CreateSolidBrush(color);
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
 	mNodeRender = NULL;
@@ -2137,7 +2162,6 @@ void XExtTree::setModel( XExtTreeNode *root ) {
 	mModel = root;
 }
 XExtTree::~XExtTree() {
-	DeleteObject(mBoxBrush);
 	DeleteObject(mLinePen);
 	DeleteObject(mCheckPen);
 	DeleteObject(mSelectBgBrush);

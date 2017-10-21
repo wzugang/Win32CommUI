@@ -25,7 +25,7 @@
 		</AbsLayout>
 
 		<AbsLayout  bgimage="file://skin/c.bmp" visible = "false" rect="0 0 100% 100%" >
-			<ExtEdit text = "Hello World B!" bgcolor="#F5FFFA" color="#880000" rect = "20 20 200 30" roundConer="5 5"  />
+			<ExtEdit text = "Hello World B!" bgcolor="#F5FFFA" color="#880000" rect = "20 20 200 30" roundConer="5 5"  enableBorder="true" />
 			<ExtMaskEdit mask="HH-HH-HH" placeHolder=" " case="upper" bgcolor="#F5FFFA" color="#880000" rect = "20 60 200 30" roundConer="5 5" />
 			<ExtButton id = "btn_1" text = "ClickMe"  rect = "250 20 75 24"  margin="0 0 20 0" />
 			<ExtList id = "list_1" bgcolor="#F5FFFA" rect="350 20 170 250"/>
@@ -83,10 +83,15 @@
 
 #################### my-tree ############
 <Tree>
-	<TreeNode text="San tai hu" />
+	<TreeNode text="San tai hu" >
+		<TreeNode text="Flip"  />
+	</TreeNode>
 	<TreeNode text="Bai Du" expand="true">
 		<TreeNode text="Good" checkable="true"  />
-		<TreeNode text="Bad"  checkable="true" checked="true"/>
+		<TreeNode text="Bad"  checkable="true" checked="true">
+			<TreeNode text=" A" />
+			<TreeNode text=" B" />
+		</TreeNode>
 	</TreeNode>
 	<TreeNode text="My Fav" >
 		<TreeNode text="Simple" />

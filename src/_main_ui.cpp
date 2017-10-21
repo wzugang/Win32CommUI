@@ -40,11 +40,6 @@ public:
 			mgr.show(pt.x, pt.y);
 			return true;
 		}
-		if (strcmp("pop_btn_1", id) == 0) {
-			popup->close();
-			MessageBox(win->getWnd(), "Hello Popup", NULL, MB_OK);
-			return true;
-		}
 		return false;
 	}
 };

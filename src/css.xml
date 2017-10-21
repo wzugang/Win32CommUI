@@ -44,11 +44,11 @@
 	<ExtPopup /> 只有一个子控件可见，可以有多个
 	
 	<ExtScroll vbarTrack="" vbarThumb="" hbarTrack="" hbarThumb=""  />
-	<ExtTable />  继承自ExtScroll
-	<ExtList />   继承自ExtScroll
-	<ExtTree />  继承自ExtScroll
+	<ExtTable selRowBgColor="#rrggbb" lineColor="#rrggbb" />  继承自ExtScroll
+	<ExtList selBgColor="#rrggbb" />   继承自ExtScroll
+	<ExtTree selBgColor="#rrggbb" lineColor="" checkBoxColor=""  />  继承自ExtScroll
 	
-	<ExtEdit  readOnly="true" enableBorder="true" />
+	<ExtEdit  readOnly="true" enableBorder="true" borderColor="#rrggbb" focusBorderColor="#rrggbb" />
 	<ExtMaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 ExtEdit 
 	<ExtPassword />  继承自 ExtEdit 
 	
