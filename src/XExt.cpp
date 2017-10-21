@@ -16,6 +16,7 @@ extern void MyRegisterClass(HINSTANCE ins, const char *className);
 XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mBgImageForParnet = NULL;
 	mEnableFocus = true;
+	mMemBuffer = NULL;
 }
 
 bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -28,10 +29,10 @@ bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *re
 
 void XExtComponent::layout( int x, int y, int width, int height ) {
 	XComponent::layout(x, y, width, height);
-	if (mBgImageForParnet != NULL) {
-		delete mBgImageForParnet;
-		mBgImageForParnet = NULL;
-	}
+	if (mBgImageForParnet != NULL) delete mBgImageForParnet;
+	mBgImageForParnet = NULL;
+	if (mMemBuffer != NULL) delete mMemBuffer;
+	mMemBuffer = NULL;
 }
 void XExtComponent::eraseBackground(HDC dc) {
 	if (mBgImage == NULL && mBgImageForParnet == NULL && (mAttrFlags & AF_BG_COLOR) == 0) {
@@ -59,6 +60,10 @@ XExtComponent::~XExtComponent() {
 	if (mBgImageForParnet) {
 		delete mBgImageForParnet;
 		mBgImageForParnet = NULL;
+	}
+	if (mMemBuffer != NULL) {
+		delete mMemBuffer;
+		mMemBuffer = NULL;
 	}
 }
 void XExtComponent::setEnableFocus( bool enable ) {
@@ -306,21 +311,17 @@ XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mPage = 0;
 	mPressed = false;
 	mMouseX = mMouseY = 0;
-	mBuffer = NULL;
 }
 bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_SIZE) {
-		if (mBuffer) delete mBuffer;
-		mBuffer = NULL;
-	} else if (msg == WM_ERASEBKGND) {
+	if (msg == WM_ERASEBKGND) {
 		return true;
 	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
 		HDC memBufDc = CreateCompatibleDC(dc);
-		if (mBuffer == NULL) mBuffer = XImage::create(mWidth, mHeight);
-		SelectObject(memBufDc, mBuffer->getHBitmap());
+		if (mMemBuffer == NULL) mMemBuffer = XImage::create(mWidth, mHeight);
+		SelectObject(memBufDc, mMemBuffer->getHBitmap());
 		if (mTrack != NULL) {
 			SelectObject(memDc, mTrack->getHBitmap());
 			StretchBlt(memBufDc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
@@ -667,7 +668,6 @@ XExtPopup::~XExtPopup() {
 }
 //-------------------XExtTable-------------------------------
 XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
-	mBuffer = NULL;
 	mDataSize.cx = mDataSize.cy = 0;
 	mLinePen = CreatePen(PS_SOLID, 1, RGB(110, 120, 250));
 	mSelectedRow = -1;
@@ -686,18 +686,15 @@ bool XExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result
 	if (msg == WM_ERASEBKGND) {
 		// eraseBackground((HDC)wParam);
 		return true;
-	} if (msg == WM_SIZE) {
-		if (mBuffer != NULL) delete mBuffer;
-		mBuffer = NULL;
 	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
 		SIZE sz = getClientSize();
-		if (mBuffer == NULL) {
-			mBuffer = XImage::create(mWidth, mHeight, 24);
+		if (mMemBuffer == NULL) {
+			mMemBuffer = XImage::create(mWidth, mHeight, 24);
 		}
-		SelectObject(memDc, mBuffer->getHBitmap());
+		SelectObject(memDc, mMemBuffer->getHBitmap());
 		if (mModel != NULL) {
 			// draw background
 			eraseBackground(memDc);
@@ -937,7 +934,6 @@ int XExtTable::findCell( int x, int y, int *col ) {
 	return row;
 }
 XExtTable::~XExtTable() {
-	if (mBuffer) delete mBuffer;
 	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
 //----------------------------XExtEdit---------------------
@@ -1339,31 +1335,26 @@ void XExtEdit::setWideText( const wchar_t *txt ) {
 XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
 	mModel = NULL;
 	mItemRender = NULL;
-	mBuffer = NULL;
 	mDataSize.cx = mDataSize.cy = 0;
 	mMouseTrackItem = -1;
 	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
 }
 XExtList::~XExtList() {
-	if (mBuffer) delete mBuffer;
 	DeleteObject(mSelectBgBrush);
 }
 bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
 		// eraseBackground((HDC)wParam);
 		return true;
-	} if (msg == WM_SIZE) {
-		if (mBuffer != NULL) delete mBuffer;
-		mBuffer = NULL;
 	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
 		SIZE sz = getClientSize();
-		if (mBuffer == NULL) {
-			mBuffer = XImage::create(mWidth, mHeight, 24);
+		if (mMemBuffer == NULL) {
+			mMemBuffer = XImage::create(mWidth, mHeight, 24);
 		}
-		SelectObject(memDc, mBuffer->getHBitmap());
+		SelectObject(memDc, mMemBuffer->getHBitmap());
 		if (mModel != NULL) {
 			// draw background
 			eraseBackground(memDc);
@@ -2132,7 +2123,6 @@ static const int TREE_NODE_BOX = 16;
 static const int TREE_NODE_BOX_LEFT = 5;
 
 XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
-	mBuffer = NULL;
 	mDataSize.cx = mDataSize.cy = 0;
 	mModel = NULL;
 	mBoxBrush = CreateSolidBrush(RGB(0xcc, 0xcc, 0xcc));
@@ -2147,7 +2137,6 @@ void XExtTree::setModel( XExtTreeNode *root ) {
 	mModel = root;
 }
 XExtTree::~XExtTree() {
-	if (mBuffer) delete mBuffer;
 	DeleteObject(mBoxBrush);
 	DeleteObject(mLinePen);
 	DeleteObject(mCheckPen);
@@ -2156,18 +2145,15 @@ XExtTree::~XExtTree() {
 bool XExtTree::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
 		return true;
-	} if (msg == WM_SIZE) {
-		if (mBuffer != NULL) delete mBuffer;
-		mBuffer = NULL;
 	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
 		SIZE sz = getClientSize();
-		if (mBuffer == NULL) {
-			mBuffer = XImage::create(mWidth, mHeight, 24);
+		if (mMemBuffer == NULL) {
+			mMemBuffer = XImage::create(mWidth, mHeight, 24);
 		}
-		SelectObject(memDc, mBuffer->getHBitmap());
+		SelectObject(memDc, mMemBuffer->getHBitmap());
 		// draw background
 		eraseBackground(memDc);
 		drawData(memDc, sz.cx, sz.cy);
@@ -2515,7 +2501,6 @@ XExtCalendar::XExtCalendar( XmlNode *node ) : XExtComponent(node) {
 	fillViewDates(mYearInDayMode, mMonthInDayMode);
 	mNormalColor = RGB(0x35, 0x35, 0x35);
 	mGreyColor = RGB(0xcc, 0xcc, 0xcc);
-	mBuffer = NULL;
 	mTrackMouseLeave = false;
 }
 void XExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
@@ -2533,16 +2518,12 @@ void XExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
 bool XExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
 		return true;
-	} else if (msg == WM_SIZE) {
-		if (mBuffer) delete mBuffer;
-		mBuffer = NULL;
-		return true;
 	} else if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
-		if (mBuffer == NULL) mBuffer = XImage::create(mWidth, mHeight, 24);
-		SelectObject(memDc, mBuffer->getHBitmap());
+		if (mMemBuffer == NULL) mMemBuffer = XImage::create(mWidth, mHeight, 24);
+		SelectObject(memDc, mMemBuffer->getHBitmap());
 		eraseBackground(memDc);
 		SelectObject(memDc, getFont());
 		drawHeader(memDc);
@@ -2847,7 +2828,6 @@ void XExtCalendar::onLButtonDownInYearMode( int x, int y ) {
 	}
 }
 XExtCalendar::~XExtCalendar() {
-	if (mBuffer) delete mBuffer;
 	DeleteObject(mArrowNormalBrush);
 	DeleteObject(mArrowSelBrush);
 	DeleteObject(mSelectBgBrush);

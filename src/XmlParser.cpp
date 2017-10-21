@@ -726,17 +726,15 @@ void AttrUtils::parseArrayInt(const char *str, int *arr, int arrNum) {
 	}
 }
 
-COLORREF AttrUtils::parseColor(const char *color, bool *valid) {
+bool AttrUtils::parseColor(const char *color, COLORREF *colorOut) {
 	static const char *HEX = "0123456789ABCDEF";
-	if (valid) *valid = false;
+	bool ok = false;
 	if (color == NULL) {
-		if (valid) *valid = false;
-		return 0;
+		return false;
 	}
 	while (*color == ' ') ++color;
 	if (*color != '#') {
-		if (valid) *valid = false;
-		return 0;
+		return false;
 	}
 	++color;
 	COLORREF cc = 0;
@@ -744,13 +742,12 @@ COLORREF AttrUtils::parseColor(const char *color, bool *valid) {
 		char *p0 = strchr((char *)HEX, toupper(color[i * 2]));
 		char *p1 = strchr((char *)HEX, toupper(color[i * 2 + 1]));
 		if (p0 == NULL || p1 == NULL) {
-			if (valid) *valid = false;
-			return 0;
+			return false;
 		}
 		cc |= ((p0 - HEX) * 16 + (p1 - HEX)) << i * 8;
 	}
-	if (valid) *valid = true;
-	return cc;
+	if (colorOut) *colorOut = cc;
+	return true;
 }
 
 std::vector<char*> AttrUtils::splitBy( char *data, char splitChar) {

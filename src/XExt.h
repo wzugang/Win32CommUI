@@ -12,6 +12,7 @@ protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	XImage *mBgImageForParnet;
 	bool mEnableFocus;
+	XImage *mMemBuffer;
 };
 
 class XExtLabel : public XExtComponent {
@@ -95,7 +96,6 @@ protected:
 	XImage *mTrack, *mThumb;
 	bool mPressed;
 	int mMouseX, mMouseY;
-	XImage *mBuffer;
 };
 
 class XExtScroll : public XExtComponent {
@@ -183,7 +183,6 @@ protected:
 protected:
 	XExtTableModel *mModel;
 	int mColsWidth[50];
-	XImage *mBuffer;
 	SIZE mDataSize;
 	HPEN mLinePen;
 	int mSelectedRow;
@@ -281,7 +280,6 @@ protected:
 protected:
 	XListModel *mModel;
 	ItemRender *mItemRender;
-	XImage *mBuffer;
 	SIZE mDataSize;
 	int mMouseTrackItem;
 	HBRUSH mSelectBgBrush;
@@ -463,7 +461,6 @@ protected:
 	void onLBtnDbClick(int x, int y);
 	XExtTreeNode *getNodeAtY(int y, int *py);
 protected:
-	XImage *mBuffer;
 	SIZE mDataSize;
 	XExtTreeNode *mModel;
 	HBRUSH mBoxBrush;
@@ -519,7 +516,6 @@ protected:
 	Date mSelectDate;
 	Date mViewDates[42];
 	COLORREF mNormalColor, mGreyColor;
-	XImage *mBuffer;
 	bool mTrackMouseLeave;
 };
 

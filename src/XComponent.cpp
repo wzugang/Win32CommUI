@@ -194,15 +194,11 @@ void XComponent::parseAttrs() {
 		} else if (strcmp(attr->mName, "margin") == 0) {
 			AttrUtils::parseArrayInt(attr->mValue, mAttrMargin, 4);
 		} else if (strcmp(attr->mName, "color") == 0) {
-			COLORREF cc = AttrUtils::parseColor(attr->mValue, &ok);
-			if (ok) {
-				mAttrColor = cc;
+			if (AttrUtils::parseColor(attr->mValue, &mAttrColor)) {
 				mAttrFlags |= AF_COLOR;
 			}
 		} else if (strcmp(attr->mName, "bgcolor") == 0) {
-			COLORREF cc = AttrUtils::parseColor(attr->mValue, &ok);
-			if (ok) {
-				mAttrBgColor = cc;
+			if (AttrUtils::parseColor(attr->mValue, &mAttrBgColor)) {
 				mAttrFlags |= AF_BG_COLOR;
 			}
 		} else if (strcmp(attr->mName, "bgimage") == 0) {
