@@ -1320,6 +1320,20 @@ XExtEdit::~XExtEdit() {
 wchar_t * XExtEdit::getWideText() {
 	return mText;
 }
+void XExtEdit::setText( const char *txt ) {
+	deleteText(0, mLen);
+	insertText(0, (char *)txt);
+	mInsertPos = 0;
+	mBeginSelPos = mEndSelPos = 0;
+}
+void XExtEdit::setWideText( const wchar_t *txt ) {
+	deleteText(0, mLen);
+	if (txt) {
+		insertText(0, (wchar_t*)txt, wcslen(txt));
+	}
+	mInsertPos = 0;
+	mBeginSelPos = mEndSelPos = 0;
+}
 
 //----------------------------XExtList---------------------
 XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {

@@ -200,11 +200,13 @@ public:
 	void setEnableShowCaret(bool enable);
 	virtual char *getText();
 	virtual wchar_t *getWideText();
+	virtual void setText(const char *txt);
+	virtual void setWideText(const wchar_t *txt);
+	virtual ~XExtEdit();
+protected:
 	void insertText(int pos, char *txt);
 	void insertText(int pos, wchar_t *txt, int len);
 	int deleteText(int pos, int len);
-	virtual ~XExtEdit();
-protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onChar(wchar_t ch);
 	virtual void onLButtonDown(int keyState, int x, int y);
