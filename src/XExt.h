@@ -198,29 +198,33 @@ public:
 	void setEnableBorder(bool enable);
 	void setReadOnly(bool r);
 	void setEnableShowCaret(bool enable);
-protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	void onChar(wchar_t ch);
-	void onLButtonDown(int keyState, int x, int y);
-	void onLButtonUp(int keyState, int x, int y);
-	void onMouseMove(int x, int y);
-	void onPaint(HDC hdc);
-	void drawSelRange(HDC hdc, int begin, int end);
-	void onKeyDown(int key);
+	virtual char *getText();
 	void insertText(int pos, char *txt);
 	void insertText(int pos, wchar_t *txt, int len);
 	int deleteText(int pos, int len);
-	int getPosAt(int x, int y);
-	BOOL getXYAt(int pos, POINT *pt);
-	void move(int key);
-	void ensureVisible(int pos);
+	virtual ~XExtEdit();
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onChar(wchar_t ch);
+	virtual void onLButtonDown(int keyState, int x, int y);
+	virtual void onLButtonUp(int keyState, int x, int y);
+	virtual void onMouseMove(int x, int y);
+	virtual void onPaint(HDC hdc);
+	virtual void drawSelRange(HDC hdc, int begin, int end);
+	virtual void onKeyDown(int key);
+	virtual int getPosAt(int x, int y);
+	virtual BOOL getXYAt(int pos, POINT *pt);
+	virtual void move(int key);
+	virtual void ensureVisible(int pos);
 
-	void back();
-	void del();
-	void copy();
-	void paste();
+	virtual void back();
+	virtual void del();
+	virtual void copy();
+	virtual void paste();
 protected:
 	wchar_t *mText;
+	char *mTextBuffer;
+	int mTextBufferLen;
 	int mCapacity;
 	int mLen;
 	int mInsertPos;
@@ -516,4 +520,38 @@ protected:
 	COLORREF mNormalColor, mGreyColor;
 	XImage *mBuffer;
 	bool mTrackMouseLeave;
+};
+
+class XExtMaskEdit : public XExtEdit {
+public:
+	enum Case { C_NONE, C_UPPER, C_LOWER };
+	XExtMaskEdit(XmlNode *node);
+	/*
+	*  @param mask  0: 0-9;  9:1-9;    A:A-Z;    a:a-z;
+					C: 0-9 a-z A-Z;    H:0-9 A-F a-f   B:0-1
+	**/
+	void setMask(const char *mask);
+	void setCase(Case c);
+	void setPlaceHolder(char ch);
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onChar( wchar_t ch );
+	virtual void onPaint(HDC hdc);
+	virtual void onKeyDown(int key);
+	virtual int getPosAt(int x, int y);
+	virtual bool acceptChar(char ch, int pos);
+	bool isMaskChar(char ch);
+protected:
+	char *mMask;
+	Case mCase;
+	HBRUSH mCaretBrush;
+	wchar_t mPlaceHolder;
+};
+class XExtPassword : public XExtEdit {
+public:
+	XExtPassword(XmlNode *node);
+protected:
+	virtual void onChar( wchar_t ch );
+	virtual void paste();
+	virtual void onPaint(HDC hdc);
 };

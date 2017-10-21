@@ -943,6 +943,8 @@ XExtTable::~XExtTable() {
 //----------------------------XExtEdit---------------------
 XExtEdit::XExtEdit( XmlNode *node ) : XExtComponent(node) {
 	mText = NULL;
+	mTextBuffer = NULL;
+	mTextBufferLen = 0;
 	mCapacity = 0;
 	mLen = 0;
 	mInsertPos = 0;
@@ -954,7 +956,7 @@ XExtEdit::XExtEdit( XmlNode *node ) : XExtComponent(node) {
 	mScrollPos = 0;
 	mBorderPen = CreatePen(PS_SOLID, 1, RGB(0xAD, 0xAD, 0xAD));
 	mFocusBorderPen = CreatePen(PS_SOLID, 1, RGB(0xEE, 0x30, 0xA7));
-	mEnableBorder = false;
+	mEnableBorder = AttrUtils::parseBool(mNode->getAttrValue("enableBorder"));;
 	mEnableShowCaret = true;
 }
 bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
@@ -997,7 +999,7 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
 	}
-	return XComponent::wndProc(msg, wParam, lParam, result);
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
 void XExtEdit::onChar( wchar_t ch ) {
 	static char buf[4];
@@ -1300,6 +1302,20 @@ void XExtEdit::setReadOnly( bool r ) {
 }
 void XExtEdit::setEnableShowCaret( bool enable ) {
 	mEnableShowCaret = enable;
+}
+char * XExtEdit::getText() {
+	if (mText == NULL) return NULL;
+	int len = WideCharToMultiByte(CP_ACP, 0, mText, -1, NULL, 0, NULL, NULL);
+	if (len + 1 > mTextBufferLen) {
+		mTextBufferLen = len;
+		mTextBuffer = (char *)malloc(len + 1);
+	}
+	WideCharToMultiByte(CP_ACP, 0, mText, -1, mTextBuffer, len, NULL, NULL);
+	return mTextBuffer;
+}
+XExtEdit::~XExtEdit() {
+	if (mTextBuffer) free(mTextBuffer);
+	if (mText) delete[] mText;
 }
 
 //----------------------------XExtList---------------------
@@ -2823,5 +2839,234 @@ void XExtCalendar::onMouseMoveInYearMode( int x, int y ) {
 		}
 		if ((i + 1) % 4) OffsetRect(&r, W, 0);
 		else OffsetRect(&r, -3 * W, H);
+	}
+}
+//------------------------XExtMaskEditor-----------------------------------
+XExtMaskEdit::XExtMaskEdit( XmlNode *node ) : XExtEdit(node) {
+	mCase = C_NONE;
+	mCaretBrush = CreateSolidBrush(RGB(0x48, 0x76, 0xFF));
+	char *str = mNode->getAttrValue("placeHolder");
+	if (str == NULL) mPlaceHolder = ' ';
+	else mPlaceHolder = str[0];
+	setMask(mNode->getAttrValue("mask"));
+}
+bool XExtMaskEdit::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	 if (msg == WM_LBUTTONDOWN) {
+		if (mEnableFocus) SetFocus(mWnd);
+		int x = (short)lParam, y = (short)(lParam >> 16);
+		int pos = getPosAt(x, y);
+		if (pos >= 0) {
+			mInsertPos = pos;
+			mCaretShowing = true;
+			InvalidateRect(mWnd, NULL, TRUE);
+			UpdateWindow(mWnd);
+		}
+		return true;
+	} else if (msg == WM_LBUTTONUP) {
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		return true;
+	}
+	return XExtEdit::wndProc(msg, wParam, lParam, result);
+}
+void XExtMaskEdit::onChar( wchar_t ch ) {
+	if (mReadOnly) return;
+	if (ch < 32 || ch > 126) return;
+	if (mCase == C_LOWER) {
+		ch = tolower(ch);
+	} else if (mCase == C_UPPER) {
+		ch = toupper(ch);
+	}
+	if (acceptChar(ch, mInsertPos)) {
+		mText[mInsertPos] = ch;
+		onKeyDown(VK_RIGHT);
+	}
+	ensureVisible(mInsertPos);
+	InvalidateRect(mWnd, NULL, TRUE);
+	UpdateWindow(mWnd);
+}
+
+bool XExtMaskEdit::acceptChar( char ch, int pos ) {
+	if (mMask == NULL) return false;
+	if (pos >= strlen(mMask)) return false;
+	char m = mMask[pos];
+	if (m == '0') {
+		return ch >= '0' && ch <= '9';
+	}
+	if (m == '9') {
+		return ch >= '1' && ch <= '9';
+	}
+	if (m == 'A') {
+		return ch >= 'A' && ch <= 'Z';
+	}
+	if (m == 'a') {
+		return ch >= 'a' && ch <= 'a';
+	}
+	if (m == 'C') {
+		return (ch >= 'a' && ch <= 'a') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+	}
+	if (m == 'H') {
+		return (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') || (ch >= '0' && ch <= '9');
+	}
+	if (m == 'B') {
+		return ch == '0' || ch == '1';
+	}
+	return false;
+}
+void XExtMaskEdit::onPaint( HDC hdc ) {
+	HFONT font = getFont();
+	SelectObject(hdc, font);
+	SetBkMode(hdc, TRANSPARENT);
+	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
+	RECT r = {mScrollPos, 0, mWidth - mScrollPos, mHeight};
+	POINT pt = {0, 0};
+	if (mInsertPos >= 0 && mCaretShowing && getXYAt(mInsertPos, &pt)) {
+		SelectObject(hdc, mCaretPen);
+		SIZE sz;
+		GetTextExtentPoint32W(hdc, mText + mInsertPos, 1, &sz);
+		RECT rc = {pt.x, (mHeight-sz.cy)/2-2, pt.x + sz.cx, (mHeight+sz.cy)/2+2};
+		FillRect(hdc, &rc, mCaretBrush);
+	}
+	DrawTextW(hdc, mText, mLen, &r, DT_SINGLELINE | DT_VCENTER);
+	// draw border
+	if (mEnableBorder) {
+		bool hasFocus = mWnd == GetFocus();
+		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
+		SelectObject(hdc, GetStockObject(NULL_BRUSH));
+		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
+	}
+}
+void XExtMaskEdit::onKeyDown( int key ) {
+	if (mLen == 0) return;
+	if (key == VK_BACK || key == VK_DELETE) {// back
+		if (mInsertPos >= 0) {
+			mText[mInsertPos] = mPlaceHolder;
+			onKeyDown(key == VK_BACK ? VK_LEFT : VK_RIGHT);
+		}
+		return;
+	}
+	if (key < VK_END || key > VK_DOWN) return;
+	if (key == VK_END) {
+		for (int i = mLen - 1; i >= 0; --i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_HOME) {
+		for (int i = 0; i < mLen; ++i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_LEFT) {
+		for (int i = mInsertPos - 1; i >= 0; --i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_RIGHT) {
+		for (int i = mInsertPos + 1; i < mLen; ++i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	}
+	ensureVisible(mInsertPos);
+	InvalidateRect(mWnd, NULL, TRUE);
+}
+int XExtMaskEdit::getPosAt( int x, int y ) {
+	HDC hdc = GetDC(mWnd);
+	HGDIOBJ old = SelectObject(hdc, getFont());
+	int k = -1;
+	x -= mScrollPos;
+	for (int i = 0; i < mLen; ++i) {
+		SIZE sz;
+		GetTextExtentPoint32W(hdc, mText, i + 1, &sz);
+		if (sz.cx >= x) {
+			k = i;
+			break;
+		}
+	}
+	SelectObject(hdc, old);
+	ReleaseDC(mWnd, hdc);
+	if (k < 0 || ! isMaskChar(mMask[k])) return -1;
+	return k;
+}
+void XExtMaskEdit::setMask( const char *mask ) {
+	mMask = (char *)mask;
+	mLen = 0;
+	if (mMask == NULL) {
+		return;
+	}
+	int len = strlen(mMask);
+	wchar_t v;
+	for (int i = 0; i < len; ++i) {
+		v = mMask[i];
+		if (isMaskChar(mMask[i]))
+			insertText(i, &mPlaceHolder, 1);
+		else 
+			insertText(i, &v, 1);
+	}
+	mInsertPos = -1;
+	// find first mask char
+	for (int i = 0; i < len; ++i) {
+		if (isMaskChar(mMask[i])) {
+			mInsertPos = i;
+			break;
+		}
+	}
+}
+bool XExtMaskEdit::isMaskChar( char ch ) {
+	static char MC[] = {'0', '9', 'A', 'a', 'C', 'H', 'B'};
+	for (int i = 0; i < sizeof(MC); ++i) {
+		if (MC[i] == ch) return true;
+	}
+	return false;
+}
+void XExtMaskEdit::setPlaceHolder( char ch ) {
+	if (ch >= 32 && ch <= 127) mPlaceHolder = ch;
+}
+// ----------------------XExtPassword--------------------
+XExtPassword::XExtPassword( XmlNode *node ) : XExtEdit(node) {
+}
+void XExtPassword::onChar( wchar_t ch ) {
+	if (ch > 126) return;
+	if (ch > 31) {
+		if (mLen < 63) XExtEdit::onChar(ch);
+	} else {
+		XExtEdit::onChar(ch);
+	}
+}
+void XExtPassword::paste() {
+	// ignore it
+}
+void XExtPassword::onPaint( HDC hdc ) {
+	// draw select range background color
+	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
+	HFONT font = getFont();
+	SelectObject(hdc, font);
+	SetBkMode(hdc, TRANSPARENT);
+	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
+	RECT r = {mScrollPos, 0, mWidth - mScrollPos, mHeight};
+	char echo[64];
+	memset(echo, '*', mLen);
+	echo[mLen] = 0;
+	DrawText(hdc, echo, mLen, &r, DT_SINGLELINE | DT_VCENTER);
+	POINT pt = {0, 0};
+	if (mCaretShowing && getXYAt(mInsertPos, &pt)) {
+		SelectObject(hdc, mCaretPen);
+		MoveToEx(hdc, pt.x, 2, NULL);
+		LineTo(hdc, pt.x, mHeight - 4);
+	}
+	// draw border
+	if (mEnableBorder) {
+		bool hasFocus = mWnd == GetFocus();
+		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
+		SelectObject(hdc, GetStockObject(NULL_BRUSH));
+		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
 	}
 }

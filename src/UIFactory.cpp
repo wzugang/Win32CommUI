@@ -477,6 +477,8 @@ static XComponent *XExtList_Creator(XmlNode *n) {return new XExtList(n);}
 static XComponent *XExtComboBox_Creator(XmlNode *n) {return new XExtComboBox(n);}
 static XComponent *XExtTree_Creator(XmlNode *n) {return new XExtTree(n);}
 static XComponent *XExtCalendar_Creator(XmlNode *n) {return new XExtCalendar(n);}
+static XComponent *XExtMaskEdit_Creator(XmlNode *n) {return new XExtMaskEdit(n);}
+static XComponent *XExtPassword_Creator(XmlNode *n) {return new XExtPassword(n);}
 
 void UIFactory::init() {
 	INITCOMMONCONTROLSEX cc = {0};
@@ -517,4 +519,6 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
 	UIFactory::registCreator("ExtTree", XExtTree_Creator);
 	UIFactory::registCreator("ExtCalendar", XExtCalendar_Creator);
+	UIFactory::registCreator("ExtMaskEdit", XExtMaskEdit_Creator);
+	UIFactory::registCreator("ExtPassword", XExtPassword_Creator);
 }

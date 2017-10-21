@@ -34,6 +34,7 @@
 	<include src="file://abc.xml | res://abc " part="part-name" />
 	
 	<ExtLabel text="" />
+	
 	<ExtButton text="" normalImage="file://xx.bmp [x y w h]" hoverImage="" pushImage="" disableImage=""/>
 	<ExtOption   selectImage=""/>  继承自ExtButton
 	<ExtCheckBox selectImage="" /> 继承自ExtButton
@@ -45,8 +46,13 @@
 	<ExtScroll vbarTrack="" vbarThumb="" hbarTrack="" hbarThumb=""  />
 	<ExtTable />  继承自ExtScroll
 	<ExtList />   继承自ExtScroll
-	<ExtEdit  readOnly="true" />
+	
+	<ExtEdit  readOnly="true" enableBorder="true" />
+	<ExtMaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 ExtEdit 
+	<ExtPassword />  继承自 ExtEdit 
+	
 	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
+	
 	<ExtTree />  继承自ExtScroll
 	
 	<Menu>
