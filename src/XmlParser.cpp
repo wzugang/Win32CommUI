@@ -173,6 +173,7 @@ void XmlParser::parseString( const char *xml, int xmlLen) {
 	reset();
 	if (xml == NULL || *xml == 0) {
 		strcpy(mError, "xml is null");
+		printf("XmlParser::parseString  %s", mError);
 		mHasError = true;
 		return;
 	}
@@ -261,6 +262,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 	}
 	if (mXml[mPos] != '<') {
 		sprintf(mError, "Except '<' near: %s", getNearText(mPos));
+		printf("XmlParser::parseNode  %s", mError);
 		mHasError = true;
 		return NULL;
 	}
@@ -279,6 +281,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 	int px = nextWord();
 	if (px == -1) {
 		sprintf(mError, "Except a word near: %s", getNearText(mPos));
+		printf("XmlParser::parseNode  %s", mError);
 		mHasError = true;
 		return NULL;
 	}
@@ -315,6 +318,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 				return parent;
 			} else {
 				sprintf(mError, "Except '>' near: %s", getNearText(mPos));
+				printf("XmlParser::parseNode  %s", mError);
 				mHasError = true;
 				return NULL;
 			}
@@ -322,6 +326,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 		int p1 = nextWord();
 		if (p1 == -1) {
 			sprintf(mError, "Except a word near: %s", getNearText(mPos));
+			printf("XmlParser::parseNode  %s", mError);
 			mHasError = true;
 			return NULL;
 		}
@@ -335,6 +340,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 			skipSpace();
 			if (mPos >= mXmlLen || mXml[mPos] != '=') {
 				sprintf(mError, "Except a word near: %s", getNearText(tp));
+				printf("XmlParser::parseNode  %s", mError);
 				mHasError = true;
 				return NULL;
 			}
@@ -343,6 +349,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 		skipSpace();
 		if (mPos >= mXmlLen || mXml[mPos] != '"') {
 			sprintf(mError, "Except \" near: %s", getNearText(mPos));
+			printf("XmlParser::parseNode  %s", mError);
 			mHasError = true;
 			return NULL;
 		}
@@ -351,6 +358,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 		int p2 = nextTo('"');
 		if (p2 == -1) {
 			sprintf(mError, "Except \" near: %s", getNearText(mPos));
+			printf("XmlParser::parseNode  %s", mError);
 			mHasError = true;
 			return NULL;
 		}
@@ -359,6 +367,7 @@ XmlNode* XmlParser::parseNode(XmlNode *parent) {
 		node->addAttr(an, av);
 	}
 	sprintf(mError, "Except a > to end node");
+	printf("XmlParser::parseNode  %s", mError);
 	mHasError = true;
 	return NULL;
 }
@@ -369,6 +378,7 @@ void XmlParser::endNode(XmlNode *parent) {
 	}
 	if (parent == NULL) {
 		sprintf(mError, "Error near: %s", getNearText(mPos));
+		printf("XmlParser::endNode  %s", mError);
 		mHasError = true;
 		return;
 	}
@@ -378,23 +388,27 @@ void XmlParser::endNode(XmlNode *parent) {
 	int tpx = nextWord();
 	if (tpx == -1) {
 		sprintf(mError, "Except '%s' near: %s", parent->getName(), getNearText(mPos));
+		printf("XmlParser::endNode  %s", mError);
 		mHasError = true;
 		return;
 	}
 	if (memcmp(parent->getName(), ac, tpx - mPos) != 0) {
 		sprintf(mError, "Except '%s' near: %s", parent->getName(), getNearText(mPos));
+		printf("XmlParser::endNode  %s", mError);
 		mHasError = true;
 		return;
 	}
 	mPos = tpx;
 	if (mPos >= mXmlLen) {
 		sprintf(mError, "Except '>' to END", getNearText(mPos));
+		printf("XmlParser::endNode  %s", mError);
 		mHasError = true;
 		return;
 	}
 	skipSpace();
 	if (mXml[mPos] != '>') {
 		sprintf(mError, "Except '>' near: %s", getNearText(mPos));
+		printf("XmlParser::endNode  %s", mError);
 		mHasError = true;
 		return;
 	}
@@ -519,8 +533,22 @@ XmlPartLoader::XmlPartLoader( const char *filePath ) {
 	strcpy(mResPath, filePath);
 	if (memcmp(filePath, "file://", 7) == 0) {
 		mContent = ReadFileContent(filePath + 7, &mContentLen);
+		if (mContent == NULL) {
+			printf("XmlPartLoader load file [%s] fail\n", filePath);
+		}
 	} else if (memcmp(filePath, "res://", 6) == 0) {
-		// TODO:
+		HRSRC mm = FindResource(NULL, filePath + 6, "ANY");
+		if (mm == NULL) {
+			printf("XmlPartLoader load res [%s] in ANY fail\n", filePath);
+			return;
+		}
+		HGLOBAL hmm = LoadResource(NULL, mm);
+		char *mmDat = (char *)LockResource(hmm);
+		int mmLen = SizeofResource(NULL, mm);
+		mContent = new char[mmLen + 1];
+		memcpy(mContent, mmDat, mmLen);
+		mContent[mmLen] = 0;
+		FreeResource(hmm);
 	}
 	doParse();
 }
