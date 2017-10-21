@@ -421,7 +421,7 @@ void XScrollBar::calcThumbInfo() {
 		return;
 	}
 	int sz = mPage * mPage / mMax;
-	float a = mPos * (mPage - sz) / (mMax - mPage);
+	int a = mPos * (mPage - sz) / (mMax - mPage);
 	if (mHorizontal) {
 		mThumbRect.left = a;
 		mThumbRect.right = mThumbRect.left + sz;
@@ -1959,7 +1959,7 @@ XExtMenuManager::XExtMenuManager( XExtMenuItemList *mlist, XComponent *owner, It
 }
 void XExtMenuManager::show( int screenX, int screenY ) {
 	if (mMenus[++mLevel] == NULL) {
-		mMenus[mLevel] = new XExtMenu(new XmlNode(NULL, mOwner->getNode()), this);
+		mMenus[mLevel] = new XExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
 	}
 	mMenus[mLevel]->setMenuList(mMenuList);
 	mMenus[mLevel]->show(screenX, screenY);
@@ -2028,7 +2028,7 @@ void XExtMenuManager::closeMenu( XExtMenuItemList *mlist ) {
 }
 void XExtMenuManager::openMenu( XExtMenuItemList *mlist, int x, int y ) {
 	if (mMenus[++mLevel] == NULL) {
-		mMenus[mLevel] = new XExtMenu(new XmlNode(NULL, mOwner->getNode()), this);
+		mMenus[mLevel] = new XExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
 	}
 	mMenus[mLevel]->setMenuList(mlist);
 	mMenus[mLevel]->show(x, y);
