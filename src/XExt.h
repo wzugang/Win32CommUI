@@ -489,7 +489,7 @@ protected:
 	void drawSelYear( HDC dc );
 	void drawHeader(HDC dc);
 	void fillViewDates(int year, int month);
-	int getDaysNum(int year, int month);
+	static int getDaysNum(int year, int month);
 	void onLButtonDownInDayMode(int x, int y);
 	void onLButtonDownInMonthMode(int x, int y);
 	void onLButtonDownInYearMode(int x, int y);

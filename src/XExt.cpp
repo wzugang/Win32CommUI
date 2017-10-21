@@ -2488,15 +2488,10 @@ XExtCalendar::Date::Date() {
 	mYear = mMonth = mDay = 0;
 }
 bool XExtCalendar::Date::isValid() {
-	if (mYear <= 0 || mMonth <= 0 || mDay <= 0)
+	if (mYear <= 0 || mMonth <= 0 || mDay <= 0 || mMonth > 12 || mDay > 31)
 		return false;
-	struct tm t = {0};
-	t.tm_year = mYear - 1900;
-	t.tm_mon = mMonth - 1;
-	t.tm_mday = mDay;
-	struct tm bak = t;
-	mktime(&t);
-	return t.tm_year == bak.tm_year && t.tm_mon == bak.tm_mon && t.tm_mday == bak.tm_mday;
+	int d = XExtCalendar::getDaysNum(mYear, mMonth);
+	return d >= mDay;
 }
 bool XExtCalendar::Date::equals( const Date &d ) {
 	return mYear == d.mYear && mMonth == d.mMonth && mDay == d.mDay;
@@ -2709,8 +2704,15 @@ XExtCalendar::Date XExtCalendar::getSelectDate() {
 	return mSelectDate;
 }
 void XExtCalendar::setSelectDate( Date d ) {
-	if (! d.isValid()) return;
-	mSelectDate = d;
+	if (! d.isValid()) {
+		time_t ct = time(NULL);
+		struct tm *cur = localtime(&ct);
+		d.mYear = cur->tm_year + 1900;
+		d.mMonth = cur->tm_mon + 1;
+		mSelectDate.mYear = mSelectDate.mMonth = mSelectDate.mDay = 0;
+	} else {
+		mSelectDate = d;
+	}
 	mYearInDayMode = d.mYear;
 	mMonthInDayMode = d.mMonth;
 	mYearInMonthMode = mYearInDayMode;
@@ -2719,15 +2721,13 @@ void XExtCalendar::setSelectDate( Date d ) {
 	fillViewDates(mYearInDayMode, mMonthInDayMode);
 }
 void XExtCalendar::fillViewDates( int year, int month ) {
-	struct tm _z = {0};
-	_z.tm_year = year - 1900;
-	_z.tm_mon = month - 1;
-	_z.tm_mday = 1;
-	time_t _zt = mktime(&_z);
-	struct tm *_pz = localtime(&_zt);
-	int week = _pz->tm_wday;
-	if (week == 0) week = 7;
-	--week; // week = 0 ~ 6
+	int mm = month, yy = year, dd = 1;
+	if (mm == 1 || mm == 2) {
+		mm += 12;
+		yy--;
+	}
+	int week = (dd + 2 * mm + 3 * (mm + 1 ) / 5 + yy + yy / 4 - yy / 100 + yy / 400) % 7; // week = 0 ~ 6
+	
 	int daysNum = getDaysNum(year, month);
 	int skipRow = 0;
 	if (daysNum + week < 42 - 14) skipRow = 1;
