@@ -85,8 +85,8 @@
 <Tree>
 	<TreeNode text="San tai hu" />
 	<TreeNode text="Bai Du" expand="true">
-		<TreeNode text="Good" />
-		<TreeNode text="Bad" />
+		<TreeNode text="Good" checkable="true"  />
+		<TreeNode text="Bad"  checkable="true" checked="true"/>
 	</TreeNode>
 	<TreeNode text="My Fav" >
 		<TreeNode text="Simple" />

@@ -402,15 +402,7 @@ protected:
 
 class XExtTreeNode {
 public:
-	enum AttrFlag {
-		AF_HAS_CHECKBOX = 1,
-		AF_ENABLE_CHECK = 2,
-	};
-	enum PosInfo {
-		PI_FIRST = 1,
-		PI_LAST = 2,
-		PI_CENTER = 4
-	};
+	enum PosInfo { PI_FIRST = 1, PI_LAST = 2, PI_CENTER = 4 };
 	XExtTreeNode(const char *text);
 	// pos : -1 means append
 	void insert(int pos, XExtTreeNode *child);
@@ -429,6 +421,10 @@ public:
 	PosInfo getPosInfo();
 	int getLevel();
 	XExtTreeNode *getParent();
+	bool isCheckable();
+	void setCheckable(bool cb);
+	bool isChecked();
+	void setChecked(bool cb);
 protected:
 	char *mText;
 	XExtTreeNode *mParent;
@@ -437,6 +433,8 @@ protected:
 	bool mExpand;
 	void *mUserData;
 	int mContentWidth;
+	bool mCheckable;
+	bool mChecked;
 };
 class XExtTree : public XExtScroll {
 public:
@@ -469,7 +467,7 @@ protected:
 	SIZE mDataSize;
 	XExtTreeNode *mModel;
 	HBRUSH mBoxBrush;
-	HPEN mLinePen;
+	HPEN mLinePen, mCheckPen;
 	HBRUSH mSelectBgBrush;
 	XExtTreeNode *mSelectNode;
 	int mWidthSpec, mHeightSpec;

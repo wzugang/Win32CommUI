@@ -2036,6 +2036,8 @@ XExtTreeNode::XExtTreeNode( const char *text ) {
 	mAttrFlags = 0;
 	mExpand = false;
 	mContentWidth = -1;// -1 表示宽度未定
+	mCheckable = false;
+	mChecked = false;
 }
 void XExtTreeNode::insert( int pos, XExtTreeNode *child ) {
 	if (child == NULL || pos > getChildCount()) 
@@ -2111,6 +2113,18 @@ int XExtTreeNode::getLevel() {
 XExtTreeNode * XExtTreeNode::getParent() {
 	return mParent;
 }
+bool XExtTreeNode::isCheckable() {
+	return mCheckable;
+}
+void XExtTreeNode::setCheckable( bool cb ) {
+	mCheckable = cb;
+}
+bool XExtTreeNode::isChecked() {
+	return mChecked;
+}
+void XExtTreeNode::setChecked( bool cb ) {
+	mChecked = cb;
+}
 
 static const int TREE_NODE_HEIGHT = 30;
 static const int TREE_NODE_HEADER_WIDTH = 40;
@@ -2123,6 +2137,7 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mModel = NULL;
 	mBoxBrush = CreateSolidBrush(RGB(0xcc, 0xcc, 0xcc));
 	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x33,0x33,0x33));
+	mCheckPen = CreatePen(PS_SOLID, 1, RGB(0x64, 0x95, 0xED));
 	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
@@ -2135,6 +2150,7 @@ XExtTree::~XExtTree() {
 	if (mBuffer) delete mBuffer;
 	DeleteObject(mBoxBrush);
 	DeleteObject(mLinePen);
+	DeleteObject(mCheckPen);
 	DeleteObject(mSelectBgBrush);
 }
 bool XExtTree::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -2212,6 +2228,7 @@ static void CalcDataSize(HDC dc, XExtTreeNode *n, int *nodeNum, int *maxWidth, i
 		} else {
 			sztw.cx = 30;
 		}
+		if (n->isCheckable()) sztw.cx += TREE_NODE_BOX + 3;
 		n->setContentWidth(sztw.cx);
 	}
 	int mw = n->getContentWidth() + level * TREE_NODE_HEADER_WIDTH;
@@ -2306,6 +2323,26 @@ void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, in
 	x += TREE_NODE_HEADER_WIDTH;
 	RECT r = {x, y, x+n->getContentWidth(), y+TREE_NODE_HEIGHT};
 	if (mSelectNode == n) FillRect(dc, &r, mSelectBgBrush);
+	if (n->isCheckable()) {
+		// draw check box
+		HGDIOBJ old = SelectObject(dc, mCheckPen);
+		Rectangle(dc, x, y + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2, 
+			x + TREE_NODE_BOX, y + (TREE_NODE_HEIGHT + TREE_NODE_BOX) / 2);
+		if (n->isChecked()) {
+			int LH = 2, BX = 4 + x, BY = 7 + y + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2, N = 3;
+			for (int i = 0; i < N; ++i) {
+				MoveToEx(dc, BX + i, BY + i, NULL);
+				LineTo(dc, BX + i, BY + i + LH);
+			}
+			for (int i = 0; i < 5; ++i) {
+				MoveToEx(dc, BX + N + i, BY + N - 1 - i, NULL);
+				LineTo(dc, BX + N + i, BY + N - 1 - i + LH);
+			}
+		}
+		SelectObject(dc, old);
+		r.left += TREE_NODE_BOX + 2;
+	}
+
 	if (mNodeRender != NULL) {
 		mNodeRender->onDrawNode(dc, n, r.left, r.top, r.right-r.left, r.bottom-r.top);
 	} else {
@@ -2341,7 +2378,12 @@ void XExtTree::onLBtnDown( int x, int y ) {
 		if (mSelectNode != node) {
 			mSelectNode = node;
 			InvalidateRect(mWnd, NULL, TRUE);
-			UpdateWindow(mWnd);
+			SendMessage(mWnd, WM_EXT_TREE_SEL_CHANGED, (WPARAM)node, 0);
+		}
+		if (node->isCheckable()) {
+			node->setChecked(! node->isChecked());
+			InvalidateRect(mWnd, NULL, TRUE);
+			SendMessage(mWnd, WM_EXT_TREE_CHECK_CHANGED, (WPARAM)node, 0);
 		}
 		return;
 	}

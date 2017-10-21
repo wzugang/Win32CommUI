@@ -424,6 +424,8 @@ static void BuildTree(XExtTreeNode *tn, XmlNode *node) {
 		XmlNode *child = node->getChild(i);
 		XExtTreeNode *sub = new XExtTreeNode(child->getAttrValue("text"));
 		sub->setExpand(AttrUtils::parseBool(child->getAttrValue("expand")));
+		sub->setCheckable(AttrUtils::parseBool(child->getAttrValue("checkable")));
+		sub->setChecked(AttrUtils::parseBool(child->getAttrValue("checked")));
 		sub->setUserData(node);
 		tn->insert(-1, sub);
 		if (child->getChildCount() > 0) {

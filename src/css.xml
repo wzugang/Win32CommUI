@@ -64,7 +64,7 @@
 	</Menu>
 	
 	<Tree>
-		<TreeNode text="" expand="true" />
+		<TreeNode text="" expand="true" checkable="true" checked="true" />
 		expand default is false
 			...sub tree node here...
 	</Tree>
