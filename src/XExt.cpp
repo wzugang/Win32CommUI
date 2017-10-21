@@ -672,7 +672,7 @@ XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
 	mLinePen = CreatePen(PS_SOLID, 1, RGB(110, 120, 250));
 	mSelectedRow = -1;
 	mModel = NULL;
-	mSelectBgColor = RGB(0xE6, 0xE6, 0xFA);
+	mSelectBgColor = 0xE6E0B0; // RGB(0xE6, 0xE6, 0xFA);
 	mSelectBgBrush = NULL;
 	mCellRender = NULL;
 }
@@ -2136,9 +2136,9 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;
 	mModel = NULL;
 	mBoxBrush = CreateSolidBrush(RGB(0xcc, 0xcc, 0xcc));
-	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x33,0x33,0x33));
+	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x3A, 0x9D, 0xF9));
 	mCheckPen = CreatePen(PS_SOLID, 1, RGB(0x64, 0x95, 0xED));
-	mSelectBgBrush = CreateSolidBrush(RGB(0xA2, 0xB5, 0xCD));
+	mSelectBgBrush = CreateSolidBrush(0xE6E0B0);
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
 	mNodeRender = NULL;

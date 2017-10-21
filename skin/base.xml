@@ -34,7 +34,7 @@
 		</AbsLayout>
 
 		<AbsLayout  bgimage="file://skin/d.bmp" visible = "false" rect="0 0 100% 100%">
-			<ExtTable id="my-table" rect="10% 10% 80% 80%" bgcolor="#cccccc" />
+			<ExtTable id="my-table" rect="10% 10% 80% 80%" bgcolor="#D5DFDA" />
 		</AbsLayout>
 		
 	</Tab>
