@@ -57,6 +57,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	GetModuleFileName(NULL, path, 256);
 	char *p = strrchr(path, '\\') + 1;
 	*p = 0;
+	strcpy(path, "D:\\CPP\\WinUI\\WinUI\\");
 	SetCurrentDirectory(path);
 
 	/*HRSRC mm = FindResource(NULL, "MY_ANY_MM", "ANY");

@@ -22,12 +22,11 @@
 			<ExtRadio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
 			<ExtButton id = "ext_btn_2" text = "ExtBtn"  rect = "20 200 100 24"  />
 			<ExtCalendar rect = "350 20 220 200"  />
-			<ExtPassword rect = "350 250 150 30" enableBorder="true" />
 		</AbsLayout>
 
 		<AbsLayout  bgimage="file://skin/c.bmp" visible = "false" rect="0 0 100% 100%" >
 			<ExtEdit text = "Hello World B!" bgcolor="#F5FFFA" color="#880000" rect = "20 20 200 30" roundConer="5 5"  />
-			<ExtMaskEdit mask="000.000.000.000" placeHolder="_" bgcolor="#F5FFFA" color="#880000" rect = "20 60 200 30" roundConer="5 5" />
+			<ExtMaskEdit mask="HH-HH-HH" placeHolder=" " case="upper" bgcolor="#F5FFFA" color="#880000" rect = "20 60 200 30" roundConer="5 5" />
 			<ExtButton id = "btn_1" text = "ClickMe"  rect = "250 20 75 24"  margin="0 0 20 0" />
 			<ExtList id = "list_1" bgcolor="#F5FFFA" rect="350 20 170 250"/>
 			<ExtComboBox id="combox_1" rect="20 100 150 25" readOnly="true" arrowSize="20 15" popupSize="100% 120"/>
