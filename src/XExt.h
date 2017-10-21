@@ -199,6 +199,7 @@ public:
 	void setReadOnly(bool r);
 	void setEnableShowCaret(bool enable);
 	virtual char *getText();
+	virtual wchar_t *getWideText();
 	void insertText(int pos, char *txt);
 	void insertText(int pos, wchar_t *txt, int len);
 	int deleteText(int pos, int len);
@@ -524,6 +525,7 @@ protected:
 
 class XExtMaskEdit : public XExtEdit {
 public:
+	typedef bool (*InputValidate)(int pos, char ch);
 	enum Case { C_NONE, C_UPPER, C_LOWER };
 	XExtMaskEdit(XmlNode *node);
 	/*
@@ -533,6 +535,7 @@ public:
 	void setMask(const char *mask);
 	void setCase(Case c);
 	void setPlaceHolder(char ch);
+	void setInputValidate(InputValidate iv);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onChar( wchar_t ch );
@@ -546,6 +549,7 @@ protected:
 	Case mCase;
 	HBRUSH mCaretBrush;
 	wchar_t mPlaceHolder;
+	InputValidate mValidate;
 };
 class XExtPassword : public XExtEdit {
 public:

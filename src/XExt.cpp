@@ -1317,6 +1317,9 @@ XExtEdit::~XExtEdit() {
 	if (mTextBuffer) free(mTextBuffer);
 	if (mText) delete[] mText;
 }
+wchar_t * XExtEdit::getWideText() {
+	return mText;
+}
 
 //----------------------------XExtList---------------------
 XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
@@ -2849,6 +2852,10 @@ XExtMaskEdit::XExtMaskEdit( XmlNode *node ) : XExtEdit(node) {
 	if (str == NULL) mPlaceHolder = ' ';
 	else mPlaceHolder = str[0];
 	setMask(mNode->getAttrValue("mask"));
+	str = mNode->getAttrValue("case");
+	if (str != NULL && strcmp(str, "upper") == 0) mCase = C_UPPER;
+	else if (str != NULL && strcmp(str, "lower") == 0) mCase = C_LOWER;
+	mValidate = NULL;
 }
 bool XExtMaskEdit::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	 if (msg == WM_LBUTTONDOWN) {
@@ -2877,9 +2884,16 @@ void XExtMaskEdit::onChar( wchar_t ch ) {
 	} else if (mCase == C_UPPER) {
 		ch = toupper(ch);
 	}
-	if (acceptChar(ch, mInsertPos)) {
-		mText[mInsertPos] = ch;
-		onKeyDown(VK_RIGHT);
+	if (mValidate) {
+		if (mValidate(mInsertPos, ch)) {
+			mText[mInsertPos] = ch;
+			onKeyDown(VK_RIGHT);
+		}
+	} else {
+		if (acceptChar(ch, mInsertPos)) {
+			mText[mInsertPos] = ch;
+			onKeyDown(VK_RIGHT);
+		}
 	}
 	ensureVisible(mInsertPos);
 	InvalidateRect(mWnd, NULL, TRUE);
@@ -3029,6 +3043,9 @@ bool XExtMaskEdit::isMaskChar( char ch ) {
 }
 void XExtMaskEdit::setPlaceHolder( char ch ) {
 	if (ch >= 32 && ch <= 127) mPlaceHolder = ch;
+}
+void XExtMaskEdit::setInputValidate( InputValidate iv ) {
+	mValidate = iv;
 }
 // ----------------------XExtPassword--------------------
 XExtPassword::XExtPassword( XmlNode *node ) : XExtEdit(node) {
