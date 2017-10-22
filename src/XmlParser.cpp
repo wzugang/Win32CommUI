@@ -715,6 +715,7 @@ void AttrUtils::parseArraySize(const char *str, int *arr, int arrNum) {
 }
 
 int AttrUtils::parseInt(const char *str) {
+	if (str == NULL) return 0;
 	return (int)strtod(str, NULL);
 }
 

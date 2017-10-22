@@ -202,9 +202,9 @@ public:
 	virtual void setWideText(const wchar_t *txt);
 	virtual ~XExtEdit();
 protected:
-	void insertText(int pos, char *txt);
-	void insertText(int pos, wchar_t *txt, int len);
-	int deleteText(int pos, int len);
+	virtual void insertText(int pos, char *txt);
+	virtual void insertText(int pos, wchar_t *txt, int len);
+	virtual int deleteText(int pos, int len);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onChar(wchar_t ch);
 	virtual void onLButtonDown(int keyState, int x, int y);
@@ -237,6 +237,41 @@ protected:
 	HPEN mBorderPen, mFocusBorderPen;
 	bool mEnableBorder;
 	bool mEnableShowCaret;
+};
+class XExtTextArea : public XExtEdit {
+public:
+	XExtTextArea(XmlNode *node);
+	virtual ~XExtTextArea();
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	void drawSelRange(HDC hdc, int begin, int end);
+	virtual void onChar(wchar_t ch);
+	virtual void onPaint(HDC hdc);
+	virtual int getPosAt(int x, int y);
+	virtual BOOL getXYAt(int pos, POINT *pt);
+	virtual void getVisibleRows(int *from, int *to);
+	void buildLines();
+	void notifyChanged();
+
+	virtual void createWnd();
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	SIZE calcDataSize();
+	SIZE getClientSize();
+	virtual void ensureVisible(int pos);
+	virtual void move(int key);
+	virtual void back();
+	virtual void del();
+	virtual void paste();
+protected:
+	struct LineInfo { int mBeginPos; int mLen;};
+	LineInfo *mLines;
+	int mLinesCapacity;
+	int mLineNum;
+	int mLineHeight;
+	XScrollBar *mVerBar;
+	XmlNode *mVerBarNode;
+	SIZE mDataSize;
 };
 
 class XListModel {

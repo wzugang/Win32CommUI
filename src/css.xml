@@ -50,7 +50,8 @@
 	
 	<ExtEdit  readOnly="true" enableBorder="true" borderColor="#rrggbb" focusBorderColor="#rrggbb" />
 	<ExtMaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 ExtEdit 
-	<ExtPassword />  继承自 ExtEdit 
+	<ExtPassword  />  继承自 ExtEdit 
+	<ExtTextArea lineHeight="30" vbarTrack="" vbarThumb="" />  继承自 ExtEdit
 	
 	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
 	
