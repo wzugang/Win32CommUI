@@ -190,30 +190,37 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 XExtButton::BtnImage XExtButton::getBtnImage() {
 	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
 		return BTN_IMG_DISABLE;
-	if (mIsMouseLeave)
-		return BTN_IMG_NORMAL;
 	if (mIsMouseDown && ! mIsMouseLeave) {
 		return BTN_IMG_PUSH;
 	}
 	if (!mIsMouseDown && mIsMouseMoving) {
 		return BTN_IMG_HOVER;
 	}
+	if (mIsMouseLeave) {
+		return BTN_IMG_NORMAL;
+	}
+
 	return BTN_IMG_NORMAL;
 }
 //-------------------XExtOption-----------------------------------
 XExtOption::XExtOption( XmlNode *node ) : XExtButton(node) {
+	mAutoSelect = true;
 	mIsSelect = false;
 	char *s = mNode->getAttrValue("selectImage");
 	if (s != NULL) {
 		mImages[BTN_IMG_SELECT] = XImage::load(s);
 	}
+	s = mNode->getAttrValue("autoSelect");
+	if (s != NULL) mAutoSelect = AttrUtils::parseBool(s);
 }
 
 bool XExtOption::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_LBUTTONUP) {
 		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
-		if (! mIsSelect) mIsSelect = mIsMouseDown && PtInRect(&r, pt);
+		if (mAutoSelect && mIsMouseDown && PtInRect(&r, pt)) {
+			mIsSelect = ! mIsSelect;
+		}
 		return XExtButton::wndProc(msg, wParam, lParam, result);
 	}
 	return XExtButton::wndProc(msg, wParam, lParam, result);
@@ -230,11 +237,29 @@ void XExtOption::setSelect( bool select ) {
 	}
 }
 
-XExtOption::BtnImage XExtOption::getBtnImage() {
-	if (mIsSelect)
-		return BtnImage(BTN_IMG_SELECT);
-	return XExtButton::getBtnImage();
+void XExtOption::setAutoSelect(bool autoSelect) {
+	mAutoSelect = autoSelect;
 }
+
+XExtOption::BtnImage XExtOption::getBtnImage() {
+	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
+		return BTN_IMG_DISABLE;
+	if (mIsMouseDown && ! mIsMouseLeave) {
+		return BTN_IMG_PUSH;
+	}
+	if (!mIsMouseDown && mIsMouseMoving) {
+		return BTN_IMG_HOVER;
+	}
+	if (mIsSelect) {
+		return BtnImage(BTN_IMG_SELECT);
+	}
+	if (mIsMouseLeave) {
+		return BTN_IMG_NORMAL;
+	}
+
+	return BTN_IMG_NORMAL;
+}
+
 //-------------------XExtCheckBox-----------------------------------
 XExtCheckBox::XExtCheckBox( XmlNode *node ) : XExtOption(node) {
 }

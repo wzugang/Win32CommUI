@@ -50,6 +50,7 @@ public:
 	XExtOption(XmlNode *node);
 	bool isSelect();
 	void setSelect(bool select);
+	void setAutoSelect(bool autoSelect);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual BtnImage getBtnImage();
@@ -57,6 +58,7 @@ protected:
 		BTN_IMG_SELECT = 5
 	};
 	bool mIsSelect;
+	bool mAutoSelect;
 };
 
 class XExtCheckBox : public XExtOption {
