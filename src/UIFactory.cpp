@@ -472,6 +472,8 @@ static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
 static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
 static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
 static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
+static XComponent *XExtIconButton_Creator(XmlNode *n) {return new XExtIconButton(n);}
+
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
@@ -516,6 +518,8 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
 	UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
 	UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
+	UIFactory::registCreator("ExtIconButton", XExtIconButton_Creator);
+
 	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
 	UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 	UIFactory::registCreator("ExtTable", XExtTable_Creator);
