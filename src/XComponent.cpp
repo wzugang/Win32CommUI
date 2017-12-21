@@ -281,10 +281,11 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 		}
 		if (hasBgImg) {
 			HDC dc = (HDC)wParam;
-			HDC memDc = CreateCompatibleDC(dc);
+			/*HDC memDc = CreateCompatibleDC(dc);
 			SelectObject(memDc, mBgImage->getHBitmap());
 			BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-			DeleteObject(memDc);
+			DeleteObject(memDc);*/
+			mBgImage->draw(dc, 0, 0, mWidth, mHeight);
 		}
 		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)
 			return true;
@@ -441,6 +442,7 @@ void XHLineLayout::onLayout( int width, int height ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		int y  = calcSize(child->getAttrY(), (height - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
+		y += mAttrPadding[1];
 		x += child->getAttrMargin()[0];
 		if (child->getAttrWeight() > 0 && perWeight > 0) {
 			int nw = child->getMesureWidth() + child->getAttrWeight() * perWeight;
