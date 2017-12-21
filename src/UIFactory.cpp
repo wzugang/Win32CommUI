@@ -456,6 +456,7 @@ static XComponent *XCheckBox_Creator(XmlNode *n) {return new XCheckBox(n);}
 static XComponent *XRadio_Creator(XmlNode *n) {return new XRadio(n);}
 static XComponent *XGroupBox_Creator(XmlNode *n) {return new XGroupBox(n);}
 static XComponent *XEdit_Creator(XmlNode *n) {return new XEdit(n);}
+static XComponent *XArrowButton_Creator(XmlNode *n) {return new XArrowButton(n);}
 static XComponent *XComboBox_Creator(XmlNode *n) {return new XComboBox(n);}
 static XComponent *XTable_Creator(XmlNode *n) {return new XTable(n);}
 static XComponent *XTree_Creator(XmlNode *n) {return new XTree(n);}
@@ -520,6 +521,7 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtTable", XExtTable_Creator);
 	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
 	UIFactory::registCreator("ExtList", XExtList_Creator);
+	UIFactory::registCreator("ArrowButton", XArrowButton_Creator);
 	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
 	UIFactory::registCreator("ExtTree", XExtTree_Creator);
 	UIFactory::registCreator("ExtCalendar", XExtCalendar_Creator);

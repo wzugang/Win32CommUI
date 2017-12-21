@@ -101,18 +101,18 @@ void XExtLabel::setText( char *text ) {
 //-------------------XExtButton-----------------------------------
 XExtButton::XExtButton( XmlNode *node ) : XExtComponent(node) {
 	mIsMouseDown = mIsMouseMoving = mIsMouseLeave = false;
-	memset(mImages, 0, sizeof(mImages));
+	memset(mStateImages, 0, sizeof(mStateImages));
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
 		XmlNode::Attr *attr = mNode->getAttr(i);
 		if (strcmp(attr->mName, "normalImage") == 0) {
-			mImages[BTN_IMG_NORMAL] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_NORMAL] = XImage::load(attr->mValue);
 		} else if (strcmp(attr->mName, "hoverImage") == 0) {
-			mImages[BTN_IMG_HOVER] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_HOVER] = XImage::load(attr->mValue);
 		} else if (strcmp(attr->mName, "pushImage") == 0) {
-			mImages[BTN_IMG_PUSH] = XImage::load(attr->mValue);
-		} else if (strcmp(attr->mName, "disableImage") == 0) {
-			mImages[BTN_IMG_DISABLE] = XImage::load(attr->mValue);
-		}
+			mStateImages[STATE_IMG_PUSH] = XImage::load(attr->mValue);
+		} /*else if (strcmp(attr->mName, "disableImage") == 0) {
+			mStateImages[STATE_IMG_DISABLE] = XImage::load(attr->mValue);
+		}*/
 	}
 }
 
@@ -122,7 +122,7 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {0, 0, mWidth, mHeight};
 
-		XImage *cur = mImages[getBtnImage()];
+		XImage *cur = mStateImages[getStateImage()];
 		if (cur != NULL)
 			cur->draw(dc, 0, 0, mWidth, mHeight);
 		
@@ -163,7 +163,7 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 			TrackMouseEvent(&a);
 		}
 
-		BtnImage bi = getBtnImage();
+		StateImage bi = getStateImage();
 		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
 		if (PtInRect(&r, pt)) {
@@ -174,7 +174,7 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 			mIsMouseMoving = false;
 			mIsMouseLeave = true;
 		}
-		if (bi != getBtnImage()) {
+		if (bi != getStateImage()) {
 			InvalidateRect(mWnd, NULL, TRUE);
 		}
 		return true;
@@ -187,20 +187,20 @@ bool XExtButton::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
 
-XExtButton::BtnImage XExtButton::getBtnImage() {
+XExtButton::StateImage XExtButton::getStateImage() {
 	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
-		return BTN_IMG_DISABLE;
+		return STATE_IMG_DISABLE;
 	if (mIsMouseDown && ! mIsMouseLeave) {
-		return BTN_IMG_PUSH;
+		return STATE_IMG_PUSH;
 	}
 	if (!mIsMouseDown && mIsMouseMoving) {
-		return BTN_IMG_HOVER;
+		return STATE_IMG_HOVER;
 	}
 	if (mIsMouseLeave) {
-		return BTN_IMG_NORMAL;
+		return STATE_IMG_NORMAL;
 	}
 
-	return BTN_IMG_NORMAL;
+	return STATE_IMG_NORMAL;
 }
 //-------------------XExtOption-----------------------------------
 XExtOption::XExtOption( XmlNode *node ) : XExtButton(node) {
@@ -208,7 +208,7 @@ XExtOption::XExtOption( XmlNode *node ) : XExtButton(node) {
 	mIsSelect = false;
 	char *s = mNode->getAttrValue("selectImage");
 	if (s != NULL) {
-		mImages[BTN_IMG_SELECT] = XImage::load(s);
+		mStateImages[BTN_IMG_SELECT] = XImage::load(s);
 	}
 	s = mNode->getAttrValue("autoSelect");
 	if (s != NULL) mAutoSelect = AttrUtils::parseBool(s);
@@ -241,23 +241,23 @@ void XExtOption::setAutoSelect(bool autoSelect) {
 	mAutoSelect = autoSelect;
 }
 
-XExtOption::BtnImage XExtOption::getBtnImage() {
+XExtOption::StateImage XExtOption::getStateImage() {
 	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
-		return BTN_IMG_DISABLE;
+		return STATE_IMG_DISABLE;
 	if (mIsMouseDown && ! mIsMouseLeave) {
-		return BTN_IMG_PUSH;
+		return STATE_IMG_PUSH;
 	}
 	if (!mIsMouseDown && mIsMouseMoving) {
-		return BTN_IMG_HOVER;
+		return STATE_IMG_HOVER;
 	}
 	if (mIsSelect) {
-		return BtnImage(BTN_IMG_SELECT);
+		return StateImage(BTN_IMG_SELECT);
 	}
 	if (mIsMouseLeave) {
-		return BTN_IMG_NORMAL;
+		return STATE_IMG_NORMAL;
 	}
 
-	return BTN_IMG_NORMAL;
+	return STATE_IMG_NORMAL;
 }
 
 //-------------------XExtCheckBox-----------------------------------
@@ -269,7 +269,7 @@ bool XExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		RECT r = {0, 0, mWidth, mHeight};
-		XImage *cur = mImages[getBtnImage()];
+		XImage *cur = mStateImages[getStateImage()];
 		if (cur != NULL) {
 			int y = (mHeight - cur->getHeight()) / 2;
 			cur->draw(dc, 0, y, cur->getWidth(), cur->getHeight());
@@ -1910,8 +1910,130 @@ void XExtList::updateTrackItem( int x, int y ) {
 		UpdateWindow(mWnd);
 	}
 }
+
+//------------------------------XArrowButton--------------------
+XArrowButton::XArrowButton(XmlNode *node) : XExtButton(node) {
+	mMouseAtArrow = false;
+	mArrowWidth = 0;
+	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
+		XmlNode::Attr *attr = mNode->getAttr(i);
+		if (strcmp(attr->mName, "arrowPushImage") == 0) {
+			mStateImages[ARROW_IMG_PUSH] = XImage::load(attr->mValue);
+		} else if (strcmp(attr->mName, "arrowHoverImage") == 0) {
+			mStateImages[ARROW_IMG_HOVER] = XImage::load(attr->mValue);
+		} else if (strcmp(attr->mName, "arrowWidth") == 0) {
+			mArrowWidth = AttrUtils::parseInt(attr->mValue);
+		}
+	}
+}
+
+bool XArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		RECT r = {0, 0, mWidth, mHeight};
+
+		XImage *cur = mStateImages[getStateImage()];
+		if (cur != NULL) {
+			cur->draw(dc, 0, 0, mWidth, mHeight);
+		}
+		if (mAttrFlags & AF_COLOR) {
+			SetTextColor(dc, mAttrColor);
+		}
+		SetBkMode(dc, TRANSPARENT);
+		SelectObject(dc, getFont());
+		DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		mIsMouseDown = true;
+		mIsMouseMoving = false;
+		mIsMouseLeave = false;
+		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
+		InvalidateRect(mWnd, NULL, TRUE);
+		SetCapture(mWnd);
+		if (mEnableFocus) SetFocus(mWnd);
+		return true;
+	} else if (msg == WM_LBUTTONUP) {
+		bool md = mIsMouseDown;
+		mIsMouseDown = false;
+		mIsMouseMoving = false;
+		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
+		ReleaseCapture();
+		InvalidateRect(mWnd, NULL, TRUE);
+		UpdateWindow(mWnd);
+		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
+		RECT r = {0, 0, mWidth, mHeight};
+		if (md && PtInRect(&r, pt)) {
+			SendMessage(mWnd, WM_COMMAND_SELF, 0, 0);
+		}
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		if (! mIsMouseMoving) {
+			TRACKMOUSEEVENT a = {0};
+			a.cbSize = sizeof(TRACKMOUSEEVENT);
+			a.dwFlags = TME_LEAVE;
+			a.hwndTrack = mWnd;
+			TrackMouseEvent(&a);
+		}
+
+		StateImage bi = getStateImage();
+		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
+		RECT r = {0, 0, mWidth, mHeight};
+		if (PtInRect(&r, pt)) {
+			mIsMouseMoving = true;
+			mIsMouseLeave = false;
+		} else {
+			// mouse leave ( mouse is down now)
+			mIsMouseMoving = false;
+			mIsMouseLeave = true;
+		}
+		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
+		if (bi != getStateImage()) {
+			InvalidateRect(mWnd, NULL, TRUE);
+		}
+		return true;
+	} else if (msg == WM_MOUSELEAVE) {
+		mIsMouseMoving = false;
+		mIsMouseLeave = true;
+		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
+		InvalidateRect(mWnd, NULL, TRUE);
+		return true;
+	}
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
+}
+
+bool XArrowButton::isPointInArrow(int x, int y) {
+	return y >= 0 && y < mHeight &&
+		x >= mWidth - mArrowWidth && x < mWidth;
+}
+
+XArrowButton::StateImage XArrowButton::getStateImage() {
+	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
+		return STATE_IMG_DISABLE;
+	if (mIsMouseDown && ! mIsMouseLeave) {
+		if (mMouseAtArrow)
+			return StateImage(ARROW_IMG_PUSH);
+		return STATE_IMG_PUSH;
+	}
+	if (!mIsMouseDown && mIsMouseMoving) {
+		if (mMouseAtArrow)
+			return StateImage(ARROW_IMG_HOVER);
+		return STATE_IMG_HOVER;
+	}
+	if (mIsMouseLeave) {
+		return STATE_IMG_NORMAL;
+	}
+
+	return STATE_IMG_NORMAL;
+}
+
 //------------------------------XExtComboBox--------------------
 XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
+	memset(mStateImages, 0, sizeof(mStateImages));
+	mIsMouseDown = false;
+	mIsMouseMoving = false;
+	mIsMouseLeave = false;
 	mEditNode = new XmlNode(NULL, mNode);
 	mPopupNode = new XmlNode(NULL, mNode);
 	mListNode = new XmlNode(NULL, mPopupNode);
@@ -1926,23 +2048,20 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mList->setListener(this);
 	mList->setEnableFocus(false);
 
-	mArrowRect.left = mArrowRect.top = 0;
-	mArrowRect.right = mArrowRect.bottom = 0;
-	mAttrArrowSize.cx = mAttrArrowSize.cy = 0;
-	AttrUtils::parseArraySize(mNode->getAttrValue("arrowSize"), (int *)&mAttrArrowSize, 2);
-	mAttrPopupSize.cx = mAttrPopupSize.cy = 0;
+	mArrowWidth = AttrUtils::parseInt(mNode->getAttrValue("arrowWidth"));
 	AttrUtils::parseArraySize(mNode->getAttrValue("popupSize"), (int *)&mAttrPopupSize, 2);
 	mEdit->setReadOnly(AttrUtils::parseBool(mNode->getAttrValue("readOnly")));
 	mEnableEditor = false;
 
-	mArrowNormalImage = XImage::load(mNode->getAttrValue("arrowNormal"));
-	mArrowDownImage = XImage::load(mNode->getAttrValue("arrowDown"));
+	mStateImages[STATE_IMG_NORMAL] = XImage::load(mNode->getAttrValue("normalImage"));
+	mStateImages[STATE_IMG_HOVER] = XImage::load(mNode->getAttrValue("hoverImage"));
+	mStateImages[STATE_IMG_PUSH] = XImage::load(mNode->getAttrValue("pushImage"));
 	mBoxRender = NULL;
 	mPoupShow = false;
 
 	XImage *track = XImage::load(mNode->getAttrValue("hbarTrack"));
 	XImage *thumb = XImage::load(mNode->getAttrValue("hbarThumb"));
-	if (track != NULL && thumb != NULL) 
+	if (track != NULL && thumb != NULL)
 		mList->getHorBar()->setImages(track, thumb);
 	track = XImage::load(mNode->getAttrValue("vbarTrack"));
 	thumb = XImage::load(mNode->getAttrValue("vbarThumb"));
@@ -1970,42 +2089,72 @@ bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 	if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
-		if (! mEnableEditor) {
-			if (mBoxRender != NULL)
-				mBoxRender->onDrawBox(dc, 0, 0, mArrowRect.left, mHeight);
-			else
-				drawBox(dc, 0, 0, mArrowRect.left, mHeight);
+		XImage *img = mStateImages[getStateImage()];
+		if (img != NULL) {
+			img->draw(dc, 0, 0, mWidth, mHeight);
 		}
-		// draw arrow
-		XImage *img = mPoupShow ? mArrowDownImage : mArrowNormalImage;
-		if (img != NULL && img->getHBitmap() != NULL) {
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, img->getHBitmap());
-			int mw = min(mArrowRect.right - mArrowRect.left, img->getWidth());
-			int mh = min(mArrowRect.bottom - mArrowRect.top, img->getHeight());
-			if (img->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, mw, 
-					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
+		if (! mEnableEditor) {
+			if (mBoxRender != NULL) {
+				mBoxRender->onDrawBox(dc, 0, 0, mWidth - mArrowWidth, mHeight);
 			} else {
-				BitBlt(dc, mArrowRect.left, mArrowRect.top, mw, mh, memDc, 0, 0, SRCCOPY);
+				drawBox(dc, 0, 0, mWidth - mArrowWidth, mHeight);
 			}
-			DeleteObject(memDc);
 		}
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
+		mIsMouseDown = true;
+		mIsMouseMoving = false;
+		mIsMouseLeave = false;
+		InvalidateRect(mWnd, NULL, TRUE);
 		if (mEnableFocus) SetFocus(mWnd);
+		UpdateWindow(mWnd);
 		SetCapture(mWnd);
 		return true;
 	} else if (msg == WM_LBUTTONUP) {
+		mIsMouseDown = false;
+		mIsMouseMoving = false;
 		ReleaseCapture();
 		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
-		if (mEnableEditor) r = mArrowRect;
+		if (mEnableEditor) {
+			r.left = mWidth - mArrowWidth;
+		}
 		if (PtInRect(&r, pt)) {
 			openPopup();
 		}
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		if (! mIsMouseMoving) {
+			TRACKMOUSEEVENT a = {0};
+			a.cbSize = sizeof(TRACKMOUSEEVENT);
+			a.dwFlags = TME_LEAVE;
+			a.hwndTrack = mWnd;
+			TrackMouseEvent(&a);
+		}
+
+		StateImage bi = getStateImage();
+		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
+		RECT r = {0, 0, mWidth, mHeight};
+		if (mEnableEditor) {
+			r.left = mWidth - mArrowWidth;
+		}
+		if (PtInRect(&r, pt)) {
+			mIsMouseMoving = true;
+			mIsMouseLeave = false;
+		} else {
+			// mouse leave
+			mIsMouseMoving = false;
+			mIsMouseLeave = true;
+		}
+		if (bi != getStateImage()) {
+			InvalidateRect(mWnd, NULL, TRUE);
+		}
+		return true;
+	} else if (msg == WM_MOUSELEAVE) {
+		mIsMouseMoving = false;
+		mIsMouseLeave = true;
+		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
@@ -2013,13 +2162,7 @@ bool XExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 void XExtComboBox::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	int aw = calcSize(mAttrArrowSize.cx, mMesureWidth | MS_ATMOST);
-	int ah = calcSize(mAttrArrowSize.cy, mMesureHeight | MS_ATMOST);
-	mArrowRect.left = mMesureWidth - aw;
-	mArrowRect.right = mMesureWidth;
-	mArrowRect.top = (mMesureHeight - ah) / 2;
-	mArrowRect.bottom = mArrowRect.top + ah;
-	mEdit->onMeasure((mMesureWidth - aw) | MS_FIX, mMesureHeight | MS_FIX);
+	mEdit->onMeasure((mMesureWidth - mArrowWidth) | MS_FIX, mMesureHeight | MS_FIX);
 	int pw = calcSize(mAttrPopupSize.cx, mMesureWidth | MS_ATMOST);
 	int ph = calcSize(mAttrPopupSize.cy, mMesureHeight | MS_ATMOST);
 	mPopup->onMeasure(pw | MS_FIX, ph | MS_FIX);
@@ -2068,6 +2211,23 @@ void XExtComboBox::openPopup() {
 	InvalidateRect(mWnd, NULL, TRUE);
 	UpdateWindow(mWnd);
 	mPopup->show(pt.x, pt.y);
+}
+XExtComboBox::StateImage XExtComboBox::getStateImage() {
+	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
+		return STATE_IMG_DISABLE;
+	if (mPoupShow) {
+		return STATE_IMG_PUSH;
+	}
+	if (mIsMouseDown && ! mIsMouseLeave) {
+		return STATE_IMG_PUSH;
+	}
+	if (!mIsMouseDown && mIsMouseMoving) {
+		return STATE_IMG_HOVER;
+	}
+	if (mIsMouseLeave) {
+		return STATE_IMG_NORMAL;
+	}
+	return STATE_IMG_NORMAL;
 }
 int XExtComboBox::getSelectItem() {
 	return mSelectItem;

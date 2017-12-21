@@ -3,6 +3,12 @@
 
 class XExtComponent : public XComponent {
 public:
+	enum StateImage {
+		STATE_IMG_NORMAL,
+		STATE_IMG_HOVER,
+		STATE_IMG_PUSH,
+		STATE_IMG_DISABLE
+	};
 	XExtComponent(XmlNode *node);
 	virtual void layout(int x, int y, int width, int height);
 	virtual ~XExtComponent();
@@ -31,15 +37,9 @@ public:
 	XExtButton(XmlNode *node);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	enum BtnImage {
-		BTN_IMG_NORMAL,
-		BTN_IMG_HOVER,
-		BTN_IMG_PUSH,
-		BTN_IMG_DISABLE
-	};
-	virtual BtnImage getBtnImage();
+	virtual StateImage getStateImage();
 protected:
-	XImage *mImages[8];
+	XImage *mStateImages[8];
 	bool mIsMouseDown;
 	bool mIsMouseMoving;
 	bool mIsMouseLeave;
@@ -53,7 +53,7 @@ public:
 	void setAutoSelect(bool autoSelect);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual BtnImage getBtnImage();
+	virtual StateImage getStateImage();
 	enum {
 		BTN_IMG_SELECT = 5
 	};
@@ -321,6 +321,21 @@ protected:
 	HBRUSH mSelectBgBrush;
 };
 
+class XArrowButton : public XExtButton {
+public:
+	XArrowButton(XmlNode *node);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual StateImage getStateImage();
+protected:
+	bool isPointInArrow(int x, int y);
+	enum {
+		ARROW_IMG_HOVER = 5,
+		ARROW_IMG_PUSH = 6
+	};
+	bool mMouseAtArrow;
+	int mArrowWidth;
+};
+
 class XExtComboBox : public XExtComponent, public XListener {
 public:
 	class BoxRender {
@@ -342,19 +357,20 @@ public:
 protected:
 	virtual void drawBox(HDC dc, int x, int y, int w, int h);
 	void openPopup();
+	StateImage getStateImage();
 protected:
 	XExtEdit *mEdit;
 	XExtPopup *mPopup;
 	XExtList *mList;
 	XmlNode *mEditNode, *mPopupNode, *mListNode;
-	RECT mArrowRect;
+	int mArrowWidth;
 	SIZE mAttrPopupSize;
-	SIZE mAttrArrowSize;
 	bool mEnableEditor;
-	XImage *mArrowNormalImage, *mArrowDownImage;
+	XImage *mStateImages[8];
 	BoxRender *mBoxRender;
 	bool mPoupShow;
 	int mSelectItem;
+	bool mIsMouseDown, mIsMouseMoving, mIsMouseLeave;
 };
 
 class XExtMenuItemList;

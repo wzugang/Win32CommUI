@@ -53,7 +53,7 @@
 	<ExtPassword  />  继承自 ExtEdit 
 	<ExtTextArea lineHeight="30" vbarTrack="" vbarThumb="" />  继承自 ExtEdit
 	
-	<ExtComboBox readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
+	<ExtComboBox readOnly="true" arrowWidth="w"  popupSize="w h" normalImage="" hoverImage="" pushImage="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
 	
 	<ExtCalendar />
 	<ExtDatePicker readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" />
