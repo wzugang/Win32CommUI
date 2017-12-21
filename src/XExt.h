@@ -76,6 +76,18 @@ protected:
 	void unselectOthers();
 };
 
+class XExtIconButton : public XExtButton {
+public:
+	XExtIconButton(XmlNode *node);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+protected:
+	RECT getRectBy(int *attr);
+protected:
+	XImage *mIcon;
+	int mAttrIconRect[4]; // left, top, width, height
+	int mAttrTextRect[4]; // left, top, width, height
+};
+
 class XScrollBar : public XExtComponent {
 public:
 	XScrollBar(XmlNode *node, bool horizontal);

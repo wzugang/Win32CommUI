@@ -321,6 +321,52 @@ void XExtRadio::unselectOthers() {
 		}
 	}
 }
+//-----------------------XExtIconButton----------------------------
+XExtIconButton::XExtIconButton(XmlNode *node) : XExtButton(node) {
+	memset(mAttrIconRect, 0, sizeof(mAttrIconRect));
+	memset(mAttrTextRect, 0, sizeof(mAttrTextRect));
+	AttrUtils::parseArraySize(mNode->getAttrValue("iconRect"), mAttrIconRect, 4);
+	AttrUtils::parseArraySize(mNode->getAttrValue("textRect"), mAttrTextRect, 4);
+	mIcon = XImage::load(mNode->getAttrValue("icon"));
+}
+bool XExtIconButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		XImage *cur = mStateImages[getStateImage()];
+		if (cur != NULL) {
+			cur->draw(dc, 0, 0, mWidth, mHeight);
+		}
+		if (mAttrFlags & AF_COLOR) {
+			SetTextColor(dc, mAttrColor);
+		}
+		SetBkMode(dc, TRANSPARENT);
+		SelectObject(dc, getFont());
+		RECT r = getRectBy(mAttrTextRect);
+		DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		if (mIcon != NULL) {
+			r = getRectBy(mAttrIconRect);
+			mIcon->draw(dc, r.left, r.top, r.right - r.left, r.bottom - r.top);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
+	}
+	return XExtButton::wndProc(msg, wParam, lParam, result);
+}
+
+RECT XExtIconButton::getRectBy(int *attr) {
+	RECT r = {0};
+	r.left = calcSize(attr[0], (mWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
+	r.top = calcSize(attr[1], (mHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
+	r.right = calcSize(attr[2], (mWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
+	r.bottom = calcSize(attr[3], (mHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
+	r.left += mAttrPadding[0];
+	r.top += mAttrPadding[1];
+	r.right += r.left;
+	r.bottom += r.top;
+	return r;
+}
+
 //-------------------XExtScroll-----------------------------------
 XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mHorizontal = horizontal;
