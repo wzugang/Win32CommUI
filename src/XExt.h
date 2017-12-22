@@ -19,6 +19,7 @@ protected:
 	XImage *mBgImageForParnet;
 	bool mEnableFocus;
 	XImage *mMemBuffer;
+	bool mEnableMemBuffer;
 };
 
 class XExtLabel : public XExtComponent {
@@ -333,9 +334,9 @@ protected:
 	HBRUSH mSelectBgBrush;
 };
 
-class XArrowButton : public XExtButton {
+class XExtArrowButton : public XExtButton {
 public:
-	XArrowButton(XmlNode *node);
+	XExtArrowButton(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual StateImage getStateImage();
 protected:
@@ -641,4 +642,22 @@ protected:
 	SIZE mAttrArrowSize;
 	XImage *mArrowNormalImage, *mArrowDownImage;
 	bool mPoupShow;
+};
+
+class XAbsLayout : public XExtComponent {
+public:
+	XAbsLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
+};
+
+class XHLineLayout : public XExtComponent {
+public:
+	XHLineLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
+};
+
+class XVLineLayout : public XExtComponent {
+public:
+	XVLineLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
 };

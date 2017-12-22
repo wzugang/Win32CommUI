@@ -14,6 +14,17 @@ public:
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret) = 0;
 };
 
+class XPopupManager {
+public:
+	static XPopupManager* getInstance();
+	void setPopupWnd(HWND wnd);
+	HWND getPopupWnd();
+	bool hasPopupShowing();
+private:
+	XPopupManager();
+	HWND mWnd;
+};
+
 class XComponent {
 public:
 	enum SizeSpec {
@@ -100,7 +111,144 @@ protected:
 	friend class UIFactory;
 };
 
+class XAbsLayout : public XComponent {
+public:
+	XAbsLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
+};
 
+class XHLineLayout : public XComponent {
+public:
+	XHLineLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
+};
+
+class XVLineLayout : public XComponent {
+public:
+	XVLineLayout(XmlNode *node);
+	virtual void onLayout(int width, int height);
+};
+
+class XBasicWnd : public XComponent {
+public:
+	XBasicWnd(XmlNode *node);
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res);
+	virtual void createWnd();
+protected:
+	WNDPROC mOldWndProc;
+};
+
+class XButton : public XBasicWnd {
+public:
+	XButton(XmlNode *node);
+	virtual void createWnd();
+};
+
+class XLabel : public XBasicWnd {
+public:
+	XLabel(XmlNode *node);
+	virtual void createWnd();
+};
+class XCheckBox : public XButton {
+public:
+	XCheckBox(XmlNode *node);
+	virtual void createWnd();
+};
+class XRadio : public XButton {
+public:
+	XRadio(XmlNode *node);
+	virtual void createWnd();
+};
+class XGroupBox : public XButton {
+public:
+	XGroupBox(XmlNode *node);
+	virtual void createWnd();
+};
+class XEdit : public XBasicWnd {
+public:
+	XEdit(XmlNode *node);
+	virtual void createWnd();
+};
+
+class XComboBox : public XBasicWnd {
+public:
+	XComboBox(XmlNode *node);
+	virtual void createWnd();
+protected:
+	int mDropHeight;
+};
+class XTable : public XBasicWnd {
+public:
+	XTable(XmlNode *node);
+	virtual void createWnd();
+};
+class XTableModel {
+public:
+	void apply(HWND tableWnd);
+protected:
+	virtual int getColumnCount() = 0;
+	virtual int getRowCount() = 0;
+	virtual int getColumnWidth(int col) = 0;
+	virtual char *getColumnTitle(int col) = 0;
+
+	virtual void getColumn(int col, LVCOLUMN *lvc);
+	virtual void getItem(int row, int col, LVITEM *item);
+};
+class XTree : public XBasicWnd {
+public:
+	XTree(XmlNode *node);
+	virtual void createWnd();
+};
+
+class XTreeNode {
+public:
+	XTreeNode(const char *text);
+	XTreeNode * append(XTreeNode *node);
+	XTreeNode * insert(int pos, XTreeNode *node);
+	XTreeNode *appendTo(XTreeNode *parent);
+	XTreeNode *insertTo(int pos, XTreeNode *parent);
+	TVITEM *getTvItem();
+	void create(HWND wnd);
+	virtual ~XTreeNode();
+protected:
+	virtual HWND getWnd();
+	TV_INSERTSTRUCT mNodeInfo;
+	HTREEITEM mItem;
+	XTreeNode *mParent;
+	std::vector<XTreeNode*> mChildren;
+	friend class XTreeRootNode;
+};
+//根结点为虚拟结点，不显示
+class XTreeRootNode : public XTreeNode {
+public:
+	XTreeRootNode(HWND treeWnd);
+	void apply();
+protected:
+	virtual HWND getWnd();
+	HWND mTreeWnd;
+	friend class XTreeNode;
+};
+
+class XTab : public XComponent {
+public:
+	XTab(XmlNode *node);
+protected:
+	virtual void createWnd();
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
+	WNDPROC mOldWndProc;
+};
+class XListBox : public XBasicWnd {
+public:
+	XListBox(XmlNode *node);
+	virtual void createWnd();
+};
+class XDateTimePicker : public XBasicWnd {
+public:
+	XDateTimePicker(XmlNode *node);
+	virtual void createWnd();
+};
 
 // only has one child
 class XWindow : public XComponent {
@@ -126,5 +274,16 @@ protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
+};
+
+// every time: only has one visible child; but can has many invisible child
+class XScroll : public XComponent {
+public:
+	XScroll(XmlNode *node);
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayout(int width, int height);
+	void moveChildrenPos(int dx, int dy);
 };
 

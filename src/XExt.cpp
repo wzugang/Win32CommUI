@@ -17,10 +17,11 @@ XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mBgImageForParnet = NULL;
 	mEnableFocus = true;
 	mMemBuffer = NULL;
+	mEnableMemBuffer = false;
 }
 
 bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
+	if (msg == WM_ERASEBKGND && !mEnableMemBuffer) {
 		eraseBackground((HDC)wParam);
 		return true;
 	}
@@ -29,9 +30,13 @@ bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *re
 
 void XExtComponent::layout( int x, int y, int width, int height ) {
 	XComponent::layout(x, y, width, height);
-	if (mBgImageForParnet != NULL) delete mBgImageForParnet;
+	if (mBgImageForParnet != NULL) {
+		delete mBgImageForParnet;
+	}
 	mBgImageForParnet = NULL;
-	if (mMemBuffer != NULL) delete mMemBuffer;
+	if (mMemBuffer != NULL) {
+		delete mMemBuffer;
+	}
 	mMemBuffer = NULL;
 }
 void XExtComponent::eraseBackground(HDC dc) {
@@ -1958,7 +1963,7 @@ void XExtList::updateTrackItem( int x, int y ) {
 }
 
 //------------------------------XArrowButton--------------------
-XArrowButton::XArrowButton(XmlNode *node) : XExtButton(node) {
+XExtArrowButton::XExtArrowButton(XmlNode *node) : XExtButton(node) {
 	mMouseAtArrow = false;
 	mArrowWidth = 0;
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
@@ -1973,7 +1978,7 @@ XArrowButton::XArrowButton(XmlNode *node) : XExtButton(node) {
 	}
 }
 
-bool XArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+bool XExtArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
 	if (msg == WM_PAINT) {
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
@@ -2049,12 +2054,12 @@ bool XArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resu
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
 
-bool XArrowButton::isPointInArrow(int x, int y) {
+bool XExtArrowButton::isPointInArrow(int x, int y) {
 	return y >= 0 && y < mHeight &&
 		x >= mWidth - mArrowWidth && x < mWidth;
 }
 
-XArrowButton::StateImage XArrowButton::getStateImage() {
+XExtArrowButton::StateImage XExtArrowButton::getStateImage() {
 	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
 		return STATE_IMG_DISABLE;
 	if (mIsMouseDown && ! mIsMouseLeave) {
@@ -3857,4 +3862,72 @@ void XExtDatePicker::openPopup() {
 }
 char * XExtDatePicker::getText() {
 	return mEdit->getText();
+}
+
+
+//--------------------------XAbsLayout-----------------------------
+XAbsLayout::XAbsLayout( XmlNode *node ) : XExtComponent(node) {
+}
+
+void XAbsLayout::onLayout( int width, int height ) {
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
+}
+
+//--------------------------XHLineLayout--------------------------
+XHLineLayout::XHLineLayout(XmlNode *node) : XExtComponent(node) {
+}
+
+void XHLineLayout::onLayout( int width, int height ) {
+	int x = mAttrPadding[0], weightAll = 0, childWidths = 0, lessWidth = width - mAttrPadding[0] - mAttrPadding[2];
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		weightAll += child->getAttrWeight();
+		childWidths += child->getMesureWidth() + child->getAttrMargin()[0] + child->getAttrMargin()[2];
+	}
+	lessWidth -= childWidths;
+	double perWeight = 0;
+	if (weightAll > 0 && lessWidth > 0) perWeight = lessWidth / weightAll;
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int y  = calcSize(child->getAttrY(), (height - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
+		y += mAttrPadding[1];
+		x += child->getAttrMargin()[0];
+		if (child->getAttrWeight() > 0 && perWeight > 0) {
+			int nw = child->getMesureWidth() + child->getAttrWeight() * perWeight;
+			child->onMeasure(nw | MS_FIX , child->getMesureHeight() | MS_FIX);
+		}
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		x += child->getMesureWidth() + child->getAttrMargin()[2];
+	}
+}
+//--------------------------XVLineLayout--------------------------
+XVLineLayout::XVLineLayout(XmlNode *node) : XExtComponent(node) {
+}
+
+void XVLineLayout::onLayout( int width, int height ) {
+	int y = mAttrPadding[1], weightAll = 0, childHeights = 0, lessHeight = height - mAttrPadding[1] - mAttrPadding[3];
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		weightAll += child->getAttrWeight();
+		childHeights += child->getMesureHeight() + child->getAttrMargin()[1] + child->getAttrMargin()[3];
+	}
+	lessHeight -= childHeights;
+	double perWeight = 0;
+	if (weightAll > 0 && lessHeight > 0) perWeight = lessHeight / weightAll;
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		XComponent *child = mNode->getChild(i)->getComponent();
+		int x = calcSize(child->getAttrX(), (width - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
+		y += child->getAttrMargin()[1];
+		if (child->getAttrWeight() > 0 && perWeight > 0) {
+			int nh = child->getMesureHeight() + child->getAttrWeight() * perWeight;
+			child->onMeasure(child->getMesureWidth() | MS_FIX , nh | MS_FIX);
+		}
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		y += child->getMesureHeight() + child->getAttrMargin()[3];
+	}
 }

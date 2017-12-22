@@ -450,22 +450,8 @@ static XComponent *XAbsLayout_Creator(XmlNode *n) {return new XAbsLayout(n);}
 static XComponent *XHLineLayout_Creator(XmlNode *n) {return new XHLineLayout(n);}
 static XComponent *XVLineLayout_Creator(XmlNode *n) {return new XVLineLayout(n);}
 
-static XComponent *XButton_Creator(XmlNode *n) {return new XButton(n);}
-static XComponent *XLabel_Creator(XmlNode *n) {return new XLabel(n);}
-static XComponent *XCheckBox_Creator(XmlNode *n) {return new XCheckBox(n);}
-static XComponent *XRadio_Creator(XmlNode *n) {return new XRadio(n);}
-static XComponent *XGroupBox_Creator(XmlNode *n) {return new XGroupBox(n);}
-static XComponent *XEdit_Creator(XmlNode *n) {return new XEdit(n);}
-static XComponent *XArrowButton_Creator(XmlNode *n) {return new XArrowButton(n);}
-static XComponent *XComboBox_Creator(XmlNode *n) {return new XComboBox(n);}
-static XComponent *XTable_Creator(XmlNode *n) {return new XTable(n);}
-static XComponent *XTree_Creator(XmlNode *n) {return new XTree(n);}
-static XComponent *XTab_Creator(XmlNode *n) {return new XTab(n);}
-static XComponent *XListBox_Creator(XmlNode *n) {return new XListBox(n);}
-static XComponent *XDateTimePicker_Creator(XmlNode *n) {return new XDateTimePicker(n);}
 static XComponent *XWindow_Creator(XmlNode *n) {return new XWindow(n);}
 static XComponent *XDialog_Creator(XmlNode *n) {return new XDialog(n);}
-static XComponent *XScroller_Creator(XmlNode *n) {return new XScroll(n);}
 
 static XComponent *XExtButton_Creator(XmlNode *n) {return new XExtButton(n);}
 static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
@@ -473,6 +459,7 @@ static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
 static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
 static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
 static XComponent *XExtIconButton_Creator(XmlNode *n) {return new XExtIconButton(n);}
+static XComponent *XExtArrowButton_Creator(XmlNode *n) {return new XExtArrowButton(n);}
 
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
@@ -488,28 +475,13 @@ static XComponent *XExtDatePicker_Creator(XmlNode *n) {return new XExtDatePicker
 static XComponent *XExtTextArea_Creator(XmlNode *n) {return new XExtTextArea(n);}
 
 void UIFactory::init() {
-	INITCOMMONCONTROLSEX cc = {0};
-	cc.dwSize = sizeof(cc);
-	InitCommonControlsEx(&cc);
+	// INITCOMMONCONTROLSEX cc = {0};
+	// cc.dwSize = sizeof(cc);
+	// InitCommonControlsEx(&cc);
 
 	UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
 	UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
 	UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
-#if 0
-	UIFactory::registCreator("Button", XButton_Creator);
-	UIFactory::registCreator("Label", XLabel_Creator);
-	UIFactory::registCreator("CheckBox", XCheckBox_Creator);
-	UIFactory::registCreator("Radio", XRadio_Creator);
-	UIFactory::registCreator("GroupBox", XGroupBox_Creator);
-	UIFactory::registCreator("Edit", XEdit_Creator);
-	UIFactory::registCreator("ComboBox", XComboBox_Creator);
-	UIFactory::registCreator("Table", XTable_Creator);
-	UIFactory::registCreator("Tree", XTree_Creator);
-	UIFactory::registCreator("ListBox", XListBox_Creator);
-	UIFactory::registCreator("Scroll", XScroller_Creator);
-#endif
-	UIFactory::registCreator("Tab", XTab_Creator);
-	UIFactory::registCreator("DateTimePicker", XDateTimePicker_Creator);
 	UIFactory::registCreator("Window", XWindow_Creator);
 	UIFactory::registCreator("Dialog", XDialog_Creator);
 
@@ -525,7 +497,7 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtTable", XExtTable_Creator);
 	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
 	UIFactory::registCreator("ExtList", XExtList_Creator);
-	UIFactory::registCreator("ArrowButton", XArrowButton_Creator);
+	UIFactory::registCreator("ArrowButton", XExtArrowButton_Creator);
 	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
 	UIFactory::registCreator("ExtTree", XExtTree_Creator);
 	UIFactory::registCreator("ExtCalendar", XExtCalendar_Creator);
