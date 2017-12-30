@@ -49,7 +49,7 @@ protected:
 
 class XmlParser {
 public:
-	static XmlParser *create();
+	static XmlParser *create(const char *resPath);
 	void parseString(const char *xml, int xmlLen = -1);
 	bool hasError();
 	char *getError();
@@ -67,13 +67,15 @@ protected:
 	int nextWord();
 	void replaceIncludeNode(XmlNode *n);
 	void replaceAllIncludeNode(XmlNode *n);
-	void dealDefaultNode( XmlNode * root );
+	void dealDefaultNode( XmlNode * node );
+	void dealAllDefaultNode( XmlNode * root );
 	char *mXml;
 	char *mError;
 	XmlNode *mRoot;
 	int mXmlLen;
 	int mPos;
 	bool mHasError;
+	char mResPath[128];
 	friend class XmlNode;
 };
 

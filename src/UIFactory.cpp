@@ -342,7 +342,7 @@ XmlNode* UIFactory::buildNode( const char *resPath, const char *partName ) {
 	if (loader == NULL) return NULL;
 	XmlPartLoader::PartItem * item = loader->getPartXml(partName);
 	if (item == NULL) return NULL;
-	XmlParser *parser = XmlParser::create();
+	XmlParser *parser = XmlParser::create(resPath);
 	parser->parseString(item->mContent);
 	XmlNode *rootNode = parser->getRoot();
 	return rootNode;

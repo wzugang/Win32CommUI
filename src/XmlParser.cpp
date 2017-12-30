@@ -136,16 +136,22 @@ XmlNode* XmlNode::getRoot() {
 void XmlNode::copyDefault() {
 	if (mHasCopyedDefault) return;
 	mHasCopyedDefault = true;
-	XmlNode* root = getRoot();
-	if (root->mDefaultNode == NULL || mName == NULL) 
-		return;
-	std::map<std::string, XmlNode*>::iterator it = root->mDefaultNode->find(mName);
-	if (it != root->mDefaultNode->end()) {
+
+	for (XmlNode* node = this; node != NULL; node = node->mParent) {
+		if (node->mDefaultNode == NULL || mName == NULL) {
+			continue;
+		}
+		std::map<std::string, XmlNode*>::iterator it = node->mDefaultNode->find(mName);
+		if (it == node->mDefaultNode->end()) {
+			continue;
+		}
 		XmlNode *cc = it->second;
 		for (int i = 0; i < cc->mAttrs.size(); ++i) {
 			Attr a = cc->mAttrs[i];
-			a.mValue = DupString(a.mValue);
-			mAttrs.push_back(a);
+			if (getAttrValue(a.mName) == NULL) {
+				a.mValue = DupString(a.mValue);
+				mAttrs.push_back(a);
+			}
 		}
 	}
 }
@@ -153,6 +159,7 @@ void XmlNode::copyDefault() {
 //----------------------------XmlParser---------------------
 XmlParser::XmlParser() {
 	mError = new char[256];
+	mResPath[0] = 0;
 	reset();
 }
 
@@ -165,8 +172,10 @@ void XmlParser::reset() {
 	mHasError = false;
 }
 
-XmlParser *XmlParser::create() {
-	return new XmlParser();
+XmlParser *XmlParser::create(const char *resPath) {
+	XmlParser *p = new XmlParser();
+	strcpy(p->mResPath, resPath);
+	return p;
 }
 
 void XmlParser::parseString( const char *xml, int xmlLen) {
@@ -185,7 +194,7 @@ void XmlParser::parseString( const char *xml, int xmlLen) {
 	// replace all include node
 	replaceAllIncludeNode(mRoot);
 	// deal the root default node
-	dealDefaultNode(mRoot);
+	dealAllDefaultNode(mRoot);
 }
 
 static char *ReadFileContent(const char *path, int *pLen) {
@@ -452,6 +461,9 @@ void XmlParser::replaceIncludeNode( XmlNode *n ) {
 	XmlPartLoader *loader = NULL;
 	XmlParser *parser = NULL;
 	XmlNode *inclueRoot = NULL;
+	if (resPath == NULL || *resPath == 0) {
+		resPath = mResPath;
+	}
 	if (resPath == NULL || *resPath == 0 || part == NULL || *part == 0)
 		goto _end;
 	// build include node
@@ -459,7 +471,7 @@ void XmlParser::replaceIncludeNode( XmlNode *n ) {
 	if (loader == NULL) goto _end;
 	XmlPartLoader::PartItem *item = loader->getPartXml(part);
 	if (item == NULL) goto _end;
-	parser = XmlParser::create();
+	parser = XmlParser::create(resPath);
 	parser->parseString(item->mContent, item->mCntLen);
 	if (parser->hasError()) goto _end;
 	inclueRoot = parser->getRoot();
@@ -493,19 +505,28 @@ void XmlParser::replaceAllIncludeNode( XmlNode *n ) {
 	}
 }
 
-void XmlParser::dealDefaultNode( XmlNode * root ) {
-	root->mDefaultNode = new std::map<std::string, XmlNode*>();
-	for (int i = root->mChildren.size() - 1; i >= 0; --i) {
-		XmlNode *child = root->mChildren.at(i);
+void XmlParser::dealDefaultNode( XmlNode * node ) {
+	for (int i = node->mChildren.size() - 1; i >= 0; --i) {
+		XmlNode *child = node->mChildren.at(i);
 		if (strcmp(child->mName, "default") == 0) {
-			root->mChildren.erase(root->mChildren.begin() + i);
+			node->mChildren.erase(node->mChildren.begin() + i);
 			char *clazz = child->getAttrValue("class");
 			if (clazz == NULL) continue;
-			(*root->mDefaultNode)[clazz] = child;
+			if (node->mDefaultNode == NULL) {
+				node->mDefaultNode = new std::map<std::string, XmlNode*>();
+			}
+			(*node->mDefaultNode)[clazz] = child;
 		}
 	}
 }
-
+void XmlParser::dealAllDefaultNode( XmlNode * root ) {
+	dealDefaultNode(root);
+	int sz = root->mChildren.size();
+	for (int i = 0; i < sz; ++i) {
+		XmlNode *child = root->mChildren.at(i);
+		dealAllDefaultNode(child);
+	}
+}
 //---------------------------XmlPartLoader---------------------------
 static XmlPartLoader *mPartCache[20];
 

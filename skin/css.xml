@@ -1,5 +1,5 @@
 
-	<default class="ExtButton" ...attrs... />  顶层结点都可以有多个 <default > 结点, 表示默认属性
+	<default class="ExtButton" ...attrs... />  每个结点都可以有多个 <default > 结点, 表示默认属性
 
 	<Component  id="xxx"
 				rect="x y width height"
@@ -31,7 +31,7 @@
 	<Window text="" />
 	<Dialog text="" />
 	
-	<include src="file://abc.xml | res://abc " part="part-name" />
+	<include src="file://abc.xml | res://abc " part="part-name" />  当src为null时，表示在当前文件中
 	
 	<ExtLabel text="" />
 	
