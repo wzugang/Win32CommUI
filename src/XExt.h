@@ -1,5 +1,6 @@
 #pragma once
 #include "XComponent.h"
+#include "XText.h"
 
 class XExtComponent : public XComponent {
 public:
@@ -205,21 +206,22 @@ protected:
 	CellRender *mCellRender;
 };
 
-class XExtEdit : public XExtComponent {
+class XExtTextArea : public XExtComponent, public XAreaText {
 public:
-	XExtEdit(XmlNode *node);
-	void setEnableBorder(bool enable);
+	XExtTextArea(XmlNode *node);
 	void setReadOnly(bool r);
 	void setEnableShowCaret(bool enable);
-	virtual char *getText();
-	virtual wchar_t *getWideText();
-	virtual void setText(const char *txt);
-	virtual void setWideText(const wchar_t *txt);
-	virtual ~XExtEdit();
+	virtual void setText( const char *txt );
+	virtual void setWideText( const wchar_t *txt );
+	virtual ~XExtTextArea();
+
+	virtual void createWnd();
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayout( int width, int height );
+	virtual HFONT getTextFont();
 protected:
-	virtual void insertText(int pos, char *txt);
-	virtual void insertText(int pos, wchar_t *txt, int len);
-	virtual int deleteText(int pos, int len);
+	virtual void notifyChanged();
+
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onChar(wchar_t ch);
 	virtual void onLButtonDown(int keyState, int x, int y);
@@ -228,9 +230,19 @@ protected:
 	virtual void onPaint(HDC hdc);
 	virtual void drawSelRange(HDC hdc, int begin, int end);
 	virtual void onKeyDown(int key);
-	virtual int getPosAt(int x, int y);
-	virtual BOOL getXYAt(int pos, POINT *pt);
 	virtual void move(int key);
+
+	// override XAreaText function
+	virtual int getScrollX();
+	virtual int getScrollY();
+	virtual void setScrollX(int x);
+	virtual void setScrollY(int y);
+	virtual SIZE getClientSize();
+	virtual HWND getBindWnd();
+	virtual int getRealX(int x);
+	virtual int getRealY(int y);
+
+	virtual void getVisibleRows(int *from, int *to);
 	virtual void ensureVisible(int pos);
 
 	virtual void back();
@@ -238,55 +250,25 @@ protected:
 	virtual void copy();
 	virtual void paste();
 protected:
-	wchar_t *mText;
-	char *mTextBuffer;
-	int mTextBufferLen;
-	int mCapacity;
-	int mLen;
 	int mInsertPos;
 	int mBeginSelPos, mEndSelPos;
 	bool mReadOnly;
 	HPEN mCaretPen;
 	bool mCaretShowing;
-	int mScrollPos;
-	HPEN mBorderPen, mFocusBorderPen;
-	bool mEnableBorder;
 	bool mEnableShowCaret;
-};
-class XExtTextArea : public XExtEdit {
-public:
-	XExtTextArea(XmlNode *node);
-	virtual ~XExtTextArea();
-protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	void drawSelRange(HDC hdc, int begin, int end);
-	virtual void onChar(wchar_t ch);
-	virtual void onPaint(HDC hdc);
-	virtual int getPosAt(int x, int y);
-	virtual BOOL getXYAt(int pos, POINT *pt);
-	virtual void getVisibleRows(int *from, int *to);
-	void buildLines();
-	void notifyChanged();
 
-	virtual void createWnd();
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
-	SIZE calcDataSize();
-	SIZE getClientSize();
-	virtual void ensureVisible(int pos);
-	virtual void move(int key);
-	virtual void back();
-	virtual void del();
-	virtual void paste();
-protected:
-	struct LineInfo { int mBeginPos; int mLen;};
-	LineInfo *mLines;
-	int mLinesCapacity;
-	int mLineNum;
-	int mLineHeight;
 	XScrollBar *mVerBar;
 	XmlNode *mVerBarNode;
-	SIZE mDataSize;
+};
+
+class XExtLineEdit : public XExtTextArea {
+public:
+	XExtLineEdit(XmlNode *node);
+	virtual ~XExtLineEdit();
+	virtual void insertText( int pos, wchar_t *txt, int len );
+protected:
+	virtual void onChar(wchar_t ch);
+	virtual void createWnd();
 };
 
 class XListModel {
@@ -372,7 +354,7 @@ protected:
 	void openPopup();
 	StateImage getStateImage();
 protected:
-	XExtEdit *mEdit;
+	XExtLineEdit *mEdit;
 	XExtPopup *mPopup;
 	XExtList *mList;
 	XmlNode *mEditNode, *mPopupNode, *mListNode;
@@ -583,7 +565,7 @@ protected:
 	bool mTrackMouseLeave;
 };
 
-class XExtMaskEdit : public XExtEdit {
+class XExtMaskEdit : public XExtTextArea {
 public:
 	typedef bool (*InputValidate)(int pos, char ch);
 	enum Case { C_NONE, C_UPPER, C_LOWER };
@@ -611,7 +593,7 @@ protected:
 	wchar_t mPlaceHolder;
 	InputValidate mValidate;
 };
-class XExtPassword : public XExtEdit {
+class XExtPassword : public XExtTextArea {
 public:
 	XExtPassword(XmlNode *node);
 protected:

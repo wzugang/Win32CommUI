@@ -464,7 +464,9 @@ static XComponent *XExtArrowButton_Creator(XmlNode *n) {return new XExtArrowButt
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
-static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtEdit(n);}
+static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtLineEdit(n);}
+static XComponent *XExtTextArea_Creator(XmlNode *n) {return new XExtTextArea(n);}
+
 static XComponent *XExtList_Creator(XmlNode *n) {return new XExtList(n);}
 static XComponent *XExtComboBox_Creator(XmlNode *n) {return new XExtComboBox(n);}
 static XComponent *XExtTree_Creator(XmlNode *n) {return new XExtTree(n);}
@@ -472,7 +474,6 @@ static XComponent *XExtCalendar_Creator(XmlNode *n) {return new XExtCalendar(n);
 static XComponent *XExtMaskEdit_Creator(XmlNode *n) {return new XExtMaskEdit(n);}
 static XComponent *XExtPassword_Creator(XmlNode *n) {return new XExtPassword(n);}
 static XComponent *XExtDatePicker_Creator(XmlNode *n) {return new XExtDatePicker(n);}
-static XComponent *XExtTextArea_Creator(XmlNode *n) {return new XExtTextArea(n);}
 
 void UIFactory::init() {
 	// INITCOMMONCONTROLSEX cc = {0};
@@ -491,11 +492,12 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
 	UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
 	UIFactory::registCreator("ExtIconButton", XExtIconButton_Creator);
+	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
+	UIFactory::registCreator("ExtTextArea", XExtTextArea_Creator);
 
 	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
 	UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 	UIFactory::registCreator("ExtTable", XExtTable_Creator);
-	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
 	UIFactory::registCreator("ExtList", XExtList_Creator);
 	UIFactory::registCreator("ArrowButton", XExtArrowButton_Creator);
 	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
@@ -504,5 +506,4 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtMaskEdit", XExtMaskEdit_Creator);
 	UIFactory::registCreator("ExtPassword", XExtPassword_Creator);
 	UIFactory::registCreator("ExtDatePicker", XExtDatePicker_Creator);
-	UIFactory::registCreator("ExtTextArea", XExtTextArea_Creator);
 }

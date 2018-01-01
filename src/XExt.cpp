@@ -1023,34 +1023,28 @@ int XExtTable::findCell( int x, int y, int *col ) {
 XExtTable::~XExtTable() {
 	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
-//----------------------------XExtEdit---------------------
-XExtEdit::XExtEdit( XmlNode *node ) : XExtComponent(node) {
-	mText = NULL;
-	mTextBuffer = NULL;
-	mTextBufferLen = 0;
-	mCapacity = 100;
-	mText = (wchar_t *)malloc(sizeof(wchar_t) * mCapacity);
-	mLen = 0;
+//----------------------------XExtTextArea---------------------
+XExtTextArea::XExtTextArea( XmlNode *node ) : XExtComponent(node) {
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
 	mReadOnly = AttrUtils::parseBool(mNode->getAttrValue("readOnly"));
 	insertText(0, mNode->getAttrValue("text"));
 	mCaretShowing = false;
-	mScrollPos = 0;
-	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xBF, 0x3E, 0xFF));
-
-	COLORREF color = 0xE6E0B0;
-	AttrUtils::parseColor(mNode->getAttrValue("borderColor"), &color);
-	mBorderPen = CreatePen(PS_SOLID, 1, color);
-	color = RGB(0xEE, 0x30, 0xA7);
-	AttrUtils::parseColor(mNode->getAttrValue("focusBorderColor"), &color);
-	mFocusBorderPen = CreatePen(PS_SOLID, 1, color);
-	mEnableBorder = AttrUtils::parseBool(mNode->getAttrValue("enableBorder"));;
+	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xff, 0x14, 0x93));
 	mEnableShowCaret = true;
+	mVerBarNode = NULL;
+	mVerBar = NULL;
+	if (mAttrPadding[0] == 0 && mAttrPadding[2] == 0) {
+		mAttrPadding[0] = mAttrPadding[2] = 2;
+	}
+	mAutoNewLine = true;
 }
-bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+bool XExtTextArea::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
 	if (msg == WM_CHAR || msg == WM_IME_CHAR) {
 		onChar(LOWORD(wParam));
+		return true;
+	} else if (msg == WM_VSCROLL) {
+		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
 		SetCapture(mWnd);
@@ -1066,6 +1060,15 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 			onMouseMove((short)lParam, (short)(lParam >> 16));
 		}
 		return true;
+	} else if (msg == WM_MOUSEHWHEEL || msg == WM_MOUSEWHEEL) {
+		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
+		int ad = d < 0 ? -d : d;
+		ad = min(ad, mHeight);
+		ad = d < 0 ? -ad : ad;
+		int old = mVerBar->getPos();
+		mVerBar->setPos(old - ad);
+		InvalidateRect(mWnd, NULL, TRUE);
+		return true;
 	} else if (msg == WM_ERASEBKGND) {
 		return true;
 	} else if (msg == WM_PAINT) {
@@ -1078,7 +1081,9 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 		SelectObject(memDc, mMemBuffer->getHBitmap());
 		eraseBackground(memDc);
 		onPaint(memDc);
-		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+		SIZE sz = getClientSize();
+		BitBlt(dc, 0, 0, sz.cx, mHeight, memDc, 0, 0, SRCCOPY);
+		// BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
 		DeleteObject(memDc);
 		EndPaint(mWnd, &ps);
 		return true;
@@ -1100,29 +1105,48 @@ bool XExtEdit::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) 
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
-void XExtEdit::onChar( wchar_t ch ) {
+void XExtTextArea::onChar( wchar_t ch ) {
 	static char buf[4];
 	buf[0] = (unsigned char)(ch >> 8);
 	buf[1] = (unsigned char)ch;
 	buf[2] = 0;
-	if (mReadOnly) return;
-	if (ch == 8) {// back
+	if (mReadOnly) {
+		return;
+	}
+	bool changed = false;
+	if (ch == VK_BACK) {// back
 		back();
+		changed = true;
 	} else if (ch == VK_TAB) { // tab
+		wchar_t chs[4] = {' ', ' ', ' ', ' '};
+		insertText(mInsertPos, chs, 4);
+		mInsertPos += 4;
+		changed = true;
 	} else if (ch == VK_RETURN) { // enter key
+		wchar_t wch = '\n';
+		insertText(mInsertPos, &wch, 1);
+		++mInsertPos;
+		changed = true;
 	} else if (ch > 31) {
 		if (mBeginSelPos != mEndSelPos) {
 			back(); // del selected text
 		}
-		if (buf[0] == 0) insertText(mInsertPos, &ch, 1);
-		else insertText(mInsertPos, buf);
+		if (buf[0] == 0) {
+			insertText(mInsertPos, &ch, 1);
+		} else {
+			insertText(mInsertPos, buf);
+		}
 		++mInsertPos;
 		mBeginSelPos = mEndSelPos = mInsertPos;
+		changed = true;
 	}
-	ensureVisible(mInsertPos);
-	InvalidateRect(mWnd, NULL, TRUE);
+	if (changed) {
+		notifyChanged();
+		ensureVisible(mInsertPos);
+		InvalidateRect(mWnd, NULL, TRUE);
+	}
 }
-void XExtEdit::onLButtonDown( int wParam, int x, int y ) {
+void XExtTextArea::onLButtonDown( int wParam, int x, int y ) {
 	mCaretShowing = true;
 	mInsertPos = getPosAt(x, y);
 	if (wParam & MK_SHIFT) {
@@ -1131,53 +1155,72 @@ void XExtEdit::onLButtonDown( int wParam, int x, int y ) {
 		mBeginSelPos = mEndSelPos =  mInsertPos;
 	}
 	InvalidateRect(mWnd, NULL, TRUE);
-	UpdateWindow(mWnd);
 }
-void XExtEdit::onLButtonUp( int keyState, int x, int y ) {
+void XExtTextArea::onLButtonUp( int keyState, int x, int y ) {
 	if (mReadOnly) return;
 	// mEndSelPos = getPosAt(x, y);
 }
-void XExtEdit::onMouseMove(int x, int y) {
+void XExtTextArea::onMouseMove(int x, int y) {
 	mInsertPos = mEndSelPos = getPosAt(x, y);
 	ensureVisible(mInsertPos);
 	InvalidateRect(mWnd, NULL, TRUE);
 	UpdateWindow(mWnd);
 }
-void XExtEdit::onPaint( HDC hdc ) {
+void XExtTextArea::onPaint( HDC hdc ) {
+	int from = 0, to = 0;
+	buildLines();
+	SIZE clientSize = getClientSize();
+	SelectObject(hdc, getTextFont());
+	getVisibleRows(&from, &to);
 	// draw select range background color
 	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
-	HFONT font = getFont();
-	SelectObject(hdc, font);
-	SetBkMode(hdc, TRANSPARENT);
-	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {mScrollPos, 0, mWidth - mScrollPos, mHeight};
-	DrawTextW(hdc, mText, mLen, &r, DT_SINGLELINE | DT_VCENTER);
-	POINT pt = {0, 0};
-	if (mCaretShowing && getXYAt(mInsertPos, &pt)) {
-		SelectObject(hdc, mCaretPen);
-		MoveToEx(hdc, pt.x, 2, NULL);
-		LineTo(hdc, pt.x, mHeight - 4);
+	if (mAttrFlags & AF_COLOR) {
+		SetTextColor(hdc, mAttrColor);
 	}
-	// draw border
-	if (mEnableBorder) {
-		bool hasFocus = mWnd == GetFocus();
-		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
-		SelectObject(hdc, GetStockObject(NULL_BRUSH));
-		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
+	SetBkMode(hdc, TRANSPARENT);
+	int y = -getScrollY() + from * mLineHeight;
+	for (int i = from; i < to; ++i) {
+		int bg = mLines[i].mBeginPos;
+		int ln = mLines[i].mLen;
+		RECT rr = {mAttrPadding[0], y, mAttrPadding[0] + clientSize.cx, y + mLineHeight};
+		DrawTextW(hdc, &mWideText[bg], ln, &rr, DT_SINGLELINE|DT_VCENTER);
+		// TextOutW(hdc, 0, y, &mWideText[bg], ln);
+		y += mLineHeight;
+	}
+
+	POINT pt = {0, 0};
+	if (mCaretShowing && getPointAt(mInsertPos, &pt)) {
+		pt.x -= getScrollX() - mAttrPadding[0];
+		pt.y -= getScrollY() - mAttrPadding[1];
+		SelectObject(hdc, mCaretPen);
+		MoveToEx(hdc, pt.x, pt.y, NULL);
+		LineTo(hdc, pt.x, pt.y + mLineHeight);
 	}
 }
-void XExtEdit::drawSelRange( HDC hdc, int begin, int end ) {
+void XExtTextArea::drawSelRange( HDC hdc, int begin, int end ) {
 	static HBRUSH bg = 0;
 	if (bg == 0) bg = CreateSolidBrush(RGB(0xad, 0xd6, 0xff));
-	if(begin == end || begin < 0 || end < 0) return;
+	RECT r;
+	if(begin == end || begin < 0 || end < 0) {
+		return;
+	}
+
 	if (end < begin) {int tmp = begin; begin = end; end = tmp;}
+	SIZE client = getClientSize();
 	POINT bp, ep;
-	getXYAt(begin, &bp);
-	getXYAt(end, &ep);
-	RECT r = {bp.x, 0, ep.x, mHeight};
-	FillRect(hdc, &r, bg);
+	getPointAt(begin, &bp);
+	getPointAt(end, &ep);
+	int brow = getLineNo(bp.y);
+	int erow = getLineNo(ep.y);
+	for (int i = brow; i <= erow && i >= 0; ++i) {
+		r.left = getRealX(i == brow ? bp.x : 0);
+		r.top = getRealY(bp.y + mLineHeight * (i - brow));
+		r.right = getRealX(i == erow ? ep.x : client.cx);
+		r.bottom = getRealY(r.top + mLineHeight);
+		FillRect(hdc, &r, bg);
+	}
 }
-void XExtEdit::onKeyDown( int key ) {
+void XExtTextArea::onKeyDown( int key ) {
 	int ctrl = GetAsyncKeyState(VK_CONTROL) < 0;
 	if (key == 'V' && ctrl && !mReadOnly) { // ctrl + v
 		paste();
@@ -1191,8 +1234,8 @@ void XExtEdit::onKeyDown( int key ) {
 		move(key);
 	} else if (key == 'A' && ctrl) { // ctrl + A
 		mBeginSelPos = 0;
-		mEndSelPos = mLen;
-		mInsertPos = mLen;
+		mEndSelPos = mWideTextLen;
+		mInsertPos = mWideTextLen;
 		ensureVisible(mInsertPos);
 		InvalidateRect(mWnd, NULL, TRUE);
 	} else if (key == 'C' && ctrl) { // ctrl + C
@@ -1205,74 +1248,7 @@ void XExtEdit::onKeyDown( int key ) {
 		InvalidateRect(mWnd, NULL, TRUE);
 	}
 }
-void XExtEdit::insertText(int pos, char *txt) {
-	if (txt == NULL) return;
-	int slen = strlen(txt);
-	int len = MultiByteToWideChar(CP_ACP, 0, txt, slen, NULL, 0);
-	wchar_t *wb = new wchar_t[len + 1];
-	MultiByteToWideChar(CP_ACP, 0, txt, slen, wb, len);
-	insertText(pos, wb, len);
-	delete[] wb;
-}
-void XExtEdit::insertText(int pos, wchar_t *txt, int len) {
-	if (pos < 0 || pos > mLen) pos = mLen;
-	if (len <= 0) return;
-	if (mLen + len >= mCapacity - 10) {
-		wchar_t *old = mText;
-		mCapacity = max(mLen + len + 50, mCapacity);
-		mText = (wchar_t *)realloc(mText, sizeof(wchar_t) * mCapacity);
-	}
-	for (int i = mLen - 1; i >= pos; --i) {
-		mText[i + len] = mText[i];
-	}
-	memcpy(&mText[pos], txt, len * sizeof(wchar_t));
-	mLen += len;
-}
-int XExtEdit::deleteText(int pos, int len) {
-	if (pos < 0 || pos >= mLen || len <= 0) return 0;
-	if (len + pos > mLen) len = mLen - pos;
-	for (; pos < mLen; ++pos) {
-		mText[pos] = mText[pos + len];
-	}
-	mLen -= len;
-	return len;
-}
-int XExtEdit::getPosAt(int x, int y) {
-	HDC hdc = GetDC(mWnd);
-	HGDIOBJ old = SelectObject(hdc, getFont());
-	int k = 0;
-	x -= mScrollPos;
-	for (int i = 0; i < mLen; ++i, ++k) {
-		SIZE sz;
-		GetTextExtentPoint32W(hdc, mText, i + 1, &sz);
-		if (sz.cx > x) {
-			SIZE nsz;
-			GetTextExtentPoint32W(hdc, &mText[i], 1, &nsz);
-			int nx = sz.cx - nsz.cx / 2;
-			if (x >= nx) ++k;
-			break;
-		}
-	}
-	SelectObject(hdc, old);
-	ReleaseDC(mWnd, hdc);
-	return k;
-}
-BOOL XExtEdit::getXYAt(int pos, POINT *pt) {
-	if (pos > mLen || pos < 0) {
-		pt->x = pt->y = 0;
-		return false;
-	}
-	HDC hdc = GetDC(mWnd);
-	HGDIOBJ old = SelectObject(hdc, getFont());
-	SIZE sz;
-	GetTextExtentPoint32W(hdc, mText, pos, &sz);
-	pt->x = sz.cx + mScrollPos;
-	pt->y = 0;
-	SelectObject(hdc, old);
-	ReleaseDC(mWnd, hdc);
-	return true;
-}
-void XExtEdit::move( int key ) {
+void XExtTextArea::move( int key ) {
 	int sh = GetAsyncKeyState(VK_SHIFT) < 0;
 	int old = mInsertPos;
 	switch (key) {
@@ -1280,13 +1256,13 @@ void XExtEdit::move( int key ) {
 		if (mInsertPos > 0) --mInsertPos;
 		break;
 	case VK_RIGHT:
-		if (mInsertPos < mLen) ++mInsertPos;
+		if (mInsertPos < mWideTextLen) ++mInsertPos;
 		break;
 	case VK_HOME:
 		mInsertPos = 0;
 		break;
 	case VK_END:
-		mInsertPos = mLen;
+		mInsertPos = mWideTextLen;
 		break;
 	}
 	if (old == mInsertPos)
@@ -1295,24 +1271,9 @@ void XExtEdit::move( int key ) {
 	mEndSelPos = mInsertPos;
 	ensureVisible(mInsertPos);
 	InvalidateRect(mWnd, NULL, TRUE);
-	UpdateWindow(mWnd);
+
 }
-void XExtEdit::ensureVisible(int pos) {
-	SIZE sz;
-	HDC dc = GetDC(mWnd);
-	HGDIOBJ old = SelectObject(dc, getFont());
-	GetTextExtentPoint32W(dc, mText, pos, &sz);
-	SelectObject(dc, old);
-	ReleaseDC(mWnd, dc);
-	sz.cx += mScrollPos;
-	if (sz.cx >= 0 && sz.cx < mWidth) return; // it is already visible
-	if (sz.cx < 0) {
-		mScrollPos -= sz.cx;
-	} else {
-		mScrollPos -= sz.cx - mWidth + 2;
-	}
-}
-void XExtEdit::back() {
+void XExtTextArea::back() {
 	int len, delLen = 0;
 	if (mBeginSelPos != mEndSelPos) {
 		int begin = min(mBeginSelPos, mEndSelPos);
@@ -1325,7 +1286,7 @@ void XExtEdit::back() {
 	} else {
 		if (mInsertPos > 0) {
 			delLen = 1;
-			if (mInsertPos > 1 && mText[mInsertPos - 1] == '\n' && mText[mInsertPos - 2] == '\r')
+			if (mInsertPos > 1 && mWideText[mInsertPos - 1] == '\n' && mWideText[mInsertPos - 2] == '\r')
 				delLen = 2;
 			len = deleteText(mInsertPos - delLen, delLen);
 			mInsertPos -= delLen;
@@ -1333,19 +1294,25 @@ void XExtEdit::back() {
 			mCaretShowing = true;
 		}
 	}
+	// buildLines();
+	notifyChanged();
+	InvalidateRect(mWnd, NULL, TRUE);
 }
-void XExtEdit::del() {
+void XExtTextArea::del() {
 	if (mBeginSelPos != mEndSelPos) {
 		int bg = mBeginSelPos < mEndSelPos ? mBeginSelPos : mEndSelPos;
 		int ed = mBeginSelPos > mEndSelPos ? mBeginSelPos : mEndSelPos;
 		deleteText(bg, ed - bg);
 		mInsertPos = bg;
 		mBeginSelPos = mEndSelPos = bg;
-	} else if (mInsertPos >= 0 && mInsertPos < mLen) {
+	} else if (mInsertPos >= 0 && mInsertPos < mWideTextLen) {
 		deleteText(mInsertPos, 1);
 	}
+	// buildLines();
+	notifyChanged();
+	InvalidateRect(mWnd, NULL, TRUE);
 }
-void XExtEdit::paste() {
+void XExtTextArea::paste() {
 	OpenClipboard(mWnd);
 	if (IsClipboardFormatAvailable(CF_TEXT)) {
 		if (mBeginSelPos != mEndSelPos) {
@@ -1363,19 +1330,22 @@ void XExtEdit::paste() {
 		mInsertPos += len;
 		mEndSelPos = mInsertPos;
 		ensureVisible(mInsertPos);
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
+		// InvalidateRect(mWnd, NULL, TRUE);
+		// UpdateWindow(mWnd);
 	}
 	CloseClipboard();
+	// buildLines();
+	notifyChanged();
+	InvalidateRect(mWnd, NULL, TRUE);
 }
-void XExtEdit::copy() {
+void XExtTextArea::copy() {
 	if (mBeginSelPos == mEndSelPos) return;
 	int bg = mBeginSelPos < mEndSelPos ? mBeginSelPos : mEndSelPos;
 	int ed = mBeginSelPos > mEndSelPos ? mBeginSelPos : mEndSelPos;
-	int len = WideCharToMultiByte(CP_ACP, 0, mText + bg, ed - bg, NULL, 0, NULL, NULL);
+	int len = WideCharToMultiByte(CP_ACP, 0, mWideText + bg, ed - bg, NULL, 0, NULL, NULL);
 	HANDLE hd = GlobalAlloc(GHND, len + 1);
 	char *buf = (char *)GlobalLock(hd);
-	WideCharToMultiByte(CP_ACP, 0, mText + bg, ed - bg, buf, len, NULL, NULL);
+	WideCharToMultiByte(CP_ACP, 0, mWideText + bg, ed - bg, buf, len, NULL, NULL);
 	buf[len] = 0;
 	GlobalUnlock(hd);
 
@@ -1384,275 +1354,32 @@ void XExtEdit::copy() {
 	SetClipboardData(CF_TEXT, hd);
 	CloseClipboard();
 }
-void XExtEdit::setEnableBorder( bool enable ) {
-	mEnableBorder = enable;
-}
-void XExtEdit::setReadOnly( bool r ) {
+void XExtTextArea::setReadOnly( bool r ) {
 	mReadOnly = r;
 }
-void XExtEdit::setEnableShowCaret( bool enable ) {
+void XExtTextArea::setEnableShowCaret( bool enable ) {
 	mEnableShowCaret = enable;
 }
-char * XExtEdit::getText() {
-	if (mText == NULL) return NULL;
-	int len = WideCharToMultiByte(CP_ACP, 0, mText, mLen, NULL, 0, NULL, NULL);
-	if (len + 1 > mTextBufferLen) {
-		mTextBufferLen = len;
-		mTextBuffer = (char *)malloc(len + 1);
-	}
-	WideCharToMultiByte(CP_ACP, 0, mText, -1, mTextBuffer, len, NULL, NULL);
-	mTextBuffer[len] = 0;
-	return mTextBuffer;
-}
-XExtEdit::~XExtEdit() {
-	if (mTextBuffer) free(mTextBuffer);
-	if (mText) delete[] mText;
-}
-wchar_t * XExtEdit::getWideText() {
-	return mText;
-}
-void XExtEdit::setText( const char *txt ) {
-	deleteText(0, mLen);
-	insertText(0, (char *)txt);
+void XExtTextArea::setText( const char *txt ) {
+	XAreaText::setText(txt);
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
 }
-void XExtEdit::setWideText( const wchar_t *txt ) {
-	deleteText(0, mLen);
-	if (txt) {
-		insertText(0, (wchar_t*)txt, wcslen(txt));
-	}
+void XExtTextArea::setWideText( const wchar_t *txt ) {
+	XAreaText::setWideText(txt);
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
-}
-//------------------------XExtTextArea--------------------
-XExtTextArea::XExtTextArea(XmlNode *node) : XExtEdit(node) {
-	mLineNum = 0;
-	mLineHeight = AttrUtils::parseInt(mNode->getAttrValue("lineHeight"));
-	if (mLineHeight <= 0) mLineHeight = 30;
-	mVerBarNode = new XmlNode("ScrollBar", mNode);
-	mVerBar = new XScrollBar(mVerBarNode, false);
-	mVerBar->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
-	mDataSize.cx = mDataSize.cy = 0;
-	mLinesCapacity = 100;
-	mLines = (LineInfo *)malloc(sizeof(LineInfo) * mLinesCapacity);
-}
-void XExtTextArea::onChar( wchar_t ch ) {
-	XExtEdit::onChar(ch);
-	if (ch == VK_RETURN) {
-		ch = '\n';
-		insertText(mInsertPos, &ch, 1);
-		++mInsertPos;
-	} else if (ch == VK_TAB) {
-		wchar_t chs[4] = {' ', ' ', ' ', ' '};
-		insertText(mInsertPos, chs, 4);
-		mInsertPos += 4;
-	}
-	buildLines();
-	notifyChanged();
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-void XExtTextArea::onPaint( HDC hdc ) {
-	int from = 0, to = 0;
-	SelectObject(hdc, getFont());
-	getVisibleRows(&from, &to);
-	// draw select range background color
-	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
-	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	::SetBkMode(hdc, TRANSPARENT);
-	int y = -mVerBar->getPos() + from * mLineHeight;
-	for (int i = from; i < to; ++i) {
-		int bg = mLines[i].mBeginPos;
-		int ln = mLines[i].mLen;
-		TextOutW(hdc, 0, y, &mText[bg], ln);
-		y += mLineHeight;
-	}
-
-	POINT pt = {0, 0};
-	if (mCaretShowing && getXYAt(mInsertPos, &pt)) {
-		pt.y -= mVerBar->getPos();
-		SelectObject(hdc, mCaretPen);
-		MoveToEx(hdc, pt.x, pt.y + 2, NULL);
-		LineTo(hdc, pt.x, pt.y + mLineHeight - 4);
-	}
-	// draw border
-	if (mEnableBorder) {
-		bool hasFocus = mWnd == GetFocus();
-		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
-		SelectObject(hdc, GetStockObject(NULL_BRUSH));
-		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
-	}
-}
-void XExtTextArea::drawSelRange( HDC hdc, int begin, int end ) {
-	static HBRUSH bg = 0;
-	if (bg == 0) bg = CreateSolidBrush(RGB(0xad, 0xd6, 0xff));
-	RECT r;
-	if(begin == end || begin < 0 || end < 0) return;
-
-	if (end < begin) {int tmp = begin; begin = end; end = tmp;}
-	SIZE client = getClientSize();
-	POINT bp, ep;
-	getXYAt(begin, &bp);
-	getXYAt(end, &ep);
-	int brow = bp.y / mLineHeight;
-	int erow = ep.y / mLineHeight;
-	for (int i = brow; i <= erow; ++i) {
-		r.left = i == brow ? bp.x : 0;
-		r.top = bp.y + mLineHeight * (i - brow) - mVerBar->getPos();
-		r.right = i == erow ? ep.x : client.cx;
-		r.bottom = r.top + mLineHeight;
-		FillRect(hdc, &r, bg);
-	}
-}
-int XExtTextArea::getPosAt( int x, int y ) {
-	if (mLineNum <= 0) return 0;
-	int ln = y / mLineHeight;
-	if (ln >= mLineNum) {
-		return mLen;
-	}
-	HDC hdc = GetDC(mWnd);
-	SelectObject(hdc, getFont());
-	int i = 0, j = mLines[ln].mBeginPos;
-	for (; i < mLines[ln].mLen; ++i) {
-		SIZE sz;
-		GetTextExtentPoint32W(hdc, &mText[j], i + 1, &sz);
-		if (sz.cx >= x) {
-			if (i > 0) {
-				SIZE nsz;
-				GetTextExtentPoint32W(hdc, &mText[j + i], 1, &nsz);
-				int nx = x - (sz.cx - nsz.cx);
-				if (nx > nsz.cx / 2) ++i;
-			}
-			break;
-		}
-	}
-	ReleaseDC(mWnd, hdc);
-	return j + i;
-}
-BOOL XExtTextArea::getXYAt( int pos, POINT *pt ) {
-	if (pos < 0 || pos > mLen || pt == NULL) 
-		return 0;
-	HDC hdc = GetDC(mWnd);
-	SelectObject(hdc, getFont());
-	for (int i = 0; i < mLineNum; ++i) {
-		int bg = mLines[i].mBeginPos;
-		int len = mLines[i].mLen;
-		if (pos >= bg && pos <= bg + len) {
-			pt->y = i * mLineHeight;
-			SIZE sz;
-			GetTextExtentPoint32W(hdc, &mText[bg], pos - bg, &sz);
-			pt->x = sz.cx;
-			break;
-		}
-	}
-	ReleaseDC(mWnd, hdc);
-	return 1;
-}
-void XExtTextArea::buildLines() {
-	wchar_t *p = mText;
-	const int DEF_WORD_NUM = 20;
-	SIZE sz;
-	int pos = 0;
-	int rowWords = DEF_WORD_NUM;
-	SIZE client = getClientSize();
-	int w = client.cx;
-	int less = mLen;
-	mLineNum = 0;
-
-	if (w < 20) return;
-	HDC hdc = GetDC(mWnd);
-	SelectObject(hdc, getFont());
-	while (less > 0) {
-		rowWords = min(less, rowWords);
-		GetTextExtentPoint32W(hdc, p, rowWords, &sz);
-		if (sz.cx < w) {
-			while (sz.cx < w && rowWords < less) {
-				++rowWords;
-				GetTextExtentPoint32W(hdc, p, rowWords, &sz);
-			}
-			if (sz.cx > w) --rowWords;
-		} else if (sz.cx > w) {
-			while (sz.cx > w && rowWords > 0) {
-				--rowWords;
-				GetTextExtentPoint32W(hdc, p, rowWords, &sz);
-			}
-		}
-		if (rowWords == 0) break;
-		for (int i = 0; i < rowWords; ++i) {
-			if (i == 0) {
-				if (p[0] == 13){
-					if (p[1] == '\n') i = 1;
-					continue;
-				} else if (p[0] == '\n') {
-					continue;
-				}
-			}
-			if (p[i] == 13 || p[i] == '\n') {  // \r
-				rowWords = i;
-				break;
-			}
-		}
-		if (mLineNum >= mLinesCapacity) {
-			mLinesCapacity *= 2;
-			mLines = (LineInfo *)realloc(mLines, sizeof(LineInfo) * mLinesCapacity);
-		}
-		mLines[mLineNum].mBeginPos = p - mText;
-		mLines[mLineNum].mLen = rowWords;
-		mLineNum++;
-		p += rowWords;
-		less -= rowWords;
-	}
-	ReleaseDC(mWnd, hdc);
 }
 void XExtTextArea::createWnd() {
-	XExtEdit::createWnd();
+	XExtComponent::createWnd();
+	mVerBarNode = new XmlNode("ScrollBar", mNode);
+	mVerBar = new XScrollBar(mVerBarNode, false);
 	mVerBar->createWnd();
 }
-void XExtTextArea::getVisibleRows( int *from, int *to ) {
-	int y = -mVerBar->getPos();
-	*from = mVerBar->getPos() / mLineHeight;
-	*to = *from;
-	int mh = min(mHeight, mLineHeight * mLineNum);
-	for (int r = 0; r <= mLineNum; ++r) {
-		if (y + mLineHeight * r >= mh) {
-			*to = r;
-			break;
-		}
-	}
-}
-void XExtTextArea::onMeasure( int widthSpec, int heightSpec ) {
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	mDataSize = calcDataSize();
-	mVerBar->setMaxAndPage(mDataSize.cy, mMesureHeight);
-	if (mVerBar->isNeedShow())
-		WND_SHOW(mVerBar->getWnd());
-	else
-		WND_HIDE(mVerBar->getWnd());
-
-	if (mVerBar->isNeedShow() != hasVerBar)
-		onMeasure(widthSpec, heightSpec);
-}
-void XExtTextArea::onLayout( int width, int height ) {
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
-}
-SIZE XExtTextArea::calcDataSize() {
-	buildLines();
-	SIZE sc = getClientSize();
-	sc.cy = mLineNum * mLineHeight;
-	return sc;
-}
-SIZE XExtTextArea::getClientSize() {
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	SIZE sz = {clientWidth, mMesureHeight};
-	return sz;
-}
 void XExtTextArea::notifyChanged() {
+	buildLines();
 	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	mDataSize = calcDataSize();
-	mVerBar->setMaxAndPage(mDataSize.cy, mMesureHeight);
+	mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
 	if (mVerBar->isNeedShow())
 		WND_SHOW(mVerBar->getWnd());
 	else
@@ -1662,111 +1389,146 @@ void XExtTextArea::notifyChanged() {
 		notifyChanged();
 	InvalidateRect(mWnd, NULL, TRUE);
 }
-void XExtTextArea::back() {
-	XExtEdit::back();
+void XExtTextArea::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+
 	buildLines();
-	notifyChanged();
-	InvalidateRect(mWnd, NULL, TRUE);
+	mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
+	if (mVerBar->isNeedShow())
+		WND_SHOW(mVerBar->getWnd());
+	else
+		WND_HIDE(mVerBar->getWnd());
+
+	if (mVerBar->isNeedShow() != hasVerBar)
+		onMeasure(widthSpec, heightSpec);
 }
-void XExtTextArea::del() {
-	XExtEdit::del();
-	buildLines();
-	notifyChanged();
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-void XExtTextArea::paste() {
-	XExtEdit::paste();
-	buildLines();
-	notifyChanged();
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-bool XExtTextArea::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_VSCROLL) {
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		SetCapture(mWnd);
-		if (mEnableFocus) SetFocus(mWnd);
-		onLButtonDown(wParam, (short)lParam, (short)(lParam >> 16) + mVerBar->getPos());
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		ReleaseCapture();
-		onLButtonUp(wParam, (short)lParam, (short)(lParam >> 16) + mVerBar->getPos());
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		if (wParam & MK_LBUTTON) {
-			onMouseMove((short)lParam, (short)(lParam >> 16) + mVerBar->getPos());
-		}
-		return true;
-	} else if (msg == WM_MOUSEHWHEEL || msg == WM_MOUSEWHEEL) {
-		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
-		int ad = d < 0 ? -d : d;
-		ad = min(ad, mHeight);
-		ad = d < 0 ? -ad : ad;
-		int old = mVerBar->getPos();
-		mVerBar->setPos(old - ad);
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		if (mMemBuffer == NULL) {
-			mMemBuffer = XImage::create(mWidth, mHeight, 24);
-		}
-		HDC memDc = CreateCompatibleDC(dc);
-		SelectObject(memDc, mMemBuffer->getHBitmap());
-		eraseBackground(memDc);
-		onPaint(memDc);
-		SIZE sz = getClientSize();
-		BitBlt(dc, 0, 0, sz.cx, mHeight, memDc, 0, 0, SRCCOPY);
-		DeleteObject(memDc);
-		EndPaint(mWnd, &ps);
-		return true;
-	}
-	return XExtEdit::wndProc(msg, wParam, lParam, result);
+void XExtTextArea::onLayout( int width, int height ) {
+	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0,
+		mVerBar->getThumbSize(), mVerBar->getPage());
 }
 XExtTextArea::~XExtTextArea() {
-	if (mLines != NULL) free(mLines);
-	delete mVerBar;
-	delete mVerBarNode;
+	if (mVerBar) delete mVerBar;
+	if (mVerBarNode) delete mVerBarNode;
+}
+
+int XExtTextArea::getScrollX() {
+	// TODO:
+	return 0;
+}
+int XExtTextArea::getScrollY() {
+	// TODO:
+	return 0;
+}
+void XExtTextArea::setScrollX( int x ) {
+	// TODO:
+}
+void XExtTextArea::setScrollY( int y ) {
+	// TODO: 
+}
+void XExtTextArea::getVisibleRows( int *from, int *to ) {
+	if (mLineHeight <= 0 || mLinesNum == 0) {
+		*from = *to = 0;
+		return;
+	}
+	SIZE sz = getClientSize();
+	int y = -getScrollY();
+	*from = getScrollY() / mLineHeight;
+	*to = *from;
+	int mh = min(sz.cy, mLineHeight * mLinesNum);
+	for (int r = 0; r <= mLinesNum; ++r) {
+		if (y + mLineHeight * r >= mh) {
+			*to = r;
+			break;
+		}
+	}
 }
 void XExtTextArea::ensureVisible( int pos ) {
 	POINT pt = {0};
-	if (! getXYAt(pos, &pt)) return;
-	if (pt.y < mVerBar->getPos()) {
-		mVerBar->setPos(pt.y);
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
-	} else if (pt.y > mVerBar->getPos() + mHeight) {
-		mVerBar->setPos(pt.y + mLineHeight - mHeight);
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
+	if (! getPointAt(pos, &pt)) return;
+	SIZE sz = getClientSize();
+	if (pt.y < getScrollY()) {
+		setScrollY(pt.y);
+		//InvalidateRect(mWnd, NULL, TRUE);
+	} else if (pt.y > getScrollY() + sz.cy) {
+		setScrollY(pt.y + mLineHeight - sz.cy);
+		// mVerBar->setPos(pt.y + mLineHeight - mHeight);
+		//InvalidateRect(mWnd, NULL, TRUE);
+		//UpdateWindow(mWnd);
+	}
+	if (pt.x < getScrollX()) {
+		setScrollX(pt.x);
+	} else if (pt.x > getScrollX() + sz.cx) {
+		setScrollX(pt.x + mCharWidth - sz.cx);
 	}
 }
-void XExtTextArea::move( int key ) {
-	int sh = GetAsyncKeyState(VK_SHIFT) < 0;
-	int old = mInsertPos;
-	switch (key) {
-	case VK_LEFT: 
-		if (mInsertPos > 0) --mInsertPos;
-		break;
-	case VK_RIGHT:
-		if (mInsertPos < mLen) ++mInsertPos;
-		break;
-	case VK_HOME:
-		mInsertPos = 0;
-		break;
-	case VK_END:
-		mInsertPos = mLen;
-		break;
-	}
-	if (old == mInsertPos)
+SIZE XExtTextArea::getClientSize() {
+	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
+	SIZE sz = {clientWidth - mAttrPadding[0] - mAttrPadding[2], mMesureHeight};
+	return sz;
+}
+HWND XExtTextArea::getBindWnd() {
+	return mWnd;
+}
+
+HFONT XExtTextArea::getTextFont() {
+	return getFont();
+}
+int XExtTextArea::getRealX( int x ) {
+	return x - getScrollX() + mAttrPadding[0];
+}
+int XExtTextArea::getRealY( int y ) {
+	return y - getScrollY() + mAttrPadding[1];
+}
+
+//------------------------XExtLineEdit--------------------
+XExtLineEdit::XExtLineEdit(XmlNode *node) : XExtTextArea(node) {
+	mAutoNewLine = false;
+}
+void XExtLineEdit::onChar( wchar_t ch ) {
+	if (ch == VK_RETURN || ch == VK_TAB) {
 		return;
-	if (! sh) mBeginSelPos = mInsertPos;
-	mEndSelPos = mInsertPos;
-	ensureVisible(mInsertPos);
-	InvalidateRect(mWnd, NULL, TRUE);
+	}
+	XExtTextArea::onChar(ch);
 }
+
+void XExtLineEdit::createWnd() {
+	XExtComponent::createWnd();
+}
+void XExtLineEdit::insertText( int pos, wchar_t *txt, int len ) {
+	if (len <= 0 || txt == NULL) {
+		return;
+	}
+	if (pos < 0 || pos > mWideTextLen) {
+		pos = mWideTextLen;
+	}
+	if (mWideTextLen + len >= mWideTextCapacity - 10) {
+		mWideTextCapacity = max(mWideTextLen + len + 50, mWideTextCapacity * 2);
+		mWideTextCapacity = (mWideTextCapacity & (~63)) + 64;
+		mWideText = (wchar_t *)realloc(mWideText, sizeof(wchar_t) * mWideTextCapacity);
+	}
+	int nlen = 0;
+	wchar_t *pt = txt;
+	for (int i = 0; i < len; ++i) {
+		if (pt[i] != '\r' && pt[i] != '\n') 
+			++nlen;
+	}
+
+	for (int i = mWideTextLen - 1; i >= pos; --i) {
+		mWideText[i + nlen] = mWideText[i];
+	}
+	for (int i = 0, j = 0; i < len; ++i) {
+		if (pt[i] != '\r' && pt[i] != '\n') {
+			mWideText[pos + j++] = txt[i];
+		}
+	}
+	mWideTextLen += nlen;
+}
+XExtLineEdit::~XExtLineEdit() {
+}
+
 //----------------------------XExtList---------------------
 XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
 	mModel = NULL;
@@ -2085,10 +1847,10 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mIsMouseDown = false;
 	mIsMouseMoving = false;
 	mIsMouseLeave = false;
-	mEditNode = new XmlNode(NULL, mNode);
+	mEditNode = new XmlNode("ExtLineEdit", mNode);
 	mPopupNode = new XmlNode(NULL, mNode);
 	mListNode = new XmlNode(NULL, mPopupNode);
-	mEdit = new XExtEdit(mEditNode);
+	mEdit = new XExtLineEdit(mEditNode);
 	mPopup = new XExtPopup(mPopupNode);
 	// mPopup->setBgColor(RGB(0xF5, 0xFF, 0xFA));
 	mPopupNode->setComponent(mPopup);
@@ -3486,7 +3248,7 @@ void XExtCalendar::onMouseMoveInYearMode( int x, int y ) {
 	}
 }
 //------------------------XExtMaskEditor-----------------------------------
-XExtMaskEdit::XExtMaskEdit( XmlNode *node ) : XExtEdit(node) {
+XExtMaskEdit::XExtMaskEdit( XmlNode *node ) : XExtTextArea(node) {
 	mCase = C_NONE;
 	mCaretBrush = CreateSolidBrush(RGB(0x48, 0x76, 0xFF));
 	char *str = mNode->getAttrValue("placeHolder");
@@ -3515,7 +3277,7 @@ bool XExtMaskEdit::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res
 	} else if (msg == WM_MOUSEMOVE) {
 		return true;
 	}
-	return XExtEdit::wndProc(msg, wParam, lParam, result);
+	return XExtTextArea::wndProc(msg, wParam, lParam, result);
 }
 void XExtMaskEdit::onChar( wchar_t ch ) {
 	if (mReadOnly) return;
@@ -3527,12 +3289,12 @@ void XExtMaskEdit::onChar( wchar_t ch ) {
 	}
 	if (mValidate) {
 		if (mValidate(mInsertPos, ch)) {
-			mText[mInsertPos] = ch;
+			mWideText[mInsertPos] = ch;
 			onKeyDown(VK_RIGHT);
 		}
 	} else {
 		if (acceptChar(ch, mInsertPos)) {
-			mText[mInsertPos] = ch;
+			mWideText[mInsertPos] = ch;
 			onKeyDown(VK_RIGHT);
 		}
 	}
@@ -3573,43 +3335,36 @@ void XExtMaskEdit::onPaint( HDC hdc ) {
 	SelectObject(hdc, font);
 	SetBkMode(hdc, TRANSPARENT);
 	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {mScrollPos, 0, mWidth - mScrollPos, mHeight};
+	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
 	POINT pt = {0, 0};
-	if (mInsertPos >= 0 && mCaretShowing && getXYAt(mInsertPos, &pt)) {
+	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
 		SelectObject(hdc, mCaretPen);
 		SIZE sz;
-		GetTextExtentPoint32W(hdc, mText + mInsertPos, 1, &sz);
+		GetTextExtentPoint32W(hdc, mWideText + mInsertPos, 1, &sz);
 		RECT rc = {pt.x, (mHeight-sz.cy)/2-2, pt.x + sz.cx, (mHeight+sz.cy)/2+2};
 		FillRect(hdc, &rc, mCaretBrush);
 	}
-	DrawTextW(hdc, mText, mLen, &r, DT_SINGLELINE | DT_VCENTER);
-	// draw border
-	if (mEnableBorder) {
-		bool hasFocus = mWnd == GetFocus();
-		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
-		SelectObject(hdc, GetStockObject(NULL_BRUSH));
-		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
-	}
+	DrawTextW(hdc, mWideText, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
 }
 void XExtMaskEdit::onKeyDown( int key ) {
-	if (mLen == 0) return;
+	if (mWideTextLen == 0) return;
 	if (key == VK_BACK || key == VK_DELETE) {// back
 		if (mInsertPos >= 0) {
-			mText[mInsertPos] = mPlaceHolder;
+			mWideText[mInsertPos] = mPlaceHolder;
 			onKeyDown(key == VK_BACK ? VK_LEFT : VK_RIGHT);
 		}
 		return;
 	}
 	if (key < VK_END || key > VK_DOWN) return;
 	if (key == VK_END) {
-		for (int i = mLen - 1; i >= 0; --i) {
+		for (int i = mWideTextLen - 1; i >= 0; --i) {
 			if (isMaskChar(mMask[i])) {
 				mInsertPos = i;
 				break;
 			}
 		}
 	} else if (key == VK_HOME) {
-		for (int i = 0; i < mLen; ++i) {
+		for (int i = 0; i < mWideTextLen; ++i) {
 			if (isMaskChar(mMask[i])) {
 				mInsertPos = i;
 				break;
@@ -3623,7 +3378,7 @@ void XExtMaskEdit::onKeyDown( int key ) {
 			}
 		}
 	} else if (key == VK_RIGHT) {
-		for (int i = mInsertPos + 1; i < mLen; ++i) {
+		for (int i = mInsertPos + 1; i < mWideTextLen; ++i) {
 			if (isMaskChar(mMask[i])) {
 				mInsertPos = i;
 				break;
@@ -3637,10 +3392,10 @@ int XExtMaskEdit::getPosAt( int x, int y ) {
 	HDC hdc = GetDC(mWnd);
 	HGDIOBJ old = SelectObject(hdc, getFont());
 	int k = -1;
-	x -= mScrollPos;
-	for (int i = 0; i < mLen; ++i) {
+	x -= getScrollX();
+	for (int i = 0; i < mWideTextLen; ++i) {
 		SIZE sz;
-		GetTextExtentPoint32W(hdc, mText, i + 1, &sz);
+		GetTextExtentPoint32W(hdc, mWideText, i + 1, &sz);
 		if (sz.cx >= x) {
 			k = i;
 			break;
@@ -3653,7 +3408,7 @@ int XExtMaskEdit::getPosAt( int x, int y ) {
 }
 void XExtMaskEdit::setMask( const char *mask ) {
 	mMask = (char *)mask;
-	mLen = 0;
+	mWideTextLen = 0;
 	if (mMask == NULL) {
 		return;
 	}
@@ -3689,14 +3444,14 @@ void XExtMaskEdit::setInputValidate( InputValidate iv ) {
 	mValidate = iv;
 }
 // ----------------------XExtPassword--------------------
-XExtPassword::XExtPassword( XmlNode *node ) : XExtEdit(node) {
+XExtPassword::XExtPassword( XmlNode *node ) : XExtTextArea(node) {
 }
 void XExtPassword::onChar( wchar_t ch ) {
 	if (ch > 126) return;
 	if (ch > 31) {
-		if (mLen < 63) XExtEdit::onChar(ch);
+		if (mWideTextLen < 63) XExtTextArea::onChar(ch);
 	} else {
-		XExtEdit::onChar(ch);
+		XExtTextArea::onChar(ch);
 	}
 }
 void XExtPassword::paste() {
@@ -3709,23 +3464,16 @@ void XExtPassword::onPaint( HDC hdc ) {
 	SelectObject(hdc, font);
 	SetBkMode(hdc, TRANSPARENT);
 	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {mScrollPos, 0, mWidth - mScrollPos, mHeight};
+	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
 	char echo[64];
-	memset(echo, '*', mLen);
-	echo[mLen] = 0;
-	DrawText(hdc, echo, mLen, &r, DT_SINGLELINE | DT_VCENTER);
+	memset(echo, '*', mWideTextLen);
+	echo[mWideTextLen] = 0;
+	DrawText(hdc, echo, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
 	POINT pt = {0, 0};
-	if (mCaretShowing && getXYAt(mInsertPos, &pt)) {
+	if (mCaretShowing && getPointAt(mInsertPos, &pt)) {
 		SelectObject(hdc, mCaretPen);
 		MoveToEx(hdc, pt.x, 2, NULL);
 		LineTo(hdc, pt.x, mHeight - 4);
-	}
-	// draw border
-	if (mEnableBorder) {
-		bool hasFocus = mWnd == GetFocus();
-		SelectObject(hdc, (hasFocus ? mFocusBorderPen : mBorderPen));
-		SelectObject(hdc, GetStockObject(NULL_BRUSH));
-		RoundRect(hdc, 0, 0, mWidth - 1, mHeight - 1, mAttrRoundConerX, mAttrRoundConerX);
 	}
 }
 // --------------------XExtDatePicker-------------------
