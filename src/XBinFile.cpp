@@ -1,4 +1,4 @@
-#include "BinFile.h"
+#include "XBinFile.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <windows.h>
@@ -19,18 +19,18 @@ extern char *ReadFileContent(const char *path, int *pLen);
 static const int BIN_FILE_MAGIC_NUM = 0x8A9F3DEA;
 static const int ITEM_NAME_LEN = 128;
 
-BinFile::BinFile() {
+XBinFile::XBinFile() {
 	mBuffer = NULL;
 	mItems = NULL;
 	mItemsNum = 0;
 }
 
-BinFile * BinFile::getInstance() {
-	static BinFile *ins = new BinFile();
+XBinFile * XBinFile::getInstance() {
+	static XBinFile *ins = new XBinFile();
 	return ins;
 }
 
-void BinFile::load( const char *path ) {
+void XBinFile::load( const char *path ) {
 	int len = 0;
 	char *cnt = ReadFileContent(path, &len);
 	char *p = cnt;
@@ -61,11 +61,11 @@ void BinFile::load( const char *path ) {
 	}
 }
 
-BinFile::~BinFile() {
+XBinFile::~XBinFile() {
 	delete[] mBuffer;
 }
 
-void *BinFile::find( const char *name, int *len ) {
+void *XBinFile::find( const char *name, int *len ) {
 	for (int i = 0; i < mItemsNum; ++i) {
 		if (strcmp(name, mItems[i].mName) == 0) {
 			*len = mItems[i].mLen;

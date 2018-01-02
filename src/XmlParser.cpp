@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "XComponent.h"
+#include "XBinFile.h"
 
 static char *DupString(const char *str) {
 	if (str != NULL) {
@@ -557,6 +558,11 @@ XmlPartLoader::XmlPartLoader( const char *filePath ) {
 		if (mContent == NULL) {
 			printf("XmlPartLoader load file [%s] fail\n", filePath);
 		}
+	} else if (memcmp(filePath, "xbin://", 7) == 0) {
+		mContent = (char *)XBinFile::getInstance()->find(filePath + 7, &mContentLen);
+		if (mContent == NULL) {
+			printf("XmlPartLoader load xbin [%s] fail\n", filePath);
+		}
 	} else if (memcmp(filePath, "res://", 6) == 0) {
 		HRSRC mm = FindResource(NULL, filePath + 6, "ANY");
 		if (mm == NULL) {
@@ -825,6 +831,9 @@ bool ResPath::parse(const char *resPath) {
 	} else if (memcmp(ps, "file://", 7) == 0) {
 		ps += 7;
 		mResType = RT_FILE;
+	} else if (memcmp(ps, "xbin://", 7) == 0) {
+		ps += 7;
+		mResType = RT_XBIN;
 	} else {
 		return false;
 	}

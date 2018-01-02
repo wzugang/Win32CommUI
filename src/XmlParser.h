@@ -108,7 +108,7 @@ protected:
 
 class ResPath {
 public:
-	enum ResType { RT_NONE, RT_RES, RT_FILE, RT_BIN };
+	enum ResType { RT_NONE, RT_RES, RT_FILE, RT_XBIN };
 	ResPath();
 	bool parse(const char *resPath);
 

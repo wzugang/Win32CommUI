@@ -2,6 +2,7 @@
 #include "XmlParser.h"
 #include "XComponent.h"
 #include "XExt.h"
+#include "XBinFile.h"
 #include <string.h>
 #include <map>
 #include <string>
@@ -73,12 +74,12 @@ XImage * XImage::loadImage( ResPath *info) {
 	CImage cimg;
 	if (info->mResType == ResPath::RT_FILE) {
 		cimg.Load(info->mPath);
-	} else if (info->mResType == ResPath::RT_BIN) {
-		void *data = NULL;
+	} else if (info->mResType == ResPath::RT_XBIN) {
 		int len = 0;
+		void *data = XBinFile::getInstance()->find(info->mPath, &len);
 		HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
 		BYTE* pmem = (BYTE*)GlobalLock(m_hMem);
-		memcpy(pmem, data, len); 
+		memcpy(pmem, data, len);
 		IStream* pstm = NULL;
 		CreateStreamOnHGlobal(m_hMem, FALSE, &pstm);  
 		cimg.Load(pstm);

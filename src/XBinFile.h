@@ -1,13 +1,13 @@
 #pragma once
 
-class BinFile {
+class XBinFile {
 public:
-	static BinFile *getInstance();
+	static XBinFile *getInstance();
 	void load(const char *path);
 	void *find(const char *name, int *len);
 protected:
-	BinFile();
-	~BinFile();
+	XBinFile();
+	~XBinFile();
 	struct Item {
 		char *mName;
 		int mLen;
