@@ -1065,9 +1065,11 @@ bool XExtTextArea::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resu
 		int ad = d < 0 ? -d : d;
 		ad = min(ad, mHeight);
 		ad = d < 0 ? -ad : ad;
-		int old = mVerBar->getPos();
-		mVerBar->setPos(old - ad);
-		InvalidateRect(mWnd, NULL, TRUE);
+		if (mVerBar != NULL) {
+			int old = mVerBar->getPos();
+			mVerBar->setPos(old - ad);
+			InvalidateRect(mWnd, NULL, TRUE);
+		}
 		return true;
 	} else if (msg == WM_ERASEBKGND) {
 		return true;
@@ -1378,6 +1380,10 @@ void XExtTextArea::createWnd() {
 }
 void XExtTextArea::notifyChanged() {
 	buildLines();
+	if (mVerBar == NULL) {
+		InvalidateRect(mWnd, NULL, TRUE);
+		return;
+	}
 	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 	mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
 	if (mVerBar->isNeedShow())
@@ -1392,21 +1398,27 @@ void XExtTextArea::notifyChanged() {
 void XExtTextArea::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-
+	bool hasVerBar = false;
+	if (mVerBar != NULL) {
+		hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	}
 	buildLines();
-	mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
-	if (mVerBar->isNeedShow())
-		WND_SHOW(mVerBar->getWnd());
-	else
-		WND_HIDE(mVerBar->getWnd());
+	if (mVerBar != NULL) {
+		mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
+		if (mVerBar->isNeedShow())
+			WND_SHOW(mVerBar->getWnd());
+		else
+			WND_HIDE(mVerBar->getWnd());
 
-	if (mVerBar->isNeedShow() != hasVerBar)
-		onMeasure(widthSpec, heightSpec);
+		if (mVerBar->isNeedShow() != hasVerBar)
+			onMeasure(widthSpec, heightSpec);
+	}
 }
 void XExtTextArea::onLayout( int width, int height ) {
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0,
-		mVerBar->getThumbSize(), mVerBar->getPage());
+	if (mVerBar != NULL) {
+		mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0,
+			mVerBar->getThumbSize(), mVerBar->getPage());
+	}
 }
 XExtTextArea::~XExtTextArea() {
 	if (mVerBar) delete mVerBar;
@@ -1464,7 +1476,10 @@ void XExtTextArea::ensureVisible( int pos ) {
 	}
 }
 SIZE XExtTextArea::getClientSize() {
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasVerBar = false;
+	if (mVerBar != NULL) {
+		hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	}
 	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
 	SIZE sz = {clientWidth - mAttrPadding[0] - mAttrPadding[2], mMesureHeight};
 	return sz;
