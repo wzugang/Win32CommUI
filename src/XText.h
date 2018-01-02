@@ -46,7 +46,9 @@ protected:
 	void calcFontInfo();
 	void addLine(HDC dc, wchar_t *beginPos, int len);
 	// get line no, if not find, return -1
-	int getLineNo(int y);
+	int getLineNoByY(int y);
+	int getLineNoByPos(int pos);
+	int getYAtLine(int lineNo);
 protected:
 	wchar_t *mWideText;
 	int mWideTextCapacity;

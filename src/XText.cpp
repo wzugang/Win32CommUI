@@ -223,7 +223,7 @@ int XAreaText::getPosAt( int x, int y ) {
 	if (mLinesNum <= 0 || mLineHeight <= 0) {
 		return 0;
 	}
-	int ln = getLineNo(y);
+	int ln = getLineNoByY(y);
 	if (ln < 0) {
 		return 0;
 	}
@@ -232,61 +232,64 @@ int XAreaText::getPosAt( int x, int y ) {
 	}
 	HDC hdc = GetDC(getBindWnd());
 	SelectObject(hdc, getTextFont());
-	int i = 0, j = mLines[ln].mBeginPos;
+	//int i = 0, j = mLines[ln].mBeginPos;
 	int len = mLines[ln].mLen;
-	
-	if (len > 0 && mWideText[j] == '\n') {
-		++j;
-		--len;
+	int bg = mLines[ln].mBeginPos;
+	int j = 0, k = len;
+	if (len > 0 && mWideText[bg] == '\n') {
+		j = 1;
 	}
-	if (len > 1 && mWideText[j] == '\r' && mWideText[j + 1] == '\n') {
-		j += 2;
-		len -= 2;
+	if (len > 1 && mWideText[bg] == '\r' && mWideText[bg + 1] == '\n') {
+		j = 2;
 	}
-	
-	for (; i < len; ++i) {
+	for (int i = j; i < len; ++i) {
 		SIZE sz;
-		GetTextExtentPoint32W(hdc, &mWideText[j], i + 1, &sz);
+		GetTextExtentPoint32W(hdc, &mWideText[bg], i + 1, &sz);
 		if (sz.cx >= x) {
-			if (i > 0) {
-				SIZE nsz;
-				GetTextExtentPoint32W(hdc, &mWideText[j + i], 1, &nsz);
-				int nx = x - (sz.cx - nsz.cx);
-				if (nx > nsz.cx / 2) ++i;
-			}
+			SIZE nsz;
+			GetTextExtentPoint32W(hdc, &mWideText[bg + i], 1, &nsz);
+			int nx = x - (sz.cx - nsz.cx);
+			if (nx > nsz.cx / 2) ++i;
+			k = i;
 			break;
 		}
 	}
-
 	ReleaseDC(getBindWnd(), hdc);
-	if (j + i == mLines[ln].mBeginPos + mLines[ln].mLen) {
-		// return j + i - 1;
-	}
-	return j + i;
+	return bg + k;
 }
 bool XAreaText::getPointAt( int pos, POINT *pt ) {
 	if (pos < 0 || pos > mWideTextLen || pt == NULL) 
 		return false;
 	pt->x = pt->y = 0;
-	int line = 0;
+	int line = getLineNoByPos(pos);
+	if (line < 0) {
+		return false;
+	}
+	if (mLinesNum == 0) {
+		return true;
+	}
+	int bg = mLines[line].mBeginPos;
+	bool isNewLine = (mWideText[pos] == '\n') || 
+		(mWideText[pos] == '\r' && mWideText[pos + 1] == '\n');
 	HDC hdc = GetDC(getBindWnd());
 	HGDIOBJ old = SelectObject(hdc, getTextFont());
-	for (int i = 0; i < mLinesNum; ++i, ++line) {
-		int bg = mLines[i].mBeginPos;
-		int len = mLines[i].mLen;
-		if (pos >= bg && pos < bg + len) {
-			break;
+	
+	if (bg == pos && isNewLine) {
+		if (line > 0) {
+			pt->y = getYAtLine(line - 1);
+			SIZE sz = {0};
+			int bg2 = mLines[line - 1].mBeginPos;
+			int len2 = mLines[line - 1].mLen;
+			GetTextExtentPoint32W(hdc, &mWideText[bg2], len2, &sz);
+			pt->x = sz.cx + mLines[line - 1].mStartX;
 		}
-	}
-	if (mLinesNum > 0) {
-		line = min(line, mLinesNum - 1);
-		pt->y = line * mLineHeight;
+	} else {
+		pt->y = getYAtLine(line);
 		SIZE sz;
-		int bg = mLines[line].mBeginPos;
 		GetTextExtentPoint32W(hdc, &mWideText[bg], pos - bg, &sz);
 		pt->x = sz.cx + mLines[line].mStartX;
-		pt->y += mLines[line].mStartY;
 	}
+	
 	SelectObject(hdc, old);
 	ReleaseDC(getBindWnd(), hdc);
 	return true;
@@ -319,16 +322,45 @@ void XAreaText::addLine(HDC dc, wchar_t *beginPos, int len) {
 	mLines[mLinesNum].mTextWidth = sz.cx;
 	mLinesNum++;
 }
-int XAreaText::getLineNo( int y ) {
+int XAreaText::getLineNoByY( int y ) {
+	int by = 0;
 	if (y < 0) {
 		return -1;
 	}
 	for (int i = 0; i < mLinesNum; ++i) {
-		if (y >= mLines[i].mStartY && y < mLines[i].mStartY + mLineHeight) {
+		if (y >= mLines[i].mStartY + by && y < by + mLines[i].mStartY + mLineHeight) {
 			return i;
 		}
+		by += mLineHeight;
 	}
 	return mLinesNum - 1;
+}
+int XAreaText::getLineNoByPos( int pos ) {
+	int line = 0;
+	if (pos < 0) {
+		return -1;
+	}
+	for (int i = 0; i < mLinesNum; ++i, ++line) {
+		int bg = mLines[i].mBeginPos;
+		int len = mLines[i].mLen;
+		if (pos >= bg && pos < bg + len) {
+			return line;
+		}
+	}
+	return max(mLinesNum - 1, 0);
+}
+int XAreaText::getYAtLine( int lineNo ) {
+	if (lineNo < 0 || mLinesNum == 0) {
+		return 0;
+	}
+	int y = 0;
+	for (int i = 0; i < lineNo && i < mLinesNum; ++i) {
+		y += mLines[i].mStartY + mLineHeight;
+	}
+	if (lineNo < mLinesNum) {
+		y += mLines[lineNo].mStartY;
+	}
+	return y;;
 }
 
 

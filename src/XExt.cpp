@@ -1210,8 +1210,8 @@ void XExtTextArea::drawSelRange( HDC hdc, int begin, int end ) {
 	POINT bp, ep;
 	getPointAt(begin, &bp);
 	getPointAt(end, &ep);
-	int brow = getLineNo(bp.y);
-	int erow = getLineNo(ep.y);
+	int brow = getLineNoByY(bp.y);
+	int erow = getLineNoByY(ep.y);
 	for (int i = brow; i <= erow && i >= 0; ++i) {
 		r.left = getRealX(i == brow ? bp.x : 0);
 		r.top = getRealY(bp.y + mLineHeight * (i - brow));
