@@ -197,7 +197,7 @@ void XmlParser::parseString( const char *xml, int xmlLen) {
 	dealAllDefaultNode(mRoot);
 }
 
-static char *ReadFileContent(const char *path, int *pLen) {
+char *ReadFileContent(const char *path, int *pLen) {
 	if (pLen != NULL) *pLen = 0;
 	char *cnt = NULL;
 	if (path == NULL) {

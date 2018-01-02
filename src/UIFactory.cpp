@@ -73,6 +73,17 @@ XImage * XImage::loadImage( ResPath *info) {
 	CImage cimg;
 	if (info->mResType == ResPath::RT_FILE) {
 		cimg.Load(info->mPath);
+	} else if (info->mResType == ResPath::RT_BIN) {
+		void *data = NULL;
+		int len = 0;
+		HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
+		BYTE* pmem = (BYTE*)GlobalLock(m_hMem);
+		memcpy(pmem, data, len); 
+		IStream* pstm = NULL;
+		CreateStreamOnHGlobal(m_hMem, FALSE, &pstm);  
+		cimg.Load(pstm);
+		GlobalUnlock(m_hMem);
+		pstm->Release();
 	} else {
 		cimg.LoadFromResource(XComponent::getInstance(), info->mPath);
 	}
