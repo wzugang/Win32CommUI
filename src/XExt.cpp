@@ -1378,6 +1378,8 @@ void XExtTextArea::createWnd() {
 	mVerBar = new XScrollBar(mVerBarNode, false);
 	mVerBarNode->setComponent(mVerBar);
 	mVerBar->createWnd();
+	int dd = GetWindowLong(mVerBar->getWnd(), GWL_STYLE);
+	SetWindowLong(mVerBar->getWnd(), GWL_STYLE, dd & ~WS_VISIBLE);
 }
 void XExtTextArea::notifyChanged() {
 	buildLines();
