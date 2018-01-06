@@ -236,7 +236,8 @@ HWND XComponent::getParentWnd() {
 		return mParentWnd;
 	if (mNode->getParent() == NULL)
 		return NULL;
-	return mNode->getParent()->getComponent()->getWnd();
+	XComponent *pp = mNode->getParent()->getComponent();
+	return pp->getWnd();
 }
 
 void XComponent::mesureChildren( int widthSpec, int heightSpec ) {

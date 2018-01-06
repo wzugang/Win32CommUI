@@ -1376,6 +1376,7 @@ void XExtTextArea::createWnd() {
 	XExtComponent::createWnd();
 	mVerBarNode = new XmlNode("ScrollBar", mNode);
 	mVerBar = new XScrollBar(mVerBarNode, false);
+	mVerBarNode->setComponent(mVerBar);
 	mVerBar->createWnd();
 }
 void XExtTextArea::notifyChanged() {
