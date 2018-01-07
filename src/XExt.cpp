@@ -1083,9 +1083,9 @@ bool XExtTextArea::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resu
 		SelectObject(memDc, mMemBuffer->getHBitmap());
 		eraseBackground(memDc);
 		onPaint(memDc);
-		SIZE sz = getClientSize();
-		BitBlt(dc, 0, 0, sz.cx, mHeight, memDc, 0, 0, SRCCOPY);
-		// BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
+		// SIZE sz = getClientSize();
+		// BitBlt(dc, 0, 0, sz.cx, mHeight, memDc, 0, 0, SRCCOPY);
+		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
 		DeleteObject(memDc);
 		EndPaint(mWnd, &ps);
 		return true;
