@@ -373,7 +373,7 @@ RECT XExtIconButton::getRectBy(int *attr) {
 }
 
 //-------------------XExtScroll-----------------------------------
-XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
+XExtScrollBar::XExtScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mHorizontal = horizontal;
 	memset(&mThumbRect, 0, sizeof(mThumbRect));
 	mTrack = mThumb = NULL;
@@ -388,7 +388,23 @@ XScrollBar::XScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mPressed = false;
 	mMouseX = mMouseY = 0;
 }
-bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+XExtScrollBar::XExtScrollBar(XmlNode *node) : XExtComponent(node) {
+	memset(&mThumbRect, 0, sizeof(mThumbRect));
+	mTrack = XImage::load(mNode->getAttrValue("track"));
+	mThumb = XImage::load(mNode->getAttrValue("thumb"));
+	mHorizontal = AttrUtils::parseBool(mNode->getAttrValue("hor"));
+	if (mHorizontal) {
+		mThumbRect.bottom = 10;
+	} else {
+		mThumbRect.right = 10;
+	}
+	mPos = 0;
+	mMax = 0;
+	mPage = 0;
+	mPressed = false;
+	mMouseX = mMouseY = 0;
+}
+bool XExtScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {
 		return true;
 	} else if (msg == WM_PAINT) {
@@ -463,22 +479,22 @@ bool XScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *resul
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
-int XScrollBar::getPos() {
+int XExtScrollBar::getPos() {
 	return mPos;
 }
-void XScrollBar::setPos( int pos ) {
+void XExtScrollBar::setPos( int pos ) {
 	if (pos < 0) pos = 0;
 	else if (pos > mMax - mPage) pos = mMax - mPage;
 	mPos = pos;
 	calcThumbInfo();
 }
-int XScrollBar::getPage() {
+int XExtScrollBar::getPage() {
 	return mPage;
 }
-int XScrollBar::getMax() {
+int XExtScrollBar::getMax() {
 	return mMax;
 }
-void XScrollBar::setMaxAndPage( int maxn, int page ) {
+void XExtScrollBar::setMaxAndPage( int maxn, int page ) {
 	if (maxn < 0) maxn = 0;
 	mMax = maxn;
 	if (page < 0) page = 0;
@@ -487,7 +503,7 @@ void XScrollBar::setMaxAndPage( int maxn, int page ) {
 	else if (mPos > mMax - mPage) mPos = mMax - mPage;
 	calcThumbInfo();
 }
-void XScrollBar::calcThumbInfo() {
+void XExtScrollBar::calcThumbInfo() {
 	if (mMax <= 0 || mPage <= 0 || mPage >= mMax) {
 		if (mHorizontal) {
 			mThumbRect.left = mThumbRect.right = 0;
@@ -506,22 +522,22 @@ void XScrollBar::calcThumbInfo() {
 		mThumbRect.bottom = mThumbRect.top + sz;
 	}
 }
-bool XScrollBar::isNeedShow() {
+bool XExtScrollBar::isNeedShow() {
 	return mMax > mPage;
 }
-int XScrollBar::getThumbSize() {
+int XExtScrollBar::getThumbSize() {
 	if (mHorizontal) return mThumbRect.bottom;
 	return mThumbRect.right;
 }
-void XScrollBar::setImages( XImage *track, XImage *thumb ) {
+void XExtScrollBar::setImages( XImage *track, XImage *thumb ) {
 	mTrack = track;
 	mThumb = thumb;
 }
 XExtScroll::XExtScroll( XmlNode *node ) : XExtComponent(node) {
 	mHorNode = new XmlNode(NULL, mNode);
 	mVerNode = new XmlNode(NULL, mNode);
-	mHorBar = new XScrollBar(mHorNode, true);
-	mVerBar = new XScrollBar(mVerNode, false);
+	mHorBar = new XExtScrollBar(mHorNode, true);
+	mVerBar = new XExtScrollBar(mVerNode, false);
 	mHorBar->setImages(XImage::load(mNode->getAttrValue("hbarTrack")), XImage::load(mNode->getAttrValue("hbarThumb")));
 	mVerBar->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
 }
@@ -641,10 +657,10 @@ XExtScroll::~XExtScroll() {
 	delete mHorBar;
 	delete mVerBar;
 }
-XScrollBar* XExtScroll::getHorBar() {
+XExtScrollBar* XExtScroll::getHorBar() {
 	return mHorBar;
 }
-XScrollBar* XExtScroll::getVerBar() {
+XExtScrollBar* XExtScroll::getVerBar() {
 	return mVerBar;
 }
 //-------------------XExtPopup-------------------------------
@@ -1375,7 +1391,7 @@ void XExtTextArea::setWideText( const wchar_t *txt ) {
 void XExtTextArea::createWnd() {
 	XExtComponent::createWnd();
 	mVerBarNode = new XmlNode("ScrollBar", mNode);
-	mVerBar = new XScrollBar(mVerBarNode, false);
+	mVerBar = new XExtScrollBar(mVerBarNode, false);
 	mVerBarNode->setComponent(mVerBar);
 	mVerBar->createWnd();
 	int dd = GetWindowLong(mVerBar->getWnd(), GWL_STYLE);

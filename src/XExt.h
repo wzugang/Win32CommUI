@@ -90,9 +90,10 @@ protected:
 	int mAttrTextRect[4]; // left, top, width, height
 };
 
-class XScrollBar : public XExtComponent {
+class XExtScrollBar : public XExtComponent {
 public:
-	XScrollBar(XmlNode *node, bool horizontal);
+	XExtScrollBar(XmlNode *node, bool horizontal);
+	XExtScrollBar(XmlNode *node);
 	int getMax();
 	int getPage();
 	void setMaxAndPage(int maxn, int page);
@@ -118,8 +119,8 @@ class XExtScroll : public XExtComponent {
 public:
 	XExtScroll(XmlNode *node);
 	virtual ~XExtScroll();
-	XScrollBar* getHorBar();
-	XScrollBar* getVerBar();
+	XExtScrollBar* getHorBar();
+	XExtScrollBar* getVerBar();
 
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -129,7 +130,7 @@ protected:
 	virtual SIZE calcDataSize();
 	virtual void moveChildrenPos( int x, int y );
 	void invalide(XComponent *c);
-	XScrollBar *mHorBar, *mVerBar;
+	XExtScrollBar *mHorBar, *mVerBar;
 	XmlNode *mHorNode, *mVerNode;
 };
 
@@ -257,7 +258,7 @@ protected:
 	bool mCaretShowing;
 	bool mEnableShowCaret;
 
-	XScrollBar *mVerBar;
+	XExtScrollBar *mVerBar;
 	XmlNode *mVerBarNode;
 };
 
