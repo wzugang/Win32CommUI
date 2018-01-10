@@ -502,8 +502,17 @@ bool XExtScrollBar::isNeedShow() {
 	return mMax > mPage;
 }
 int XExtScrollBar::getThumbSize() {
-	if (mHorizontal) return mThumbRect.bottom;
+	if (mHorizontal) {
+		return mThumbRect.bottom;
+	}
 	return mThumbRect.right;
+}
+void XExtScrollBar::setThumbSize(int sz) {
+	if (mHorizontal) {
+		mThumbRect.bottom = sz;
+	} else {
+		mThumbRect.right = sz;
+	}
 }
 void XExtScrollBar::onMeasure(int widthSpec, int heightSpec) {
 	XExtComponent::onMeasure(widthSpec, heightSpec);
@@ -519,7 +528,9 @@ XExtScroll::XExtScroll( XmlNode *node ) : XExtComponent(node) {
 	mHorNode = new XmlNode("ExtHorScrollBar", mNode);
 	mVerNode = new XmlNode("ExtVerScrollBar", mNode);
 	mHorBar = new XExtScrollBar(mHorNode, true);
+	mHorBar->setThumbSize(10);
 	mVerBar = new XExtScrollBar(mVerNode, false);
+	mVerBar->setThumbSize(10);
 }
 #define WND_HIDE(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) & ~WS_VISIBLE)
 #define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
@@ -1645,11 +1656,10 @@ void XExtList::onMeasure( int widthSpec, int heightSpec ) {
 		onMeasure(widthSpec, heightSpec);
 }
 void XExtList::onLayout( int width, int height ) {
-	if (mModel == NULL) return;
-	int THUMB_SIZE = 10;
-	mHorBar->onMeasure(mHorBar->getPage()|MS_FIX, THUMB_SIZE|MS_FIX);
+	if (mModel == NULL) {
+		return;
+	}
 	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
-	mVerBar->onMeasure(THUMB_SIZE|MS_FIX, mVerBar->getPage()|MS_FIX);
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
 }
 void XExtList::drawData( HDC memDc, int x, int y, int w, int h ) {

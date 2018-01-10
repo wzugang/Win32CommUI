@@ -100,6 +100,7 @@ public:
 	void setPos(int pos); // pos = [0 ... max - page]
 	bool isNeedShow();
 	int getThumbSize();
+	void setThumbSize(int sz);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
