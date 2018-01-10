@@ -474,7 +474,8 @@ static XComponent *XExtIconButton_Creator(XmlNode *n) {return new XExtIconButton
 static XComponent *XExtArrowButton_Creator(XmlNode *n) {return new XExtArrowButton(n);}
 
 static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
-static XComponent *XExtScrollBar_Creator(XmlNode *n) {return new XExtScrollBar(n);}
+static XComponent *XExtScrollBar_Hor_Creator(XmlNode *n) {return new XExtScrollBar(n, true);}
+static XComponent *XExtScrollBar_Ver_Creator(XmlNode *n) {return new XExtScrollBar(n, false);}
 static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
 static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
 static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtLineEdit(n);}
@@ -509,7 +510,8 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtTextArea", XExtTextArea_Creator);
 
 	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
-	UIFactory::registCreator("ExtScrollBar", XExtScrollBar_Creator);
+	UIFactory::registCreator("ExtHorScrollBar", XExtScrollBar_Hor_Creator);
+	UIFactory::registCreator("ExtVerScrollBar", XExtScrollBar_Ver_Creator);
 	UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
 	UIFactory::registCreator("ExtTable", XExtTable_Creator);
 	UIFactory::registCreator("ExtList", XExtList_Creator);

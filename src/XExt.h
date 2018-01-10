@@ -92,17 +92,15 @@ protected:
 
 class XExtScrollBar : public XExtComponent {
 public:
-	XExtScrollBar(XmlNode *node, bool horizontal);
-	XExtScrollBar(XmlNode *node);
+	XExtScrollBar(XmlNode *node, bool horizontal = false);
 	int getMax();
 	int getPage();
 	void setMaxAndPage(int maxn, int page);
 	int getPos();
 	void setPos(int pos); // pos = [0 ... max - page]
-	void setImages(XImage *track, XImage *thumb);
 	bool isNeedShow();
 	int getThumbSize();
-	virtual void onLayout(int w, int h);
+	virtual void onMeasure(int widthSpec, int heightSpec);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void calcThumbInfo();

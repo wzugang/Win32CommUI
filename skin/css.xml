@@ -45,7 +45,8 @@
 					   
 	<ExtPopup /> 只有一个子控件可见，可以有多个
 	
-	<ExtScrollBar hor="true|false" track="" thumb="" />
+	<ExtVerScrollBar track="" thumb="" />
+	<ExtHorScrollBar track="" thumb="" />
 	<ExtScroll vbarTrack="" vbarThumb="" hbarTrack="" hbarThumb=""  />
 	<ExtTable selRowBgColor="#rrggbb" lineColor="#rrggbb" />  继承自ExtScroll
 	<ExtList selBgColor="#rrggbb" />   继承自ExtScroll

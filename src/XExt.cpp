@@ -376,18 +376,8 @@ RECT XExtIconButton::getRectBy(int *attr) {
 XExtScrollBar::XExtScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(node) {
 	mHorizontal = horizontal;
 	memset(&mThumbRect, 0, sizeof(mThumbRect));
-	mTrack = mThumb = NULL;
-	mPos = 0;
-	mMax = 0;
-	mPage = 0;
-	mPressed = false;
-	mMouseX = mMouseY = 0;
-}
-XExtScrollBar::XExtScrollBar(XmlNode *node) : XExtComponent(node) {
-	memset(&mThumbRect, 0, sizeof(mThumbRect));
 	mTrack = XImage::load(mNode->getAttrValue("track"));
 	mThumb = XImage::load(mNode->getAttrValue("thumb"));
-	mHorizontal = AttrUtils::parseBool(mNode->getAttrValue("hor"));
 	mPos = 0;
 	mMax = 0;
 	mPage = 0;
@@ -515,26 +505,21 @@ int XExtScrollBar::getThumbSize() {
 	if (mHorizontal) return mThumbRect.bottom;
 	return mThumbRect.right;
 }
-void XExtScrollBar::setImages( XImage *track, XImage *thumb ) {
-	mTrack = track;
-	mThumb = thumb;
-}
-void XExtScrollBar::onLayout(int w, int h) {
-	XExtComponent::onLayout(w, h);
+void XExtScrollBar::onMeasure(int widthSpec, int heightSpec) {
+	XExtComponent::onMeasure(widthSpec, heightSpec);
 	if (mHorizontal) {
-		mThumbRect.bottom = h;
+		mThumbRect.bottom = mMesureHeight;
 	} else {
-		mThumbRect.right = w;
+		mThumbRect.right = mMesureWidth;
 	}
 }
 
+//----------XExtScroll-----------------------------
 XExtScroll::XExtScroll( XmlNode *node ) : XExtComponent(node) {
-	mHorNode = new XmlNode(NULL, mNode);
-	mVerNode = new XmlNode(NULL, mNode);
+	mHorNode = new XmlNode("ExtHorScrollBar", mNode);
+	mVerNode = new XmlNode("ExtVerScrollBar", mNode);
 	mHorBar = new XExtScrollBar(mHorNode, true);
 	mVerBar = new XExtScrollBar(mVerNode, false);
-	mHorBar->setImages(XImage::load(mNode->getAttrValue("hbarTrack")), XImage::load(mNode->getAttrValue("hbarThumb")));
-	mVerBar->setImages(XImage::load(mNode->getAttrValue("vbarTrack")), XImage::load(mNode->getAttrValue("vbarThumb")));
 }
 #define WND_HIDE(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) & ~WS_VISIBLE)
 #define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
@@ -1385,7 +1370,7 @@ void XExtTextArea::setWideText( const wchar_t *txt ) {
 }
 void XExtTextArea::createWnd() {
 	XExtComponent::createWnd();
-	mVerBarNode = new XmlNode("ScrollBar", mNode);
+	mVerBarNode = new XmlNode("ExtVerScrollBar", mNode);
 	mVerBar = new XExtScrollBar(mVerBarNode, false);
 	mVerBarNode->setComponent(mVerBar);
 	mVerBar->createWnd();
@@ -1661,7 +1646,10 @@ void XExtList::onMeasure( int widthSpec, int heightSpec ) {
 }
 void XExtList::onLayout( int width, int height ) {
 	if (mModel == NULL) return;
+	int THUMB_SIZE = 10;
+	mHorBar->onMeasure(mHorBar->getPage()|MS_FIX, THUMB_SIZE|MS_FIX);
 	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
+	mVerBar->onMeasure(THUMB_SIZE|MS_FIX, mVerBar->getPage()|MS_FIX);
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
 }
 void XExtList::drawData( HDC memDc, int x, int y, int w, int h ) {
@@ -1877,8 +1865,8 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mIsMouseMoving = false;
 	mIsMouseLeave = false;
 	mEditNode = new XmlNode("ExtLineEdit", mNode);
-	mPopupNode = new XmlNode(NULL, mNode);
-	mListNode = new XmlNode(NULL, mPopupNode);
+	mPopupNode = new XmlNode("ExtPopup", mNode);
+	mListNode = new XmlNode("ExtList", mPopupNode);
 	mEdit = new XExtLineEdit(mEditNode);
 	mPopup = new XExtPopup(mPopupNode);
 	// mPopup->setBgColor(RGB(0xF5, 0xFF, 0xFA));
@@ -1900,15 +1888,6 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mStateImages[STATE_IMG_PUSH] = XImage::load(mNode->getAttrValue("pushImage"));
 	mBoxRender = NULL;
 	mPoupShow = false;
-
-	XImage *track = XImage::load(mNode->getAttrValue("hbarTrack"));
-	XImage *thumb = XImage::load(mNode->getAttrValue("hbarThumb"));
-	if (track != NULL && thumb != NULL)
-		mList->getHorBar()->setImages(track, thumb);
-	track = XImage::load(mNode->getAttrValue("vbarTrack"));
-	thumb = XImage::load(mNode->getAttrValue("vbarThumb"));
-	if (track != NULL && thumb != NULL) 
-		mList->getVerBar()->setImages(track, thumb);
 	mSelectItem = -1;
 }
 bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
