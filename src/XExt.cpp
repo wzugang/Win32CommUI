@@ -377,11 +377,6 @@ XExtScrollBar::XExtScrollBar( XmlNode *node, bool horizontal ) : XExtComponent(n
 	mHorizontal = horizontal;
 	memset(&mThumbRect, 0, sizeof(mThumbRect));
 	mTrack = mThumb = NULL;
-	if (horizontal) {
-		mThumbRect.bottom = 10;
-	} else {
-		mThumbRect.right = 10;
-	}
 	mPos = 0;
 	mMax = 0;
 	mPage = 0;
@@ -393,11 +388,6 @@ XExtScrollBar::XExtScrollBar(XmlNode *node) : XExtComponent(node) {
 	mTrack = XImage::load(mNode->getAttrValue("track"));
 	mThumb = XImage::load(mNode->getAttrValue("thumb"));
 	mHorizontal = AttrUtils::parseBool(mNode->getAttrValue("hor"));
-	if (mHorizontal) {
-		mThumbRect.bottom = 10;
-	} else {
-		mThumbRect.right = 10;
-	}
 	mPos = 0;
 	mMax = 0;
 	mPage = 0;
@@ -411,21 +401,17 @@ bool XExtScrollBar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *re
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(mWnd, &ps);
 		HDC memDc = CreateCompatibleDC(dc);
-		HDC memBufDc = CreateCompatibleDC(dc);
 		if (mMemBuffer == NULL) mMemBuffer = XImage::create(mWidth, mHeight);
-		SelectObject(memBufDc, mMemBuffer->getHBitmap());
+		SelectObject(memDc, mMemBuffer->getHBitmap());
 		if (mTrack != NULL) {
-			SelectObject(memDc, mTrack->getHBitmap());
-			StretchBlt(memBufDc, 0, 0, mWidth, mHeight, memDc, 0, 0, mTrack->getWidth(), mTrack->getHeight(), SRCCOPY);
+			mTrack->draw(memDc, 0, 0, mWidth, mHeight);
 		}
 		if (mThumb != NULL) {
-			SelectObject(memDc, mThumb->getHBitmap());
-			StretchBlt(memBufDc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
-				mThumbRect.bottom - mThumbRect.top, memDc, 0, 0, mThumb->getWidth(), mThumb->getHeight(), SRCCOPY);
+			mThumb->draw(memDc, mThumbRect.left, mThumbRect.top, mThumbRect.right - mThumbRect.left, 
+				mThumbRect.bottom - mThumbRect.top);
 		}
-		BitBlt(dc, 0, 0, mWidth, mHeight, memBufDc, 0, 0, SRCCOPY);
+		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
 		DeleteObject(memDc);
-		DeleteObject(memBufDc);
 		EndPaint(mWnd, &ps);
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
@@ -533,6 +519,15 @@ void XExtScrollBar::setImages( XImage *track, XImage *thumb ) {
 	mTrack = track;
 	mThumb = thumb;
 }
+void XExtScrollBar::onLayout(int w, int h) {
+	XExtComponent::onLayout(w, h);
+	if (mHorizontal) {
+		mThumbRect.bottom = h;
+	} else {
+		mThumbRect.right = w;
+	}
+}
+
 XExtScroll::XExtScroll( XmlNode *node ) : XExtComponent(node) {
 	mHorNode = new XmlNode(NULL, mNode);
 	mVerNode = new XmlNode(NULL, mNode);

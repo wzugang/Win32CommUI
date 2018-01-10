@@ -102,6 +102,7 @@ public:
 	void setImages(XImage *track, XImage *thumb);
 	bool isNeedShow();
 	int getThumbSize();
+	virtual void onLayout(int w, int h);
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void calcThumbInfo();
