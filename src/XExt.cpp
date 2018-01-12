@@ -1491,7 +1491,8 @@ SIZE XExtTextArea::getClientSize() {
 		hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 	}
 	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	SIZE sz = {clientWidth - mAttrPadding[0] - mAttrPadding[2], mMesureHeight};
+	SIZE sz = {clientWidth - mAttrPadding[0] - mAttrPadding[2], 
+		mMesureHeight - mAttrPadding[1] - mAttrPadding[3]};
 	return sz;
 }
 HWND XExtTextArea::getBindWnd() {

@@ -2,10 +2,21 @@
 #include <stdlib.h>
 
 XAreaText::XAreaText() : mWideText(NULL), mWideTextCapacity(0), mWideTextLen(0),
-	mHorAlign(ALIGN_LEFT), mVerAlign(ALIGN_VCENTER),
 	mTextWidth(0), mTextHeight(0), mLineHeight(0), mCharWidth(0),
 	mAutoNewLine(false), mLines(NULL), mLinesCapacity(0), mLinesNum(0),
-	mGbkText(NULL), mGbkTextLen(0), mNeedRebuildLines(true), mAlignChanged(true) {
+	mGbkText(NULL), mGbkTextLen(0), mNeedRebuildLines(true) {
+}
+int XAreaText::getLineNum() {
+	return mLinesNum;
+}
+int XAreaText::getLineHeight() {
+	return mLineHeight;
+}
+XAreaText::LineInfo *XAreaText::getLineInfo(int line) {
+	if (line >= 0 && line < mLinesNum) {
+		return &mLines[line];
+	}
+	return NULL;
 }
 char * XAreaText::getText() {
 	if (mWideText == NULL) {
@@ -100,24 +111,6 @@ void XAreaText::calcFontInfo() {
 	mLineHeight = sz.cy + 4; // 4 is line height padding
 	mCharWidth = sz.cx;
 }
-void XAreaText::setHorAlign( HorAlign align ) {
-	if (mHorAlign != align) {
-		mAlignChanged = true;
-	}
-	mHorAlign = align;
-}
-void XAreaText::setVerAlign( VerAlign align ) {
-	if (mVerAlign != align) {
-		mAlignChanged = true;
-	}
-	mVerAlign = align;
-}
-XAreaText::HorAlign XAreaText::getHorAlign() {
-	return mHorAlign;
-}
-XAreaText::VerAlign XAreaText::getVerAlign() {
-	return mVerAlign;
-}
 bool XAreaText::isAutoNewLine() {
 	return mAutoNewLine;
 }
@@ -142,11 +135,7 @@ void XAreaText::buildLines() {
 		mTextWidth = w;
 		mTextHeight = mLinesNum * mLineHeight;
 	}
-	if (mNeedRebuildLines || mAlignChanged) {
-		applyAlign();
-	}
 	mNeedRebuildLines = false;
-	mAlignChanged = false;
 }
 void XAreaText::buildLinesWrap() {
 	wchar_t *p = mWideText;
@@ -301,10 +290,6 @@ void XAreaText::tryIncLineSpace() {
 		if (mLinesCapacity == 0) mLinesCapacity = 10;
 		mLines = (LineInfo *)realloc(mLines, sizeof(LineInfo) * mLinesCapacity);
 	}
-}
-
-void XAreaText::applyAlign() {
-	// TODO:
 }
 XAreaText::~XAreaText() {
 	if (mLines) free(mLines);
