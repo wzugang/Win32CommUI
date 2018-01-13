@@ -121,21 +121,22 @@ void XAreaText::setAutoNewLine(bool a) {
 	mAutoNewLine = a;
 }
 void XAreaText::buildLines() {
-	if (mNeedRebuildLines) {
-		calcFontInfo();
-		if (mAutoNewLine) {
-			buildLinesWrap();
-		} else {
-			buildLinesNoWrap();
-		}
-		int w = 0;
-		for (int i = 0; i < mLinesNum; ++i) {
-			w = max(w, mLines[i].mTextWidth);
-		}
-		mTextWidth = w;
-		mTextHeight = mLinesNum * mLineHeight;
+	if (! mNeedRebuildLines) {
+		return;
 	}
 	mNeedRebuildLines = false;
+	mTextWidth = 0;
+	mTextHeight = 0;
+	calcFontInfo();
+	if (mAutoNewLine) {
+		buildLinesWrap();
+	} else {
+		buildLinesNoWrap();
+	}
+	for (int i = 0; i < mLinesNum; ++i) {
+		mTextWidth = max(mTextWidth, mLines[i].mTextWidth);
+	}
+	mTextHeight = mLinesNum * mLineHeight;
 }
 void XAreaText::buildLinesWrap() {
 	wchar_t *p = mWideText;

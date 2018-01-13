@@ -36,7 +36,7 @@
 	<ExtLabel text="" />
 	
 	<ExtButton text="" normalImage="file://xx.bmp [x y w h]" hoverImage="" pushImage="" disableImage=""/>
-	<ExtArrowButton arrowPushImage="" arrowHoverImage="" arrowWidth="w"/>  继承自ExtButton;
+	<ExtArrowButton arrowPushImage="" arrowHoverImage="" arrowWidth="w"/>  继承自ExtButton
 	<ExtIconButton iconRect="x y w h" textRect="x y w h" icon="" /> 继承自ExtButton; iconRect和textRect都是减去padding之后的值
 	<ExtOption   selectImage=""/>  继承自ExtButton
 	<ExtCheckBox selectImage="" /> 继承自ExtButton
@@ -47,17 +47,17 @@
 	
 	<ExtVerScrollBar track="" thumb="" />
 	<ExtHorScrollBar track="" thumb="" />
-	<ExtScroll vbarTrack="" vbarThumb="" hbarTrack="" hbarThumb=""  />
+	<ExtScroll />
 	<ExtTable selRowBgColor="#rrggbb" lineColor="#rrggbb" />  继承自ExtScroll
 	<ExtList selBgColor="#rrggbb" />   继承自ExtScroll
 	<ExtTree selBgColor="#rrggbb" lineColor="" checkBoxColor=""  />  继承自ExtScroll
 	
-	<ExtEdit  readOnly="true" enableBorder="true" borderColor="#rrggbb" focusBorderColor="#rrggbb" />
+	<ExtEdit  readOnly="true"  />
 	<ExtMaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 ExtEdit 
 	<ExtPassword  />  继承自 ExtEdit 
 	<ExtTextArea lineHeight="30" vbarTrack="" vbarThumb="" />  继承自 ExtEdit
 	
-	<ExtComboBox readOnly="true" arrowWidth="w"  popupSize="w h" normalImage="" hoverImage="" pushImage="" vbarTrack="" vbarThumb="" />  readOnly:编辑框只读
+	<ExtComboBox readOnly="true" arrowWidth="w"  popupSize="w h" normalImage="" hoverImage="" pushImage=""  />  readOnly:编辑框只读
 	
 	<ExtCalendar />
 	<ExtDatePicker readOnly="true" arrowSize="w h"  popupSize="w h" arrowNormal="" arrowDown="" />
