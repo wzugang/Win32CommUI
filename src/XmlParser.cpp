@@ -747,6 +747,9 @@ int AttrUtils::parseInt(const char *str) {
 }
 
 void AttrUtils::parseArrayInt(const char *str, int *arr, int arrNum) {
+	if (str == NULL) {
+		return;
+	}
 	for (int i = 0; i < arrNum; ++i) {
 		while (*str == ' ') ++str;
 		arr[i] = parseInt(str);

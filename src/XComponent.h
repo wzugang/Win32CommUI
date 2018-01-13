@@ -100,9 +100,6 @@ protected:
 	friend class UIFactory;
 };
 
-
-
-// only has one child
 class XWindow : public XComponent {
 public:
 	XWindow(XmlNode *node);

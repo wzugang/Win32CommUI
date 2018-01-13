@@ -489,6 +489,11 @@ static XComponent *XExtMaskEdit_Creator(XmlNode *n) {return new XExtMaskEdit(n);
 static XComponent *XExtPassword_Creator(XmlNode *n) {return new XExtPassword(n);}
 static XComponent *XExtDatePicker_Creator(XmlNode *n) {return new XExtDatePicker(n);}
 
+static XComponent *XExtWindow_Creator(XmlNode *n) {
+	return new XExtWindow(n);
+}
+static XComponent *XExtDialog_Creator(XmlNode *n) {return new XDialog(n);}
+
 void UIFactory::init() {
 	// INITCOMMONCONTROLSEX cc = {0};
 	// cc.dwSize = sizeof(cc);
@@ -522,4 +527,7 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtMaskEdit", XExtMaskEdit_Creator);
 	UIFactory::registCreator("ExtPassword", XExtPassword_Creator);
 	UIFactory::registCreator("ExtDatePicker", XExtDatePicker_Creator);
+
+	UIFactory::registCreator("ExtWindow", XExtWindow_Creator);
+	UIFactory::registCreator("ExtDialog", XDialog_Creator);
 }

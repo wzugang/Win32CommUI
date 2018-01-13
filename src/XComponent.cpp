@@ -455,7 +455,9 @@ void XWindow::onLayout(int width, int height) {
 	GetClientRect(mWnd, &r);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		child->layout(0, 0, r.right, r.bottom);
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
 

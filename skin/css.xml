@@ -30,6 +30,7 @@
 	<VLineLayout />
 	<Window text="" />
 	<Dialog text="" />
+	<ExtWindow border="left top right bottom" />  继承自Window
 	
 	<include src="file://abc.xml | res://abc " part="part-name" />  当src为null时，表示在当前文件中
 	

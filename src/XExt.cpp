@@ -51,10 +51,11 @@ void XExtComponent::eraseBackground(HDC dc) {
 		ReleaseDC(parent, dc);
 	}
 	if (mAttrFlags & AF_BG_COLOR) {
-		HBRUSH brush = CreateSolidBrush(mAttrBgColor);
+		if (mBgColorBrush == NULL) {
+			mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+		}
 		RECT rc = {0, 0, mWidth, mHeight};
-		FillRect(dc, &rc, brush);
-		DeleteObject(brush);
+		FillRect(dc, &rc, mBgColorBrush);
 	}
 	XImage *bg = mBgImageForParnet != NULL ? mBgImageForParnet : mBgImage;
 	if (bg != NULL) {
@@ -3697,4 +3698,48 @@ void XVLineLayout::onLayout( int width, int height ) {
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
 		y += child->getMesureHeight() + child->getAttrMargin()[3];
 	}
+}
+//---------------XExtWindow------------------------------
+XExtWindow::XExtWindow( XmlNode *node ) : XWindow(node) {
+	strcpy(mClassName, "XExtWindow");
+	memset(mBorders, 0, sizeof(mBorders));
+	AttrUtils::parseArrayInt(mNode->getAttrValue("border"), mBorders, 4);
+	mSizable = AttrUtils::parseBool(mNode->getAttrValue("sizable"));
+}
+void XExtWindow::createWnd() {
+	MyRegisterClass(mInstance, mClassName);
+	// mID = generateWndId();  // has no id
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP,
+		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	applyAttrs();
+}
+bool XExtWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
+	if (msg == WM_ERASEBKGND) {
+		return true;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		// draw border
+		if (mBgImage != NULL) {
+			mBgImage->draw(dc, 0, 0, mWidth, mHeight);
+		} else if (mAttrFlags & AF_BG_COLOR) {
+			RECT r = {0, 0, mWidth, mHeight};
+			if (mBgColorBrush == NULL) {
+				mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+			}
+			FillRect(dc, &r, mBgColorBrush);
+		}
+		EndPaint(mWnd, &ps);
+	} else if (msg == WM_MOUSEMOVE) {
+		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
+		if (! mSizable) {
+			return true;
+		}
+		if (pt.x < mBorders[0]) {
+
+		}
+	}
+	
+	return XWindow::wndProc(msg, wParam, lParam, result);
 }
