@@ -194,6 +194,7 @@ void XAreaText::buildLinesNoWrap() {
 	SIZE sz;
 	mLinesNum = 0;
 	HDC hdc = GetDC(getBindWnd());
+	SelectObject(hdc, getTextFont());
 	for (int i = 0; i < mWideTextLen; i++, ++p) {
 		if (*p != '\n') continue;
 		bool hasR = i > 0 && p[-1] == '\r';
@@ -208,6 +209,7 @@ void XAreaText::buildLinesNoWrap() {
 	if (p > ps) {
 		addLine(hdc, ps, p - ps);
 	}
+	ReleaseDC(getBindWnd(), hdc);
 }
 int XAreaText::getPosAt( int x, int y ) {
 	if (mLinesNum <= 0 || mLineHeight <= 0) {
