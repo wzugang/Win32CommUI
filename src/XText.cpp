@@ -121,7 +121,7 @@ void XAreaText::setAutoNewLine(bool a) {
 	mAutoNewLine = a;
 }
 void XAreaText::buildLines() {
-	if (! mNeedRebuildLines) {
+	if (! mNeedRebuildLines || getBindWnd() == NULL) {
 		return;
 	}
 	mNeedRebuildLines = false;
