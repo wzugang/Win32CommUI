@@ -22,6 +22,7 @@ public:
 	virtual void insertText(int pos, wchar_t *txt, int len);
 	virtual void insertText(int pos, char *txt);
 	virtual int deleteText(int pos, int len);
+	virtual int getWideTextLength();
 
 	virtual void setTextFont(HFONT font);
 	virtual HFONT getTextFont() = 0;

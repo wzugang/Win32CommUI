@@ -350,5 +350,8 @@ int XAreaText::getYAtLine( int lineNo ) {
 	}
 	return y;;
 }
+int XAreaText::getWideTextLength() {
+	return mWideTextLen;
+}
 
 
