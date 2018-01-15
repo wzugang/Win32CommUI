@@ -278,6 +278,7 @@ public:
 		char *mText;
 		bool mSelectable;
 		bool mSelected;
+		void *mUsrData;
 	};
 	virtual int getItemCount() = 0;
 	virtual int getItemHeight(int item) = 0;
@@ -343,6 +344,7 @@ public:
 	XExtList *getExtList();
 	void setBoxRender(BoxRender *r);
 	int getSelectItem();
+	void setSelectItem(int idx);
 	virtual ~XExtComboBox();
 
 	virtual bool onEvent(XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);

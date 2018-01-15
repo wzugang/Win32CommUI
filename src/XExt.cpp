@@ -1909,6 +1909,7 @@ bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPAR
 		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
+		SendMessage(mWnd, WM_EXT_COMBOBOX_CLICK_ITEM, wParam, lParam);
 		return true;
 	} else if (msg == WM_EXT_POPUP_CLOSED) {
 		mPoupShow = false;
@@ -2064,6 +2065,10 @@ XExtComboBox::StateImage XExtComboBox::getStateImage() {
 }
 int XExtComboBox::getSelectItem() {
 	return mSelectItem;
+}
+void XExtComboBox::setSelectItem(int idx) {
+	mSelectItem = idx;
+	InvalidateRect(mWnd, NULL, TRUE);
 }
 XExtComboBox::~XExtComboBox() {
 	delete mEdit;
