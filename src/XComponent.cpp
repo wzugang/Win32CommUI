@@ -288,6 +288,11 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 			*res = SendMessage(nmh->hwndFrom, WM_NOTIFY_SELF, wParam, lParam);
 			return true;
 		}
+	} else if (msg == WM_SETCURSOR) {
+		// every time mouse move will go here
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
+		*res = FALSE;
+		return true;
 	}
 	return false;
 }
