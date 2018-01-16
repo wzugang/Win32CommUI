@@ -23,6 +23,13 @@ protected:
 	bool mEnableMemBuffer;
 };
 
+class XExtEmptyComponent : public XExtComponent {
+public:
+	XExtEmptyComponent(XmlNode *node);
+protected:
+	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+};
+
 class XExtLabel : public XExtComponent {
 public:
 	XExtLabel(XmlNode *node);
@@ -78,7 +85,7 @@ protected:
 	void unselectOthers();
 };
 
-class XExtIconButton : public XExtButton {
+class XExtIconButton : public XExtOption {
 public:
 	XExtIconButton(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);

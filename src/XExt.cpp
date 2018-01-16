@@ -75,7 +75,20 @@ XExtComponent::~XExtComponent() {
 void XExtComponent::setEnableFocus( bool enable ) {
 	mEnableFocus = enable;
 }
-
+//------------------XExtEmptyComponent---------------------------------
+XExtEmptyComponent::XExtEmptyComponent(XmlNode *node) : XExtComponent(node) {
+}
+bool XExtEmptyComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
+	if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		BeginPaint(mWnd, &ps);
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_ERASEBKGND) {
+		return true;
+	}
+	return XExtComponent::wndProc(msg, wParam, lParam, result);
+}
 //--------------------XExtLabel-------------------------------------
 XExtLabel::XExtLabel( XmlNode *node ) : XExtComponent(node) {
 	mText = mNode->getAttrValue("text");
@@ -328,7 +341,7 @@ void XExtRadio::unselectOthers() {
 	}
 }
 //-----------------------XExtIconButton----------------------------
-XExtIconButton::XExtIconButton(XmlNode *node) : XExtButton(node) {
+XExtIconButton::XExtIconButton(XmlNode *node) : XExtOption(node) {
 	memset(mAttrIconRect, 0, sizeof(mAttrIconRect));
 	memset(mAttrTextRect, 0, sizeof(mAttrTextRect));
 	AttrUtils::parseArraySize(mNode->getAttrValue("iconRect"), mAttrIconRect, 4);
@@ -357,7 +370,7 @@ bool XExtIconButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *re
 		EndPaint(mWnd, &ps);
 		return true;
 	}
-	return XExtButton::wndProc(msg, wParam, lParam, result);
+	return XExtOption::wndProc(msg, wParam, lParam, result);
 }
 
 RECT XExtIconButton::getRectBy(int *attr) {

@@ -38,8 +38,8 @@
 	
 	<ExtButton text="" normalImage="file://xx.bmp [x y w h]" hoverImage="" pushImage="" disableImage=""/>
 	<ExtArrowButton arrowPushImage="" arrowHoverImage="" arrowWidth="w"/>  继承自ExtButton
-	<ExtIconButton iconRect="x y w h" textRect="x y w h" icon="" /> 继承自ExtButton; iconRect和textRect都是减去padding之后的值
-	<ExtOption   selectImage=""/>  继承自ExtButton
+	<ExtOption  selectImage="" autoSelect="true|false" />  继承自ExtButton
+	<ExtIconButton iconRect="x y w h" textRect="x y w h" icon="" /> 继承自ExtOption; iconRect和textRect都是减去padding之后的值
 	<ExtCheckBox selectImage="" /> 继承自ExtButton
 	<ExtRadio  group="group-name" selectImage=""/> 继承自ExtButton
 	                   group-name 有相同名称的分组，选中一个，其它的会自动不选;(必须在同一个父结点中)

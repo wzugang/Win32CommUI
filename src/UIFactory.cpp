@@ -458,6 +458,7 @@ XExtTreeNode* UIFactory::fastTree(const char *resPath, const char *partName) {
 	return cc;
 }
 
+static XComponent *XExtEmptyComponent_Creator(XmlNode *n) {return new XExtEmptyComponent(n);}
 static XComponent *XAbsLayout_Creator(XmlNode *n) {return new XAbsLayout(n);}
 static XComponent *XHLineLayout_Creator(XmlNode *n) {return new XHLineLayout(n);}
 static XComponent *XVLineLayout_Creator(XmlNode *n) {return new XVLineLayout(n);}
@@ -498,7 +499,7 @@ void UIFactory::init() {
 	// INITCOMMONCONTROLSEX cc = {0};
 	// cc.dwSize = sizeof(cc);
 	// InitCommonControlsEx(&cc);
-
+	UIFactory::registCreator("ExtEmpty", XExtEmptyComponent_Creator);
 	UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
 	UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
 	UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
