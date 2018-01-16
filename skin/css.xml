@@ -28,7 +28,7 @@
 	<AbsLayout />
 	<HLineLayout />
 	<VLineLayout />
-	<Window text="" />
+	<Window text="" icon="file://xxx.ico | res://xab | xbin://abc.ico"/>
 	<Dialog text="" />
 	<ExtWindow border="left top right bottom" />  继承自Window
 	

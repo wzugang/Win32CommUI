@@ -21,6 +21,8 @@ public:
 	void *getRowBits(int row);
 	bool hasAlphaChannel();
 	void draw(HDC dc, int destX, int destY, int destW, int destH);
+
+	static HICON loadIcon(const char *resPath);
 	~XImage();
 	bool mRepeatX;
 	bool mRepeatY;

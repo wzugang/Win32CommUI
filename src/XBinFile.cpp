@@ -107,7 +107,7 @@ static void WriteData(std::string path, FILE *f, int *num) {
 	fwrite(zero, 2, 1, f);
 	delete[] cnt;
 	*num = *num + 1;
-	printf("Write %d:  %s : %d \n", *num, path.c_str(), len);
+	// printf("Write %d:  %s : %d \n", *num, path.c_str(), len);
 }
 
 static void TraceDir(std::string path, FILE *f, int *num) {

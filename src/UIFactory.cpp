@@ -317,6 +317,33 @@ void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC
 		BitBlt(dc, destX, destY, min(destW, mWidth), min(destH, mHeight), memDc, 0, 0, SRCCOPY);
 	}
 }
+
+HICON XImage::loadIcon( const char *resPath ) {
+	ResPath info;
+	if (! info.parse(resPath)) {
+		return NULL;
+	}
+	CImage cimg;
+	if (info.mResType == ResPath::RT_FILE) {
+		cimg.Load(info.mPath);
+	} else if (info.mResType == ResPath::RT_XBIN) {
+		int len = 0;
+		void *data = XBinFile::getInstance()->find(info.mPath, &len);
+		HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
+		BYTE* pmem = (BYTE*)GlobalLock(m_hMem);
+		memcpy(pmem, data, len);
+		IStream* pstm = NULL;
+		CreateStreamOnHGlobal(m_hMem, FALSE, &pstm);
+		cimg.Load(pstm);
+		GlobalUnlock(m_hMem);
+		pstm->Release();
+	} else {
+		cimg.LoadFromResource(XComponent::getInstance(), info.mPath);
+	}
+	// HBITMAP bp = cimg; // cimg.operator HBITMAP();
+	return (HICON)cimg.Detach();
+}
+
 //----------------------------UIFactory-------------------------
 struct NodeCreator {
 	NodeCreator() {

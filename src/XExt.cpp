@@ -3731,6 +3731,7 @@ void XExtWindow::createWnd() {
 		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
+	applyIcon();
 }
 bool XExtWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
 	if (msg == WM_ERASEBKGND) {

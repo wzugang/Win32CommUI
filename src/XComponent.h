@@ -111,6 +111,7 @@ protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
+	virtual void applyIcon();
 };
 
 // only has one child

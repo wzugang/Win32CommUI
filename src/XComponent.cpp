@@ -408,6 +408,7 @@ void XWindow::createWnd() {
 		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
+	applyIcon();
 }
 
 bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
@@ -463,6 +464,14 @@ void XWindow::onLayout(int width, int height) {
 		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
 		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
 		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
+}
+
+void XWindow::applyIcon() {
+	HICON ico = XImage::loadIcon(mNode->getAttrValue("icon"));
+	if (ico != NULL) {
+		SendMessage(mWnd, WM_SETICON, ICON_BIG, (LPARAM)ico);
+		SendMessage(mWnd, WM_SETICON, ICON_SMALL, (LPARAM)ico);
 	}
 }
 
