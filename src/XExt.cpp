@@ -1820,7 +1820,7 @@ bool XExtArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *r
 		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
 		RECT r = {0, 0, mWidth, mHeight};
 		if (md && PtInRect(&r, pt)) {
-			SendMessage(mWnd, MSG_COMMAND, 0, 0);
+			SendMessage(mWnd, MSG_COMMAND, mMouseAtArrow, 0);
 		}
 		return true;
 	} else if (msg == WM_MOUSEMOVE) {

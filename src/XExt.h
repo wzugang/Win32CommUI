@@ -327,6 +327,7 @@ protected:
 
 class XExtArrowButton : public XExtButton {
 public:
+	// when click, send MSG_COMMAND, wParam is true means click at arrow
 	XExtArrowButton(XmlNode *node);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual StateImage getStateImage();
