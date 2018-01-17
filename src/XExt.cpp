@@ -3708,6 +3708,7 @@ void XVLineLayout::onLayout( int width, int height ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		int x = calcSize(child->getAttrX(), (width - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST);
+		x += mAttrPadding[0];
 		y += child->getAttrMargin()[1];
 		if (child->getAttrWeight() > 0 && perWeight > 0) {
 			int nh = child->getMesureHeight() + child->getAttrWeight() * perWeight;
