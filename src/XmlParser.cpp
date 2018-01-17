@@ -799,8 +799,10 @@ std::vector<char*> AttrUtils::splitBy( char *data, char splitChar) {
 	return arr;
 }
 
-bool AttrUtils::parseBool( char *str ) {
-	if (str == NULL) return false;
+bool AttrUtils::parseBool( char *str, bool valueForNULL) {
+	if (str == NULL) {
+		return valueForNULL;
+	}
 	return strcmp(str, "true") == 0;
 }
 

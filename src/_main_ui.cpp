@@ -22,7 +22,7 @@ public:
 		int rt = 0;
 		char *id = evtSource->getNode()->getAttrValue("id");
 
-		if (msg != XComponent::WM_COMMAND_SELF && msg != WM_COMMAND) {
+		if (msg != XComponent::MSG_COMMAND && msg != WM_COMMAND) {
 			return false;
 		}
 		if (strcmp("btn_1", id) == 0) {

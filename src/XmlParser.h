@@ -133,5 +133,5 @@ public:
 	static void parseArrayInt(const char *str, int *arr, int arrNum);
 	static bool parseColor(const char *color, COLORREF *colorOut);
 	static std::vector<char*> splitBy( char *data, char splitChar);
-	static bool parseBool(char *str);
+	static bool parseBool(char *str, bool valueForNULL = false);
 };

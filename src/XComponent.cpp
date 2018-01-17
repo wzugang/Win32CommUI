@@ -56,9 +56,9 @@ LRESULT CALLBACK XComponent::__WndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM
 		switch (msg) {
 		case WM_MOUSEWHEEL:
 		case WM_MOUSEHWHEEL:
-			bmsg = WM_MOUSEWHEEL_BUBBLE;break;
+			bmsg = MSG_MOUSEWHEEL_BUBBLE;break;
 		case WM_LBUTTONDOWN:
-			bmsg = WM_LBUTTONDOWN_BUBBLE;break;
+			bmsg = MSG_LBUTTONDOWN_BUBBLE;break;
 		}
 		bubbleMsg(bmsg, wParam, lParam, &ret);
 		return ret;
@@ -278,14 +278,14 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
-			*res = SendMessage((HWND)lParam, WM_COMMAND_SELF, 0, 0);
+			*res = SendMessage((HWND)lParam, MSG_COMMAND, 0, 0);
 			return true;
 		}
 	} else if (msg == WM_NOTIFY && lParam != 0) {
 		NMHDR *nmh = (NMHDR*)lParam;
 		XComponent *c = getChildById(nmh->idFrom);
 		if (c != NULL) {
-			*res = SendMessage(nmh->hwndFrom, WM_NOTIFY_SELF, wParam, lParam);
+			*res = SendMessage(nmh->hwndFrom, MSG_NOTIFY, wParam, lParam);
 			return true;
 		}
 	} else if (msg == WM_SETCURSOR) {

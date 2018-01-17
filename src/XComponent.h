@@ -26,19 +26,19 @@ public:
 		AF_COLOR = (1 << 0),
 		AF_BG_COLOR = (1 << 1),
 	};
-	enum ReflectWM {
-		WM_COMMAND_SELF = 0x6000,
-		WM_NOTIFY_SELF,
-		WM_MOUSEWHEEL_BUBBLE,
-		WM_LBUTTONDOWN_BUBBLE,
+	enum MSG_ID {
+		MSG_COMMAND = 0x6000,
+		MSG_NOTIFY,
+		MSG_MOUSEWHEEL_BUBBLE,
+		MSG_LBUTTONDOWN_BUBBLE,
 
-		WM_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
-		WM_EXT_COMBOBOX_CLICK_ITEM, // wParam is click item index, my be -1
-		WM_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
-		WM_EXT_CALENDAR_SEL_DATE, // calendar select a date wParam = XExtCalenar::Date pointer
+		MSG_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
+		MSG_EXT_COMBOBOX_CLICK_ITEM, // wParam is click item index, my be -1
+		MSG_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
+		MSG_EXT_CALENDAR_SEL_DATE, // calendar select a date wParam = XExtCalenar::Date pointer
 		
-		WM_EXT_TREE_SEL_CHANGED, // ext tree select node changed; wParam = XExtTreeNode pointer
-		WM_EXT_TREE_CHECK_CHANGED // checkable node checked changed; wParam = XExtTreeNode pointer
+		MSG_EXT_TREE_SEL_CHANGED, // ext tree select node changed; wParam = XExtTreeNode pointer
+		MSG_EXT_TREE_CHECK_CHANGED // checkable node checked changed; wParam = XExtTreeNode pointer
 	};
 	XComponent(XmlNode *node);
 	static HINSTANCE getInstance();

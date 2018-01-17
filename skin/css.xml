@@ -25,6 +25,7 @@
 	<CheckBox .../>
 	<Radio  group = "true" />
 	
+	<ExtComponent enableFocus="true|false" />
 	<AbsLayout />
 	<HLineLayout />
 	<VLineLayout />
