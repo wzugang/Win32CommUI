@@ -15,7 +15,7 @@ extern void MyRegisterClass(HINSTANCE ins, const char *className);
 //--------------------XExtComponent-------------------------------------
 XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mBgImageForParnet = NULL;
-	mEnableFocus = AttrUtils::parseBool(mNode->getAttrValue("enableFocus"), true);
+	mEnableFocus = AttrUtils::parseBool(mNode->getAttrValue("enableFocus"), false);
 	mMemBuffer = NULL;
 	mEnableMemBuffer = false;
 }
@@ -1046,6 +1046,7 @@ XExtTable::~XExtTable() {
 }
 //----------------------------XExtTextArea---------------------
 XExtTextArea::XExtTextArea( XmlNode *node ) : XExtComponent(node) {
+	mEnableFocus = AttrUtils::parseBool(mNode->getAttrValue("enableFocus"), true);
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
 	mReadOnly = AttrUtils::parseBool(mNode->getAttrValue("readOnly"));
