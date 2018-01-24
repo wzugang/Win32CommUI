@@ -3729,7 +3729,7 @@ XExtWindow::XExtWindow( XmlNode *node ) : XWindow(node) {
 void XExtWindow::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId();  // has no id
-	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP,
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP | WS_MINIMIZEBOX | WS_SYSMENU,
 		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
