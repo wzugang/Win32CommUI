@@ -2647,6 +2647,7 @@ static void CalcDataSize(HDC dc, XExtTreeNode *n, int *nodeNum, int *maxWidth, i
 			sztw.cx = 30;
 		}
 		if (n->isCheckable()) sztw.cx += TREE_NODE_BOX + 3;
+		sztw.cx += 6; // 6 is left & right padding 
 		n->setContentWidth(sztw.cx);
 	}
 	int mw = n->getContentWidth() + level * TREE_NODE_HEADER_WIDTH;
@@ -2766,7 +2767,7 @@ void XExtTree::drawNode( HDC dc, XExtTreeNode *n, int level, int clientWidth, in
 	} else {
 		if (n->getText()) {
 			if (mAttrFlags & AF_COLOR) SetTextColor(dc, mAttrColor);
-			DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER);
+			DrawText(dc, n->getText(), strlen(n->getText()), &r, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
 		}
 	}
 	
