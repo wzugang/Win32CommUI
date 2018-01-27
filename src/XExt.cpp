@@ -2097,21 +2097,22 @@ XExtMenuItem::XExtMenuItem(const char *name, char *text) {
 	mName[0] = 0;
 	mText = text;
 	mActive = true;
-	mChildren = NULL;
+	mChild = NULL;
 	mSeparator = false;
 	mVisible = true;
 	mCheckable = false;
 	mChecked = false;
 	if (name) strcpy(mName, name);
 }
-XExtMenuItemList::XExtMenuItemList() {
+XExtMenuModel::XExtMenuModel() {
 	mCount = 0;
 	memset(mItems, 0, sizeof(mItems));
+	mWidth = 150;
 }
-void XExtMenuItemList::add( XExtMenuItem *item ) {
+void XExtMenuModel::add( XExtMenuItem *item ) {
 	insert(mCount, item);
 }
-void XExtMenuItemList::insert( int pos, XExtMenuItem *item ) {
+void XExtMenuModel::insert( int pos, XExtMenuItem *item ) {
 	if (pos < 0 || pos > mCount || item == NULL)
 		return;
 	for (int i = mCount - 1; i >= pos; --i) {
@@ -2120,22 +2121,22 @@ void XExtMenuItemList::insert( int pos, XExtMenuItem *item ) {
 	mItems[pos] = item;
 	++mCount;
 }
-int XExtMenuItemList::getCount() {
+int XExtMenuModel::getCount() {
 	return mCount;
 }
-XExtMenuItem * XExtMenuItemList::get( int idx ) {
+XExtMenuItem * XExtMenuModel::get( int idx ) {
 	if (idx >= 0 && idx < mCount)
 		return mItems[idx];
 	return NULL;
 }
-XExtMenuItemList::~XExtMenuItemList() {
+XExtMenuModel::~XExtMenuModel() {
 	for (int i = 0; i < mCount; ++i) {
 		delete mItems[i];
 	}
 	free(mItems);
 }
 
-XExtMenuItem * XExtMenuItemList::findByName( const char *name ) {
+XExtMenuItem * XExtMenuModel::findByName( const char *name ) {
 	if (name == NULL)
 		return NULL;
 	for (int i = 0; i < mCount; ++i) {
@@ -2143,21 +2144,33 @@ XExtMenuItem * XExtMenuItemList::findByName( const char *name ) {
 		if (strcmp(name, item->mName) == 0) {
 			return item;
 		}
-		if (item->mChildren != NULL) {
-			item = item->mChildren->findByName(name);
+		if (item->mChild != NULL) {
+			item = item->mChild->findByName(name);
 			if (item != NULL) return item;
 		}
 	}
 	return NULL;
 }
 
-static const int MENU_ITEM_HEIGHT = 30;
-static const int MENU_SEPARATOR_HEIGHT = 6;
+int XExtMenuModel::getItemHeight(int pos) {
+	if (pos < 0 || pos >= mCount) {
+		return 0;
+	}
+	if (mItems[pos]->mSeparator) {
+		return 5;
+	}
+	return 25;
+}
+
+int XExtMenuModel::getWidth() {
+	return mWidth;
+}
+
 XExtMenu::XExtMenu( XmlNode *node, XExtMenuManager *mgr) : XExtComponent(node) {
 	strcpy(mClassName, "XExtMenu");
 	mManager = mgr;
 	mSelectItem = -1;
-	mMenuList = NULL;
+	mModel = NULL;
 	mAttrFlags |= AF_BG_COLOR;
 	mAttrBgColor = RGB(0xfa, 0xfa, 0xfa);
 	mSeparatorPen = CreatePen(PS_SOLID, 1, RGB(0xcc, 0xcc, 0xcc));
@@ -2186,11 +2199,11 @@ bool XExtMenu::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 		}
 		int idx = getItemIndexAt(x, y);
 		if (idx < 0) return true;
-		XExtMenuItem *item = mMenuList->get(idx);
+		XExtMenuItem *item = mModel->get(idx);
 		if (item == NULL) return true;
 		if (item->mSeparator) return true;
 		if (! item->mActive) return true;
-		if (item->mChildren && item->mChildren->getCount() > 0) return true;
+		if (item->mChild && item->mChild->getCount() > 0) return true;
 		if (item->mCheckable) item->mChecked = !item->mChecked;
 		// send click menu item msg
 		mManager->notifyItemClicked(item);
@@ -2208,46 +2221,46 @@ bool XExtMenu::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 		int x = (short)(LOWORD(lParam)), y = (short)(HIWORD(lParam));
 		int old = mSelectItem;
 		mSelectItem = getItemIndexAt(x, y);
-		if (old == mSelectItem || mMenuList == NULL)
+		if (old == mSelectItem || mModel == NULL)
 			return true;
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
-		XExtMenuItem *oldItem = mMenuList->get(old);
-		XExtMenuItem *item = mMenuList->get(mSelectItem);
-		if (oldItem != NULL && oldItem->mChildren != NULL && oldItem->mChildren->getCount() > 0) {
-			mManager->closeMenu(oldItem->mChildren);
+		XExtMenuItem *oldItem = mModel->get(old);
+		XExtMenuItem *item = mModel->get(mSelectItem);
+		if (oldItem != NULL && oldItem->mChild != NULL && oldItem->mChild->getCount() > 0) {
+			mManager->closeMenu(oldItem->mChild);
 		}
-		if (item && item->mChildren != NULL && item->mChildren->getCount() > 0) {
+		if (item && item->mChild != NULL && item->mChild->getCount() > 0) {
 			// notify to open sub menu
 			RECT r = getItemRect(mSelectItem);
 			POINT pt = {r.right, r.top};
 			ClientToScreen(mWnd, &pt);
-			mManager->openMenu(item->mChildren, pt.x, pt.y);
+			mManager->openMenu(item->mChild, pt.x, pt.y);
 		}
 		return true;
 	}
 	return XExtComponent::wndProc(msg, wParam, lParam, result);
 }
-void XExtMenu::setMenuList( XExtMenuItemList *model ) {
-	mMenuList = model;
+void XExtMenu::setModel( XExtMenuModel *model ) {
+	mModel = model;
 }
 int XExtMenu::getItemIndexAt( int x, int y ) {
 	int h = 0;
-	for (int i = 0; i < mMenuList->getCount(); ++i) {
-		XExtMenuItem *item = mMenuList->get(i);
+	for (int i = 0; i < mModel->getCount(); ++i) {
+		XExtMenuItem *item = mModel->get(i);
 		if (! item->mVisible) continue;
-		h += item->mSeparator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
+		h += mModel->getItemHeight(i);
 		if (h >= y) return i;
 	}
 	return -1;
 }
 void XExtMenu::calcSize() {
-	mMesureWidth = mWidth = 200;
+	mMesureWidth = mWidth = mModel->getWidth();
 	mMesureHeight = mHeight = 0;
-	for (int i = 0; mMenuList && i < mMenuList->getCount(); ++i) {
-		XExtMenuItem *item = mMenuList->get(i);
+	for (int i = 0; mModel && i < mModel->getCount(); ++i) {
+		XExtMenuItem *item = mModel->get(i);
 		if (! item->mVisible) continue;
-		mMesureHeight += item->mSeparator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
+		mMesureHeight += mModel->getItemHeight(i);
 	}
 	if (mMesureHeight == 0) mMesureHeight = 20;
 	mHeight = mMesureHeight;
@@ -2262,10 +2275,10 @@ void XExtMenu::show( int screenX, int screenY ) {
 void XExtMenu::drawItems( HDC dc ) {
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
-	for (int i = 0, h = 0; i < mMenuList->getCount(); ++i) {
-		XExtMenuItem *item = mMenuList->get(i);
+	for (int i = 0, h = 0; i < mModel->getCount(); ++i) {
+		XExtMenuItem *item = mModel->get(i);
 		if (! item->mVisible) continue;
-		int k = item->mSeparator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
+		int k = mModel->getItemHeight(i);
 		if (item->mSeparator) {
 			SelectObject(dc, mSeparatorPen);
 			MoveToEx(dc, 30, h + k / 2 - 1, NULL);
@@ -2281,7 +2294,7 @@ void XExtMenu::drawItems( HDC dc ) {
 				RECT br = {0, h, mWidth, h + k};
 				FillRect(dc, &br, mSelectBrush);
 			}
-			if (item->mChildren != NULL && item->mChildren->getCount() > 0) {
+			if (item->mChild != NULL && item->mChild->getCount() > 0) {
 				// draw arrow
 				static HBRUSH arrowBrush = CreateSolidBrush(RGB(0x55, 0x55, 0x55));
 				int SJ = 5, LW = 15;
@@ -2311,10 +2324,10 @@ void XExtMenu::drawItems( HDC dc ) {
 }
 RECT XExtMenu::getItemRect( int idx ) {
 	RECT r = {0, 0, mWidth, 0};
-	for (int i = 0, h = 0; i < mMenuList->getCount(); ++i) {
-		XExtMenuItem *item = mMenuList->get(i);
+	for (int i = 0, h = 0; i < mModel->getCount(); ++i) {
+		XExtMenuItem *item = mModel->get(i);
 		if (! item->mVisible) continue;
-		int k = item->mSeparator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
+		int k = mModel->getItemHeight(i);
 		if (i == idx) {
 			r.top = h;
 			r.bottom = h + k;
@@ -2330,7 +2343,7 @@ XExtMenu::~XExtMenu() {
 	DeleteObject(mCheckedPen);
 	DestroyWindow(mWnd);
 }
-XExtMenuManager::XExtMenuManager( XExtMenuItemList *mlist, XComponent *owner, ItemListener *listener ) {
+XExtMenuManager::XExtMenuManager( XExtMenuModel *mlist, XComponent *owner, ItemListener *listener ) {
 	mMenuList = mlist;
 	mOwner = owner;
 	mLevel = -1;
@@ -2341,7 +2354,7 @@ void XExtMenuManager::show( int screenX, int screenY ) {
 	if (mMenus[++mLevel] == NULL) {
 		mMenus[mLevel] = new XExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
 	}
-	mMenus[mLevel]->setMenuList(mMenuList);
+	mMenus[mLevel]->setModel(mMenuList);
 	mMenus[mLevel]->show(screenX, screenY);
 	messageLoop();
 }
@@ -2361,7 +2374,9 @@ void XExtMenuManager::messageLoop() {
 			if (idx >= 0) {
 				msg.hwnd = mMenus[idx]->getWnd();
 			}
-		} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
+		} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP 
+			|| msg.message == WM_RBUTTONDOWN || msg.message == WM_RBUTTONUP 
+			|| msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
 			POINT pt;
 			GetCursorPos(&pt);
 			int idx = whereIs(pt.x, pt.y);
@@ -2398,7 +2413,7 @@ void XExtMenuManager::notifyItemClicked( XExtMenuItem *item ) {
 		mListener->onClickItem(item);
 	}
 }
-void XExtMenuManager::closeMenu( XExtMenuItemList *mlist ) {
+void XExtMenuManager::closeMenu( XExtMenuModel *mlist ) {
 	for (int i = 0; i <= mLevel; ++i) {
 		if (mMenus[i]->getMenuList() == mlist) {
 			closeMenuTo(i - 1);
@@ -2406,11 +2421,11 @@ void XExtMenuManager::closeMenu( XExtMenuItemList *mlist ) {
 		}
 	}
 }
-void XExtMenuManager::openMenu( XExtMenuItemList *mlist, int x, int y ) {
+void XExtMenuManager::openMenu( XExtMenuModel *mlist, int x, int y ) {
 	if (mMenus[++mLevel] == NULL) {
 		mMenus[mLevel] = new XExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
 	}
-	mMenus[mLevel]->setMenuList(mlist);
+	mMenus[mLevel]->setModel(mlist);
 	mMenus[mLevel]->show(x, y);
 }
 XExtMenuManager::~XExtMenuManager() {
@@ -2442,6 +2457,9 @@ void XExtTreeNode::remove( int pos ) {
 	if (pos >= 0 && pos < getChildCount()) {
 		mChildren->erase(mChildren->begin() + pos);
 	}
+}
+void XExtTreeNode::remove(XExtTreeNode *child) {
+	remove(indexOf(child));
 }
 int XExtTreeNode::indexOf( XExtTreeNode *child ) {
 	if (child == NULL || mChildren == NULL) 
@@ -2537,9 +2555,19 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
 	mNodeRender = NULL;
+	mWhenSelect = WHEN_CLICK;
+	char *ws = mNode->getAttrValue("whenSelect");
+	if (ws != NULL && strcmp(ws, "click") == 0) {
+		mWhenSelect = WHEN_CLICK;
+	} else if (ws != NULL && strcmp(ws, "dbclick") == 0) {
+		mWhenSelect = WHEN_DBCLICK;
+	}
 }
 void XExtTree::setModel( XExtTreeNode *root ) {
 	mModel = root;
+}
+XExtTreeNode* XExtTree::getModel() {
+	return mModel;
 }
 XExtTree::~XExtTree() {
 	DeleteObject(mLinePen);
@@ -2766,15 +2794,8 @@ void XExtTree::onLBtnDown( int x, int y ) {
 	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
 	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
 	if (PtInRect(&cntRect, pt)) { // click in node content
-		if (mSelectNode != node) {
-			mSelectNode = node;
-			InvalidateRect(mWnd, NULL, TRUE);
-			SendMessage(mWnd, MSG_EXT_TREE_SEL_CHANGED, (WPARAM)node, 0);
-		}
-		if (node->isCheckable()) {
-			node->setChecked(! node->isChecked());
-			InvalidateRect(mWnd, NULL, TRUE);
-			SendMessage(mWnd, MSG_EXT_TREE_CHECK_CHANGED, (WPARAM)node, 0);
+		if (mWhenSelect == WHEN_CLICK) {
+			setSelectNode(node);
 		}
 		return;
 	}
@@ -2783,7 +2804,7 @@ void XExtTree::onLBtnDown( int x, int y ) {
 	x2 = node->getLevel() * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT;
 	int yy = y2 + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2;
 	RECT r = {x2, yy, x2 + TREE_NODE_BOX, yy + TREE_NODE_BOX};
-	if (PtInRect(&r, pt)) { // click in box
+	if (PtInRect(&r, pt)) { // click in expand box
 		node->setExpand(! node->isExpand());
 		notifyChanged();
 	}
@@ -2816,14 +2837,21 @@ void XExtTree::onLBtnDbClick( int x, int y ) {
 	POINT pt = {x, y};
 	int y2 = 0;
 	XExtTreeNode * node = getNodeAtY(y, &y2);
-	if (node == NULL) return;
-	if (node->getChildCount() == 0) // has no child
+	if (node == NULL) {
 		return;
+	}
 	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
 	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
-	if (PtInRect(&cntRect, pt)) { // db-click in node content
-		node->setExpand(! node->isExpand());
-		notifyChanged();
+	// db-click not in node content
+	if (! PtInRect(&cntRect, pt)) {
+		return;
+	}
+	if (node->getChildCount() != 0) {
+		// node->setExpand(! node->isExpand());
+		// notifyChanged();
+	}
+	if (mWhenSelect == WHEN_DBCLICK) {
+		setSelectNode(node);
 	}
 }
 void XExtTree::setNodeRender( NodeRender *render ) {
@@ -2862,6 +2890,47 @@ bool XExtTree::getNodeRect( XExtTreeNode *node, RECT *r ) {
 	}
 	return finded;
 }
+
+XExtTreeNode * XExtTree::getAtPoint(int x, int y) {
+	int y2 = 0;
+	XExtTreeNode * node = getNodeAtY(y, &y2);
+	if (node == NULL) {
+		return NULL;
+	}
+	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+	if (x >= x2 && x < x2 + node->getContentWidth()) {
+		return node;
+	}
+	return NULL;
+}
+
+XExtTree::WhenSelect XExtTree::getWhenSelect() {
+	return mWhenSelect;
+}
+
+void XExtTree::setWhenSelect(WhenSelect when) {
+	mWhenSelect = when;
+}
+
+XExtTreeNode * XExtTree::getSelectNode() {
+	return mSelectNode;
+}
+
+void XExtTree::setSelectNode(XExtTreeNode *node) {
+	if (mSelectNode == node) {
+		return;
+	}
+	mSelectNode = node;
+	InvalidateRect(mWnd, NULL, TRUE);
+	SendMessage(mWnd, MSG_EXT_TREE_SEL_CHANGED, (WPARAM)node, 0);
+	
+	if (node != NULL && node->isCheckable()) {
+		node->setChecked(! node->isChecked());
+		InvalidateRect(mWnd, NULL, TRUE);
+		SendMessage(mWnd, MSG_EXT_TREE_CHECK_CHANGED, (WPARAM)node, 0);
+	}
+}
+
 //---------------------------XExtCalender--------------
 static const int CALENDER_HEAD_HEIGHT = 30;
 XExtCalendar::Date::Date() {

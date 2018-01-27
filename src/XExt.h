@@ -379,8 +379,9 @@ protected:
 	bool mIsMouseDown, mIsMouseMoving, mIsMouseLeave;
 };
 
-class XExtMenuItemList;
+class XExtMenuModel;
 class XExtMenuManager;
+
 struct XExtMenuItem {
 	XExtMenuItem(const char *name, char *text);
 	char mName[40];
@@ -390,39 +391,42 @@ struct XExtMenuItem {
 	bool mCheckable;
 	bool mChecked;
 	bool mSeparator;
-	XExtMenuItemList *mChildren;
+	XExtMenuModel *mChild;
 };
 
-class XExtMenuItemList {
+class XExtMenuModel {
 public:
-	XExtMenuItemList();
+	XExtMenuModel();
 	void add(XExtMenuItem *item);
 	void insert(int pos, XExtMenuItem *item);
 	int getCount();
 	XExtMenuItem *get(int idx);
 	XExtMenuItem *findByName(const char *name);
-	~XExtMenuItemList();
+	virtual int getItemHeight(int pos);
+	virtual int getWidth();
+	~XExtMenuModel();
 protected:
 	XExtMenuItem *mItems[50];
 	int mCount;
+	int mWidth;
 };
 
 class XExtMenu : public XExtComponent {
 public:
 	XExtMenu(XmlNode *node, XExtMenuManager *mgr);
-	void setMenuList(XExtMenuItemList *list);
-	XExtMenuItemList *getMenuList() {return mMenuList;}
+	void setModel(XExtMenuModel *list);
+	XExtMenuModel *getMenuList() {return mModel;}
 	virtual void show(int screenX, int screenY);
 	virtual ~XExtMenu();
 protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	int getItemIndexAt(int x, int y);
-	void calcSize();
+	virtual void calcSize();
 	void drawItems(HDC dc);
 	RECT getItemRect(int idx);
 protected:
-	XExtMenuItemList *mMenuList;
+	XExtMenuModel *mModel;
 	int mSelectItem;
 	HPEN mSeparatorPen;
 	HPEN mCheckedPen;
@@ -437,19 +441,19 @@ public:
 		virtual void onClickItem(XExtMenuItem *item) = 0;
 	};
 
-	XExtMenuManager(XExtMenuItemList *mlist, XComponent *owner, ItemListener *listener);
+	XExtMenuManager(XExtMenuModel *mlist, XComponent *owner, ItemListener *listener);
 	void show(int screenX, int screenY);
 	virtual ~XExtMenuManager();
 
 	void notifyItemClicked(XExtMenuItem *item);
-	void closeMenu(XExtMenuItemList *mlist);
-	void openMenu(XExtMenuItemList *mlist, int x, int y);
+	void closeMenu(XExtMenuModel *mlist);
+	void openMenu(XExtMenuModel *mlist, int x, int y);
 protected:
 	void messageLoop();
 	int whereIs(int x, int y);
 	void closeMenuTo(int idx);
 protected:
-	XExtMenuItemList *mMenuList;
+	XExtMenuModel *mMenuList;
 	XExtMenu *mMenus[10];
 	int mLevel;
 	XComponent *mOwner;
@@ -463,6 +467,7 @@ public:
 	// pos : -1 means append
 	void insert(int pos, XExtTreeNode *child);
 	void remove(int pos);
+	void remove(XExtTreeNode *child);
 	int indexOf(XExtTreeNode *child);
 	int getChildCount();
 	void *getUserData();
@@ -498,13 +503,22 @@ public:
 	public:
 		virtual void onDrawNode(HDC dc, XExtTreeNode *node, int x, int y, int w, int h) = 0;
 	};
+	enum WhenSelect {
+		WHEN_CLICK, WHEN_DBCLICK, WHEN_NONE
+	};
 	XExtTree(XmlNode *node);
 	//根结点为虚拟结点，不显示
 	void setModel(XExtTreeNode *root);
+	XExtTreeNode* getModel();
+	WhenSelect getWhenSelect();
+	void setWhenSelect(WhenSelect when);
 	void notifyChanged();
 	void setNodeRender(NodeRender *render);
 	// @return false:表示node是被折叠的，没有大小; true:表示node是未折叠的，取得了rect
 	bool getNodeRect(XExtTreeNode *node, RECT *r);
+	XExtTreeNode *getAtPoint(int x, int y);
+	XExtTreeNode *getSelectNode();
+	void setSelectNode(XExtTreeNode *selNode);
 	virtual ~XExtTree();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
@@ -526,6 +540,7 @@ protected:
 	XExtTreeNode *mSelectNode;
 	int mWidthSpec, mHeightSpec;
 	NodeRender *mNodeRender;
+	WhenSelect mWhenSelect;
 };
 
 class XExtCalendar : public XExtComponent {

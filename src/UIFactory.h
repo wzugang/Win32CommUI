@@ -3,7 +3,7 @@
 class XComponent;
 class XmlNode;
 class ResPath;
-class XExtMenuItemList;
+class XExtMenuModel;
 class XExtTreeNode;
 
 class XImage {
@@ -11,6 +11,7 @@ public:
 	// @param resPath 
 	// res://xxx [x y width height] repeat-x repeat-y stretch 9patch
 	// file://abc/xx.bmp ...
+	// xbin://abc/xx.bmp ...
 	static XImage *load(const char *resPath);
 	static XImage *create(int width, int height, int bitPerPix = 32);
 
@@ -58,14 +59,14 @@ public:
 	typedef XComponent * (*Creator)(XmlNode*);
 
 	static XComponent* buildComponent(XmlNode *root);
-	static XExtMenuItemList *buildMenu(XmlNode *rootMenu);
+	static XExtMenuModel *buildMenu(XmlNode *rootMenu);
 	static XExtTreeNode *buildTree(XmlNode *rootTree);
 
 	//@param resPath file://abc.xml  res://abc
 	static XmlNode* buildNode(const char *resPath, const char *partName);
 
 	static XComponent* fastBuild(const char *resPath, const char *partName, XComponent *parent);
-	static XExtMenuItemList* fastMenu(const char *resPath, const char *partName);
+	static XExtMenuModel* fastMenu(const char *resPath, const char *partName);
 	static XExtTreeNode* fastTree(const char *resPath, const char *partName);
 
 	static void destory(XmlNode *root);
