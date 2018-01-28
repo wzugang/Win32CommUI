@@ -129,9 +129,9 @@ XExtButton::XExtButton( XmlNode *node ) : XExtComponent(node) {
 			mStateImages[STATE_IMG_HOVER] = XImage::load(attr->mValue);
 		} else if (strcmp(attr->mName, "pushImage") == 0) {
 			mStateImages[STATE_IMG_PUSH] = XImage::load(attr->mValue);
-		} /*else if (strcmp(attr->mName, "disableImage") == 0) {
+		} else if (strcmp(attr->mName, "disableImage") == 0) {
 			mStateImages[STATE_IMG_DISABLE] = XImage::load(attr->mValue);
-		}*/
+		}
 	}
 }
 
