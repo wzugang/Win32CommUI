@@ -264,7 +264,7 @@ protected:
 	HPEN mCaretPen;
 	bool mCaretShowing;
 	bool mEnableShowCaret;
-
+	bool mEnableScrollBars;
 	XExtScrollBar *mVerBar;
 	XmlNode *mVerBarNode;
 };
@@ -404,6 +404,7 @@ public:
 	XExtMenuItem *findByName(const char *name);
 	virtual int getItemHeight(int pos);
 	virtual int getWidth();
+	virtual int getHeight();
 	~XExtMenuModel();
 protected:
 	XExtMenuItem *mItems[50];

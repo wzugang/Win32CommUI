@@ -1056,6 +1056,7 @@ XExtTextArea::XExtTextArea( XmlNode *node ) : XExtComponent(node) {
 	mEnableShowCaret = true;
 	mVerBarNode = NULL;
 	mVerBar = NULL;
+	mEnableScrollBars = AttrUtils::parseBool(mNode->getAttrValue("enableScrollBars"), false);
 	if (mAttrPadding[0] == 0 && mAttrPadding[2] == 0) {
 		mAttrPadding[0] = mAttrPadding[2] = 2;
 	}
@@ -1396,12 +1397,14 @@ void XExtTextArea::setWideText( const wchar_t *txt ) {
 }
 void XExtTextArea::createWnd() {
 	XExtComponent::createWnd();
-	mVerBarNode = new XmlNode("ExtVerScrollBar", mNode);
-	mVerBar = new XExtScrollBar(mVerBarNode, false);
-	mVerBarNode->setComponent(mVerBar);
-	mVerBar->createWnd();
-	int dd = GetWindowLong(mVerBar->getWnd(), GWL_STYLE);
-	SetWindowLong(mVerBar->getWnd(), GWL_STYLE, dd & ~WS_VISIBLE);
+	if (mEnableScrollBars) {
+		mVerBarNode = new XmlNode("ExtVerScrollBar", mNode);
+		mVerBar = new XExtScrollBar(mVerBarNode, false);
+		mVerBarNode->setComponent(mVerBar);
+		mVerBar->createWnd();
+		int dd = GetWindowLong(mVerBar->getWnd(), GWL_STYLE);
+		SetWindowLong(mVerBar->getWnd(), GWL_STYLE, dd & ~WS_VISIBLE);
+	}
 }
 void XExtTextArea::notifyChanged() {
 	buildLines();
@@ -2166,6 +2169,16 @@ int XExtMenuModel::getWidth() {
 	return mWidth;
 }
 
+int XExtMenuModel::getHeight() {
+	int h = 0;
+	for (int i = 0; i < mCount; ++i) {
+		XExtMenuItem *item = mItems[i];
+		if (! item->mVisible) continue;
+		h += getItemHeight(i);
+	}
+	return h;
+}
+
 XExtMenu::XExtMenu( XmlNode *node, XExtMenuManager *mgr) : XExtComponent(node) {
 	strcpy(mClassName, "XExtMenu");
 	mManager = mgr;
@@ -2256,14 +2269,7 @@ int XExtMenu::getItemIndexAt( int x, int y ) {
 }
 void XExtMenu::calcSize() {
 	mMesureWidth = mWidth = mModel->getWidth();
-	mMesureHeight = mHeight = 0;
-	for (int i = 0; mModel && i < mModel->getCount(); ++i) {
-		XExtMenuItem *item = mModel->get(i);
-		if (! item->mVisible) continue;
-		mMesureHeight += mModel->getItemHeight(i);
-	}
-	if (mMesureHeight == 0) mMesureHeight = 20;
-	mHeight = mMesureHeight;
+	mMesureHeight = mHeight = mModel->getHeight();
 }
 void XExtMenu::show( int screenX, int screenY ) {
 	mSelectItem = -1;
@@ -2866,7 +2872,9 @@ static bool GetNodeRect(XExtTreeNode *n, XExtTreeNode *target, int *py) {
 	if (n->isExpand()) {
 		for (int i = 0; i < n->getChildCount(); ++i) {
 			bool fd = GetNodeRect(n->getChild(i), target, py);
-			if (fd) break;
+			if (fd) {
+				return true;
+			}
 		}
 	}
 	return false;

@@ -539,7 +539,7 @@ void UIFactory::init() {
 	UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
 	UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
 	UIFactory::registCreator("ExtIconButton", XExtIconButton_Creator);
-	UIFactory::registCreator("ExtEdit", XExtEdit_Creator);
+	UIFactory::registCreator("ExtLineEdit", XExtEdit_Creator);
 	UIFactory::registCreator("ExtTextArea", XExtTextArea_Creator);
 
 	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
