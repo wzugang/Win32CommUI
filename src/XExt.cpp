@@ -1,7 +1,7 @@
 #include "XExt.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <WinGDI.h>
+#include <windows.h>
 #include <time.h>
 #include "XComponent.h"
 #include "XmlParser.h"
@@ -18,13 +18,106 @@ XExtComponent::XExtComponent(XmlNode *node) : XComponent(node) {
 	mEnableFocus = AttrUtils::parseBool(mNode->getAttrValue("enableFocus"), false);
 	mMemBuffer = NULL;
 	mEnableMemBuffer = false;
+	_mMouseTrack = false;
 }
 
 bool XExtComponent::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND && !mEnableMemBuffer) {
-		eraseBackground((HDC)wParam);
+	if (msg == WM_ERASEBKGND) {
+		if (! mEnableMemBuffer) {
+			eraseBackground((HDC)wParam);
+		}
+		return true;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		if (mEnableMemBuffer) {
+			HDC memDc = CreateCompatibleDC(dc);
+			if (mMemBuffer == NULL) {
+				mMemBuffer = XImage::create(mWidth, mHeight);
+			}
+			SelectObject(memDc, mMemBuffer->getHBitmap());
+			onPaint(memDc, &ps.rcPaint);
+			RECT *r = &ps.rcPaint;
+			BitBlt(dc, r->left, r->top, r->right-r->left, r->bottom-r->top, memDc, r->left, r->top, SRCCOPY);
+			DeleteObject(memDc);
+		} else {
+			onPaint(dc, &ps.rcPaint);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
+	} else if (msg == WM_KEYDOWN) {
+		onKeyDown((int)wParam);
+		return true;
+	} else if (msg == WM_KEYUP) {
+		onKeyUp((int)wParam);
+		return true;
+	} else if (msg == WM_CHAR || msg == WM_IME_CHAR) {
+		onChar(wchar_t(wParam));
+		return true;
+	} else if (msg == WM_MOUSEMOVE) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		onMouseMove(x, y, vkeys);
+		if (! _mMouseTrack) {
+			_mMouseTrack = false;
+			TRACKMOUSEEVENT tme = {0};
+			tme.cbSize = sizeof(tme);
+			tme.dwFlags = TME_LEAVE | TME_HOVER;
+			tme.hwndTrack = mWnd;
+			tme.dwHoverTime = 10;
+			TrackMouseEvent(&tme);
+		}
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		if (mEnableFocus) {
+			SetCapture(mWnd);
+		}
+		onLButtonDown(x, y, vkeys);
+		return true;
+	} else if (msg == WM_LBUTTONDOWN) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		if (mEnableFocus) {
+			ReleaseCapture();
+		}
+		onLButtonUp(x, y, vkeys);
+		return true;
+	} else if (msg == WM_LBUTTONDBLCLK) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		onLButtonDbClick(x, y, vkeys);
+		return true;
+	} else if (msg == WM_RBUTTONDOWN) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		onRButtonDown(x, y, vkeys);
+		return true;
+	} else if (msg == WM_RBUTTONUP) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		onRButtonUp(x, y, vkeys);
+		return true;
+	} else if (msg == WM_RBUTTONDBLCLK) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		onRButtonDbClick(x, y, vkeys);
+		return true;
+	} else if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		onWheel(x, y, HIWORD(wParam), LOWORD(wParam));
+		return true;
+	} else if (msg == WM_MOUSEHOVER) {
+		short x =  (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+		int vkeys = (int)wParam;
+		return true;
+	} else if (msg == WM_MOUSELEAVE) {
+		_mMouseTrack = false;
+		onMouseLeave();
 		return true;
 	}
+	// WM_CAPTURECHANGED
 	return XComponent::wndProc(msg, wParam, lParam, result);
 }
 
@@ -75,6 +168,7 @@ XExtComponent::~XExtComponent() {
 void XExtComponent::setEnableFocus( bool enable ) {
 	mEnableFocus = enable;
 }
+
 //------------------XExtEmptyComponent---------------------------------
 XExtEmptyComponent::XExtEmptyComponent(XmlNode *node) : XExtComponent(node) {
 }
@@ -730,9 +824,13 @@ int XExtPopup::messageLoop() {
 			POINT pt;
 			GetCursorPos(&pt);
 			if (! PtInRect(&popupRect, pt)) { // click on other window
-				SendMessage(mWnd, MSG_EXT_POPUP_CLOSED, 1, 0);
+				SendMessage(mWnd, MSG_POPUP_CLOSED, 1, 0);
 				break;
 			}
+		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
+			POINT pt = {0};
+			GetCursorPos(&pt);
+			msg.hwnd = WindowFromPoint(pt);
 		} else if (msg.message == WM_QUIT) {
 			break;
 		}
@@ -755,7 +853,7 @@ void XExtPopup::show( int screenX, int screenY ) {
 }
 void XExtPopup::close() {
 	ShowWindow(mWnd, SW_HIDE);
-	SendMessage(mWnd, MSG_EXT_POPUP_CLOSED, 0, 0);
+	SendMessage(mWnd, MSG_POPUP_CLOSED, 0, 0);
 }
 static void DisableFocus(XmlNode *n) {
 	XExtComponent *ext = dynamic_cast<XExtComponent*>(n->getComponent());
@@ -1614,7 +1712,7 @@ bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 	} else if (msg == WM_LBUTTONDOWN) {
 		if (mEnableFocus) SetFocus(mWnd);
 		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		SendMessage(mWnd, MSG_EXT_LIST_CLICK_ITEM, idx, 0);
+		SendMessage(mWnd, MSG_LIST_CLICK_ITEM, idx, 0);
 		return true;
 	} else if (msg == WM_MOUSEMOVE) {
 		updateTrackItem((short)LOWORD(lParam), (short)HIWORD(lParam));
@@ -1902,7 +2000,7 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mPopupNode->setComponent(mPopup);
 	mList = new XExtList(mListNode);
 	mListNode->setComponent(mList);
-	mList->setBgColor(RGB(0xF5, 0xFF, 0xFA));
+	mList->setAttrBgColor(RGB(0xF5, 0xFF, 0xFA));
 	mPopup->setListener(this);
 	mList->setListener(this);
 	mList->setEnableFocus(false);
@@ -1920,15 +2018,15 @@ XExtComboBox::XExtComboBox( XmlNode *node ) : XExtComponent(node) {
 	mSelectItem = -1;
 }
 bool XExtComboBox::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
-	if (msg == MSG_EXT_LIST_CLICK_ITEM) {
+	if (msg == MSG_LIST_CLICK_ITEM) {
 		mSelectItem = wParam;
 		mPopup->close();
 		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
-		SendMessage(mWnd, MSG_EXT_COMBOBOX_CLICK_ITEM, wParam, lParam);
+		SendMessage(mWnd, MSG_COMBOBOX_CLICK_ITEM, wParam, lParam);
 		return true;
-	} else if (msg == MSG_EXT_POPUP_CLOSED) {
+	} else if (msg == MSG_POPUP_CLOSED) {
 		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		UpdateWindow(mWnd);
@@ -2390,6 +2488,10 @@ void XExtMenuManager::messageLoop() {
 				break;
 			}
 			msg.hwnd = mMenus[idx]->getWnd();
+		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
+			POINT pt = {0};
+			GetCursorPos(&pt);
+			msg.hwnd = WindowFromPoint(pt);
 		} else if (msg.message == WM_QUIT) {
 			break;
 		}
@@ -2926,17 +3028,18 @@ XExtTreeNode * XExtTree::getSelectNode() {
 }
 
 void XExtTree::setSelectNode(XExtTreeNode *node) {
+	XExtTreeNode *old = mSelectNode;
 	if (mSelectNode == node) {
 		return;
 	}
 	mSelectNode = node;
 	InvalidateRect(mWnd, NULL, TRUE);
-	SendMessage(mWnd, MSG_EXT_TREE_SEL_CHANGED, (WPARAM)node, 0);
+	SendMessage(mWnd, MSG_TREE_SEL_CHANGED, (WPARAM)node, (LPARAM)old);
 	
 	if (node != NULL && node->isCheckable()) {
 		node->setChecked(! node->isChecked());
 		InvalidateRect(mWnd, NULL, TRUE);
-		SendMessage(mWnd, MSG_EXT_TREE_CHECK_CHANGED, (WPARAM)node, 0);
+		SendMessage(mWnd, MSG_TREE_CHECK_CHANGED, (WPARAM)node, 0);
 	}
 }
 
@@ -3248,7 +3351,7 @@ void XExtCalendar::onLButtonDownInDayMode( int x, int y ) {
 			if (PtInRect(&rc, pt)) {
 				mSelectDate = mViewDates[i];
 				InvalidateRect(mWnd, NULL, TRUE);
-				SendMessage(mWnd, MSG_EXT_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
+				SendMessage(mWnd, MSG_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
 				break;
 			}
 			if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
@@ -3604,7 +3707,7 @@ XExtDatePicker::XExtDatePicker( XmlNode *node ) : XExtComponent(node) {
 	mEditNode->setComponent(mEdit);
 	mPopupNode->setComponent(mPopup);
 	mCalendarNode->setComponent(mCalendar);
-	mCalendar->setBgColor(RGB(0xF5, 0xFF, 0xFA));
+	mCalendar->setAttrBgColor(RGB(0xF5, 0xFF, 0xFA));
 	mPopup->setListener(this);
 	mCalendar->setListener(this);
 	mCalendar->setEnableFocus(false);
@@ -3636,7 +3739,7 @@ void XExtDatePicker::createWnd() {
 	mCalendar->createWnd();
 }
 bool XExtDatePicker::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
-	if (msg == MSG_EXT_CALENDAR_SEL_DATE) {
+	if (msg == MSG_CALENDAR_SEL_DATE) {
 		XExtCalendar::Date *val = (XExtCalendar::Date *)wParam;
 		char buf[20];
 		sprintf(buf, "%d-%02d-%02d", val->mYear, val->mMonth, val->mDay);
@@ -3645,7 +3748,7 @@ bool XExtDatePicker::onEvent( XComponent *evtSource, UINT msg, WPARAM wParam, LP
 		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		return true;
-	} else if (msg == MSG_EXT_POPUP_CLOSED) {
+	} else if (msg == MSG_POPUP_CLOSED) {
 		mPoupShow = false;
 		InvalidateRect(mWnd, NULL, TRUE);
 		return true;

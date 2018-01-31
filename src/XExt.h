@@ -12,15 +12,33 @@ public:
 	};
 	XExtComponent(XmlNode *node);
 	virtual void layout(int x, int y, int width, int height);
-	virtual ~XExtComponent();
 	void setEnableFocus(bool enable);
+	virtual ~XExtComponent();
 protected:
 	void eraseBackground(HDC dc);
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onPaint(HDC dc, RECT *paintRect) {}
+	virtual void onKeyDown(int vkey) {}
+	virtual void onKeyUp(int vkey) {}
+	virtual void onChar(wchar_t ch) {}
+	// vkeys is one bit of MK_CONTROL | MK_LBUTTON | MK_MBUTTON | MK_MBUTTON | MK_SHIFT
+	// if has MK_CONTROL bit, means ctrl is press down
+	virtual void onMouseMove(int x, int y, int vkeys) {}
+	virtual void onLButtonDown(int x, int y, int vkeys) {}
+	virtual void onLButtonUp(int x, int y, int vkeys) {}
+	virtual void onLButtonDbClick(int x, int y, int vkeys) {}
+	virtual void onRButtonDown(int x, int y, int vkeys) {}
+	virtual void onRButtonUp(int x, int y, int vkeys) {}
+	virtual void onRButtonDbClick(int x, int y, int vkeys) {}
+	// deta is multiples of WHEEL_DELTA(120)
+	virtual void onWheel(int x, int y, int deta, int vkeys) {}
+	virtual void onMouseLeave() {}
+protected:
 	XImage *mBgImageForParnet;
 	bool mEnableFocus;
 	XImage *mMemBuffer;
 	bool mEnableMemBuffer;
+	bool _mMouseTrack;
 };
 
 class XExtEmptyComponent : public XExtComponent {

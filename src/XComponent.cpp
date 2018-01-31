@@ -323,6 +323,14 @@ XComponent* XComponent::getChild(int idx) {
 	return mNode->getChild(idx)->getComponent();
 }
 
+XComponent* XComponent::getParent() {
+	XmlNode *parent = mNode->getParent();
+	if (parent != NULL) {
+		return parent->getComponent();
+	}
+	return NULL;
+}
+
 void XComponent::setListener( XListener *v ) {
 	mListener = v;
 }
@@ -365,8 +373,18 @@ HFONT XComponent::getFont() {
 }
 
 HINSTANCE XComponent::getInstance() {
-	if (mInstance == NULL) mInstance = GetModuleHandle(NULL);
+	if (mInstance == NULL) {
+		mInstance = GetModuleHandle(NULL);
+	}
 	return mInstance;
+}
+
+int XComponent::getWidth() {
+	return mWidth;
+}
+
+int XComponent::getHeight() {
+	return mHeight;
 }
 
 int XComponent::getMesureWidth() {
@@ -385,14 +403,58 @@ int XComponent::getAttrY() {
 	return mAttrY;
 }
 
+void XComponent::setAttrX(int attrX) {
+	mAttrX = attrX;
+}
+
+void XComponent::setAttrY(int attrY) {
+	mAttrY = attrY;
+}
+
 int XComponent::getAttrWeight() {
 	return mAttrWeight;
+}
+
+void XComponent::setAttrWeight(int weight) {
+	mAttrWeight = weight;
 }
 
 int * XComponent::getAttrMargin() {
 	return mAttrMargin;
 }
-void XComponent::setBgColor(COLORREF c) {
+
+void XComponent::setAttrMargin(int left, int top, int right, int bottom) {
+	mAttrMargin[0] = left;
+	mAttrMargin[1] = top;
+	mAttrMargin[2] = right;
+	mAttrMargin[3] = bottom;
+}
+
+int *XComponent::getAttrPadding() {
+	return mAttrPadding;
+}
+
+void XComponent::setAttrPadding(int left, int top, int right, int bottom) {
+	mAttrPadding[0] = left;
+	mAttrPadding[1] = top;
+	mAttrPadding[2] = right;
+	mAttrPadding[3] = bottom;
+}
+
+COLORREF XComponent::getAttrColor() {
+	return mAttrColor;
+}
+
+void XComponent::setAttrColor(COLORREF c) {
+	mAttrFlags |= AF_COLOR;
+	mAttrColor = c;
+}
+
+COLORREF XComponent::getAttrBgColor() {
+	return mAttrBgColor;
+}
+
+void XComponent::setAttrBgColor(COLORREF c) {
 	mAttrFlags |= AF_BG_COLOR;
 	mAttrBgColor = c;
 }
@@ -431,6 +493,11 @@ int XWindow::messageLoop() {
 	MSG msg;
 	HACCEL hAccelTable = NULL;
 	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
+			POINT pt = {0};
+			GetCursorPos(&pt);
+			msg.hwnd = WindowFromPoint(pt);
+		}
 		if (! TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
@@ -527,6 +594,11 @@ int XDialog::showModal() {
 	MSG msg;
 	int nRet = 0;
 	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
+			POINT pt = {0};
+			GetCursorPos(&pt);
+			msg.hwnd = WindowFromPoint(pt);
+		}
 		if( msg.message == WM_CLOSE && msg.hwnd == mWnd ) {
 			nRet = msg.wParam;
 		}

@@ -32,14 +32,21 @@ public:
 		MSG_MOUSEWHEEL_BUBBLE,
 		MSG_LBUTTONDOWN_BUBBLE,
 
-		MSG_EXT_LIST_CLICK_ITEM,  // wParam is click item index, my be -1
-		MSG_EXT_COMBOBOX_CLICK_ITEM, // wParam is click item index, my be -1
-		MSG_EXT_POPUP_CLOSED, //  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
-		MSG_EXT_CALENDAR_SEL_DATE, // calendar select a date wParam = XExtCalenar::Date pointer
+		// wParam is click item index, my be -1
+		MSG_LIST_CLICK_ITEM,  
+		// wParam is click item index, my be -1
+		MSG_COMBOBOX_CLICK_ITEM, 
+		//  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)
+		MSG_POPUP_CLOSED, 
+		// calendar select a date wParam = XExtCalenar::Date pointer
+		MSG_CALENDAR_SEL_DATE, 
 		
-		MSG_EXT_TREE_SEL_CHANGED, // ext tree select node changed; wParam = XExtTreeNode pointer
-		MSG_EXT_TREE_CHECK_CHANGED // checkable node checked changed; wParam = XExtTreeNode pointer
+		// ext tree select node changed; wParam = XExtTreeNode pointer
+		MSG_TREE_SEL_CHANGED, 
+		// checkable node checked changed; wParam = XExtTreeNode pointer
+		MSG_TREE_CHECK_CHANGED 
 	};
+
 	XComponent(XmlNode *node);
 	static HINSTANCE getInstance();
 	static int getSpecSize(int sizeSpec);
@@ -60,16 +67,31 @@ public:
 	XComponent* getChildById(const char *id);
 	XComponent* getChildById(DWORD wndId);
 	XComponent* getChild(int idx);
+	XComponent* getParent();
+
 	void setListener(XListener *v);
 	XListener* getListener();
 
+	int getWidth();
+	int getHeight();
 	int getMesureWidth();
 	int getMesureHeight();
+
 	int getAttrX();
 	int getAttrY();
+	void setAttrX(int attrX);
+	void setAttrY(int attrY);
 	int getAttrWeight();
+	void setAttrWeight(int weight);
 	int *getAttrMargin();
-	void setBgColor(COLORREF c);
+	void setAttrMargin(int left, int top, int right, int bottom);
+	int *getAttrPadding();
+	void setAttrPadding(int left, int top, int right, int bottom);
+	COLORREF getAttrBgColor();
+	void setAttrBgColor(COLORREF c);
+	COLORREF getAttrColor();
+	void setAttrColor(COLORREF c);
+
 	virtual ~XComponent();
 protected:
 	virtual bool onCtrlColor(HDC dc, LRESULT *result);
