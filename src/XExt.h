@@ -321,8 +321,9 @@ public:
 	void setModel(XListModel *model);
 	XListModel *getModel();
 	void setItemRender(ItemRender *render);
-	virtual ~XExtList();
+	int getItemY(int item);
 
+	virtual ~XExtList();
 	virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayout( int width, int height );
 protected:

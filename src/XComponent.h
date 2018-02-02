@@ -32,8 +32,10 @@ public:
 		MSG_MOUSEWHEEL_BUBBLE,
 		MSG_LBUTTONDOWN_BUBBLE,
 
-		// wParam is click item index, my be -1
-		MSG_LIST_CLICK_ITEM,  
+		// wParam is click item index, my be -1, lParam is pointer of POINT
+		MSG_LIST_CLICK_ITEM,
+		MSG_LIST_DBCLICK_ITEM, 
+
 		// wParam is click item index, my be -1
 		MSG_COMBOBOX_CLICK_ITEM, 
 		//  popup has closed, wParam = 0 or 1 (0:normal close, 1:cancel close)

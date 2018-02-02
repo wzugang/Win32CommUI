@@ -1711,10 +1711,21 @@ bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 		return true;
 	} else if (msg == WM_LBUTTONDOWN) {
 		if (mEnableFocus) SetFocus(mWnd);
+		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
 		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		SendMessage(mWnd, MSG_LIST_CLICK_ITEM, idx, 0);
+		pt.x = pt.x + mHorBar->getPos();
+		pt.y = pt.y - getItemY(idx);
+		SendMessage(mWnd, MSG_LIST_CLICK_ITEM, idx, (LPARAM)&pt);
 		return true;
-	} else if (msg == WM_MOUSEMOVE) {
+	} else if (msg == WM_LBUTTONDBLCLK) {
+		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
+		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
+		pt.x = pt.x + mHorBar->getPos();
+		pt.y = pt.y - getItemY(idx);
+		SendMessage(mWnd, MSG_LIST_DBCLICK_ITEM, idx, (LPARAM)&pt);
+		return true;
+	} 
+	else if (msg == WM_MOUSEMOVE) {
 		updateTrackItem((short)LOWORD(lParam), (short)HIWORD(lParam));
 		return true;
 	} else if (msg == WM_MOUSEHWHEEL || msg == WM_MOUSEWHEEL || msg == MSG_MOUSEWHEEL_BUBBLE) {
@@ -1856,6 +1867,19 @@ int XExtList::findItem( int x, int y ) {
 	}
 	return row;
 }
+
+int XExtList::getItemY(int item) {
+	if (mModel == NULL) {
+		return 0;
+	}
+	int cc = mModel->getItemCount();
+	int y = -mVerBar->getPos();
+	for (int i = 0; i < item && i < cc; ++i) {
+		y += mModel->getItemHeight(i);
+	}
+	return y;
+}
+
 void XExtList::updateTrackItem( int x, int y ) {
 	if (mModel == NULL || !mModel->isMouseTrack())
 		return;
