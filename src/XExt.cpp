@@ -1702,7 +1702,10 @@ bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 			eraseBackground(memDc);
 			drawData(memDc, 0, 0, sz.cx, sz.cy);
 			// copy data
-			BitBlt(dc, 0, 0, sz.cx, sz.cy, memDc, 0, 0, SRCCOPY);
+			RECT dst = {0};
+			RECT pr = {0, 0, sz.cx, sz.cy};
+			IntersectRect(&dst, &ps.rcPaint, &pr);
+			BitBlt(dc, dst.left, dst.top, dst.right-dst.left, dst.bottom-dst.top, memDc, dst.left, dst.top, SRCCOPY);
 		} else {
 			eraseBackground(dc);
 		}
@@ -1761,7 +1764,7 @@ SIZE XExtList::getClientSize() {
 void XExtList::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	if (mModel == NULL) return;
+	
 	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 
@@ -1790,20 +1793,30 @@ void XExtList::onLayout( int width, int height ) {
 	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
 	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
 }
+
+void XExtList::notifyModelChanged() {
+	if (mMesureWidth == 0 || mMesureHeight == 0) {
+		return;
+	}
+	onMeasure(mMesureWidth | MS_FIX, mMesureHeight | MS_FIX);
+	onLayout(mWidth, mHeight);
+	InvalidateRect(mWnd, NULL, TRUE);
+}
+
 void XExtList::drawData( HDC memDc, int x, int y, int w, int h ) {
 	if (mModel == NULL) return;
 	SelectObject(memDc, getFont());
 	SetBkMode(memDc, TRANSPARENT);
 	if (mAttrFlags & AF_COLOR) SetTextColor(memDc, mAttrColor);
 
-	int from = 0, to = 0;
-	getVisibleRows(&from, &to);
+	int from = 0, num = 0;
+	getVisibleRows(&from, &num);
 	y += -mVerBar->getPos();
 	for (int i = 0; i < from; ++i) {
 		y += mModel->getItemHeight(i);
 	}
 	x += -mHorBar->getPos();
-	for (int i = from; i <= to; ++i) {
+	for (int i = from; i < from + num && i >= 0; ++i) {
 		int rh = mModel->getItemHeight(i);
 		if (mModel->isMouseTrack() && mMouseTrackItem == i) {
 			// draw select row background
@@ -1825,9 +1838,11 @@ void XExtList::drawItem( HDC dc, int item, int x, int y, int w, int h ) {
 		DrawText(dc, data->mText, strlen(data->mText), &r, DT_SINGLELINE | DT_VCENTER);
 	}
 }
-void XExtList::getVisibleRows( int *from, int *to ) {
-	*from = *to = 0;
-	if (mModel == NULL) return;
+void XExtList::getVisibleRows( int *from, int *num ) {
+	*from = *num = 0;
+	if (mModel == NULL) {
+		return;
+	}
 	int y = -mVerBar->getPos();
 	SIZE sz = getClientSize();
 	for (int i = 0; i < mModel->getItemCount(); ++i) {
@@ -1837,16 +1852,18 @@ void XExtList::getVisibleRows( int *from, int *to ) {
 			break;
 		}
 	}
-	for (int i = *from + 1; i < mModel->getItemCount(); ++i) {
-		*to = i;
+	for (int i = *from; i < mModel->getItemCount(); ++i) {
+		*num = *num + 1;
 		if (y >= sz.cy) {
 			break;
 		}
 	}
-	if (*to < *from) *to = *from;
 }
 void XExtList::setModel( XListModel *model ) {
-	mModel = model;
+	if (mModel != model) {
+		mModel = model;
+		notifyModelChanged();
+	}
 }
 XListModel *XExtList::getModel() {
 	return mModel;
@@ -1884,7 +1901,7 @@ void XExtList::updateTrackItem( int x, int y ) {
 	if (mModel == NULL || !mModel->isMouseTrack())
 		return;
 	int idx = findItem(x, y);
-	XListModel::ItemData *item = mModel->getItemData(idx);
+	XListModel::ItemData *item = idx >= 0 ? mModel->getItemData(idx) : NULL;
 	if (idx != -1 && item != NULL && item->mSelectable) {
 		mMouseTrackItem = idx;
 		InvalidateRect(mWnd, NULL, TRUE);

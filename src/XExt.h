@@ -326,6 +326,7 @@ public:
 	virtual ~XExtList();
 	virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayout( int width, int height );
+	void notifyModelChanged();
 protected:
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual SIZE calcDataSize();
@@ -333,7 +334,7 @@ protected:
 	virtual void moveChildrenPos( int dx, int dy );
 	virtual void drawData( HDC memDc, int x, int y,  int w, int h );
 	virtual void drawItem(HDC dc, int item, int x, int y, int w, int h);
-	void getVisibleRows(int *from, int *to);
+	void getVisibleRows(int *from, int *num);
 	int findItem(int x, int y);
 	void updateTrackItem(int x, int y);
 protected:
