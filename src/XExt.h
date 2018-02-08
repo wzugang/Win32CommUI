@@ -322,6 +322,7 @@ public:
 	XListModel *getModel();
 	void setItemRender(ItemRender *render);
 	int getItemY(int item);
+	int getMouseTrackItem();
 
 	virtual ~XExtList();
 	virtual void onMeasure( int widthSpec, int heightSpec );

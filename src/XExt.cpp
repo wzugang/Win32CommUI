@@ -1730,13 +1730,16 @@ bool XExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result 
 	} 
 	else if (msg == WM_MOUSEMOVE) {
 		updateTrackItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		return true;
+		return XExtScroll::wndProc(msg, wParam, lParam, result);;
 	} else if (msg == WM_MOUSEHWHEEL || msg == WM_MOUSEWHEEL || msg == MSG_MOUSEWHEEL_BUBBLE) {
 		XExtScroll::wndProc(msg, wParam, lParam, result);
 		POINT pt;
 		GetCursorPos(&pt);
 		ScreenToClient(mWnd, &pt);
 		updateTrackItem(pt.x, pt.y);
+		return true;
+	} else if (msg == WM_MOUSELEAVE) {
+		updateTrackItem(-1, -1);
 		return true;
 	}
 	return XExtScroll::wndProc(msg, wParam, lParam, result);
@@ -1872,7 +1875,9 @@ void XExtList::setItemRender( ItemRender *render ) {
 	mItemRender = render;
 }
 int XExtList::findItem( int x, int y ) {
-	if (mModel == NULL) return -1;
+	if (mModel == NULL || x < 0 || y < 0) {
+		return -1;
+	}
 	int row = -1;
 	int y2 = -mVerBar->getPos();
 	for (int i = 0; i < mModel->getItemCount(); ++i) {
@@ -1900,13 +1905,34 @@ int XExtList::getItemY(int item) {
 void XExtList::updateTrackItem( int x, int y ) {
 	if (mModel == NULL || !mModel->isMouseTrack())
 		return;
+	int old = mMouseTrackItem;
 	int idx = findItem(x, y);
-	XListModel::ItemData *item = idx >= 0 ? mModel->getItemData(idx) : NULL;
-	if (idx != -1 && item != NULL && item->mSelectable) {
-		mMouseTrackItem = idx;
-		InvalidateRect(mWnd, NULL, TRUE);
+	if (idx < 0) {
+		mMouseTrackItem = -1;
+	} else {
+		XListModel::ItemData *item = mModel->getItemData(idx);
+		if (item != NULL && item->mSelectable) {
+			mMouseTrackItem = idx;
+		}
+	}
+	if (old != mMouseTrackItem) {
+		int sy = getItemY(old);
+		int ey = getItemY(mMouseTrackItem);
+		int sh = old >= 0 ? mModel->getItemHeight(old) : 0;
+		int eh = mMouseTrackItem >= 0 ? mModel->getItemHeight(mMouseTrackItem) : 0;
+		RECT sr = {0, sy, mWidth, sy + sh};
+		RECT er = {0, ey, mWidth, ey + eh};
+		SIZE sz = getClientSize();
+		RECT dest = {0}, client = {0, 0, sz.cx, sz.cy}, rr = {0};
+		UnionRect(&dest, &sr, &er);
+		IntersectRect(&rr, &dest, &client);
+		InvalidateRect(mWnd, &rr, TRUE);
 		UpdateWindow(mWnd);
 	}
+}
+
+int XExtList::getMouseTrackItem() {
+	return mMouseTrackItem;
 }
 
 //------------------------------XArrowButton--------------------
