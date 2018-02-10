@@ -268,7 +268,7 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 		}
 		if ((mAttrFlags & AF_BG_COLOR) || hasBgImg)
 			return true;
-	} else if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
+	} /*else if (msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT || msg == WM_CTLCOLORBTN) {
 		DWORD id = GetWindowLong((HWND)lParam, GWL_ID);
 		XComponent *c = getChildById(id);
 		if (c != NULL) {
@@ -288,7 +288,7 @@ bool XComponent::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *res) {
 			*res = SendMessage(nmh->hwndFrom, MSG_NOTIFY, wParam, lParam);
 			return true;
 		}
-	} else if (msg == WM_SETCURSOR) {
+	} */else if (msg == WM_SETCURSOR) {
 		// every time mouse move will go here
 		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		*res = FALSE;
@@ -474,19 +474,33 @@ void XWindow::createWnd() {
 }
 
 bool XWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (XComponent::wndProc(msg, wParam, lParam, result))
-		return true;
 	if (msg == WM_SIZE && lParam > 0) {
 		int w = LOWORD(lParam) , h = HIWORD(lParam);
 		onMeasure(w | XComponent::MS_FIX, h | XComponent::MS_FIX);
 		onLayout(w, h);
-		
 		return true;
 	} else if (msg == WM_DESTROY) {
 		PostQuitMessage(0);
 		return true;
+	} else if (msg == WM_ERASEBKGND) {
+		return true;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		// draw border
+		if (mBgImage != NULL) {
+			mBgImage->draw(dc, 0, 0, mWidth, mHeight);
+		} else if (mAttrFlags & AF_BG_COLOR) {
+			RECT r = {0, 0, mWidth, mHeight};
+			if (mBgColorBrush == NULL) {
+				mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+			}
+			FillRect(dc, &r, mBgColorBrush);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
 	}
-	return false;
+	return XComponent::wndProc(msg, wParam, lParam, result);
 }
 
 int XWindow::messageLoop() {
@@ -513,24 +527,26 @@ void XWindow::show(int nCmdShow) {
 	int h = calcSize(mAttrHeight, (rect.bottom - rect.top) | MS_ATMOST);
 	int x = (rect.right - w) / 2;
 	int y = (rect.bottom - h) / 2;
+	mWidth = w;
+	mHeight = h;
 	SetWindowPos(mWnd, 0, x, y, w, h, SWP_NOZORDER | SWP_SHOWWINDOW);
 	UpdateWindow(mWnd);
 }
 
 void XWindow::onMeasure(int widthSpec, int heightSpec) {
-	RECT r = {0};
-	GetClientRect(mWnd, &r);
-	mesureChildren((r.right - r.left) | MS_FIX, (r.bottom - r.top) | MS_FIX);
+	RECT r = getClientRect();
+	mesureChildren((r.right - r.left) | MS_ATMOST, (r.bottom - r.top) | MS_ATMOST);
 }
 
 void XWindow::onLayout(int width, int height) {
-	RECT r = {0};
-	GetClientRect(mWnd, &r);
+	RECT r = getClientRect();
+	width = r.right - r.left;
+	height = r.bottom - r.top;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
 		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
 		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
-		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		child->layout(r.left + x, r.top + y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
 
@@ -542,8 +558,15 @@ void XWindow::applyIcon() {
 	}
 }
 
+RECT XWindow::getClientRect() {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	return r;
+}
+
 XDialog::XDialog( XmlNode *node ) : XComponent(node) {
 	strcpy(mClassName, "XDialog");
+	mShowModal = false;
 }
 void XDialog::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
@@ -555,9 +578,6 @@ void XDialog::createWnd() {
 }
 
 bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	int err = 0;
-	if (XComponent::wndProc(msg, wParam, lParam, result))
-		return true;
 	if (msg == WM_SIZE && lParam > 0) {
 		onMeasure(0, 0);
 		onLayout(0, 0);
@@ -572,23 +592,34 @@ bool XDialog::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result )
 		// SetForegroundWindow(parent);
 		SetFocus(parent);
 		// go through, deal by default
+	} else if (msg == WM_ERASEBKGND) {
+		return true;
+	} else if (msg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		HDC dc = BeginPaint(mWnd, &ps);
+		// draw border
+		if (mBgImage != NULL) {
+			mBgImage->draw(dc, 0, 0, mWidth, mHeight);
+		} else if (mAttrFlags & AF_BG_COLOR) {
+			RECT r = {0, 0, mWidth, mHeight};
+			if (mBgColorBrush == NULL) {
+				mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+			}
+			FillRect(dc, &r, mBgColorBrush);
+		}
+		EndPaint(mWnd, &ps);
+		return true;
 	}
-	return false;
+	return XComponent::wndProc(msg, wParam, lParam, result);
 }
-
+void XDialog::showNormal() {
+	mShowModal = false;
+	showCenter();
+}
 int XDialog::showModal() {
-	RECT rect = {0};
-	HWND parent = getParentWnd();
-	if (parent == NULL) parent = GetDesktopWindow();
-	GetWindowRect(parent, &rect);
-	int x = getSpecSize(mAttrX);
-	int y = getSpecSize(mAttrY);
-	if (x == 0 && y == 0 && rect.right > 0 && rect.bottom > 0) {
-		x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
-		y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
-	}
-	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER | SWP_SHOWWINDOW);
-	EnableWindow(parent, FALSE);
+	mShowModal = true;
+	showCenter();
+	EnableWindow(getParentWnd(), FALSE);
 	// ShowWindow(mWnd, SW_SHOWNORMAL);
 
 	MSG msg;
@@ -610,21 +641,51 @@ int XDialog::showModal() {
 	return nRet;
 }
 
+void XDialog::showCenter() {
+	RECT rect = {0};
+	HWND parent = getParentWnd();
+	if (parent == NULL) parent = GetDesktopWindow();
+	GetWindowRect(parent, &rect);
+	int x = getSpecSize(mAttrX);
+	int y = getSpecSize(mAttrY);
+	if (x == 0 && y == 0 && rect.right > 0 && rect.bottom > 0) {
+		x = (rect.right - rect.left - getSpecSize(mAttrWidth)) / 2 + rect.left;
+		y = (rect.bottom - rect.top - getSpecSize(mAttrHeight)) / 2 + rect.top;
+	}
+	mWidth = rect.right - rect.left;
+	mHeight = rect.bottom - rect.top;
+	SetWindowPos(mWnd, 0, x, y, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), SWP_NOZORDER | SWP_SHOWWINDOW);
+}
+
 void XDialog::onMeasure(int widthSpec, int heightSpec) {
-	RECT r = {0};
-	GetClientRect(mWnd, &r);
-	mesureChildren((r.right - r.left) | MS_FIX, (r.bottom - r.top) | MS_FIX);
+	RECT r = getClientRect();
+	mesureChildren((r.right - r.left) | MS_ATMOST, (r.bottom - r.top) | MS_ATMOST);
 }
 
 void XDialog::onLayout(int width, int height) {
-	RECT r = {0};
-	GetClientRect(mWnd, &r);
+	RECT r = getClientRect();
+	width = r.right - r.left;
+	height = r.bottom - r.top;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		XComponent *child = mNode->getChild(i)->getComponent();
-		child->layout(0, 0, r.right, r.bottom);
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->layout(r.left + x, r.top + y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
 
 void XDialog::close( int nRet ) {
-	PostMessage(mWnd, WM_CLOSE, (WPARAM)nRet, 0L);
+	if (mShowModal) {
+		PostMessage(mWnd, WM_CLOSE, (WPARAM)nRet, 0L);
+	} else {
+		SetWindowPos(mWnd, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_HIDEWINDOW);
+	}
 }
+
+RECT XDialog::getClientRect() {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	return r;
+}
+
+

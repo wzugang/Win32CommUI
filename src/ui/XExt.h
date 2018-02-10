@@ -697,7 +697,18 @@ public:
 	XExtWindow(XmlNode *node);
 protected:
 	virtual void createWnd();
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual RECT getClientRect();
+protected:
+	int mBorders[4]; // left top right bottom border's width/height
+	bool mSizable;
+};
+
+class XExtDialog : public XDialog {
+public:
+	XExtDialog(XmlNode *node);
+protected:
+	virtual void createWnd();
+	virtual RECT getClientRect();
 protected:
 	int mBorders[4]; // left top right bottom border's width/height
 	bool mSizable;

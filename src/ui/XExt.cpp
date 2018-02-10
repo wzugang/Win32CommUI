@@ -3983,32 +3983,37 @@ void XExtWindow::createWnd() {
 	applyAttrs();
 	applyIcon();
 }
-bool XExtWindow::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		// draw border
-		if (mBgImage != NULL) {
-			mBgImage->draw(dc, 0, 0, mWidth, mHeight);
-		} else if (mAttrFlags & AF_BG_COLOR) {
-			RECT r = {0, 0, mWidth, mHeight};
-			if (mBgColorBrush == NULL) {
-				mBgColorBrush = CreateSolidBrush(mAttrBgColor);
-			}
-			FillRect(dc, &r, mBgColorBrush);
-		}
-		EndPaint(mWnd, &ps);
-	} else if (msg == WM_MOUSEMOVE) {
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		if (! mSizable) {
-			return true;
-		}
-		if (pt.x < mBorders[0]) {
 
-		}
-	}
-	
-	return XWindow::wndProc(msg, wParam, lParam, result);
+RECT XExtWindow::getClientRect() {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	r.left += mBorders[0];
+	r.top += mBorders[1];
+	r.right -= mBorders[2];
+	r.bottom -= mBorders[3];
+	return r;
+}
+
+XExtDialog::XExtDialog(XmlNode *node) : XDialog(node) {
+	memset(mBorders, 0, sizeof(mBorders));
+	AttrUtils::parseArrayInt(mNode->getAttrValue("border"), mBorders, 4);
+}
+
+void XExtDialog::createWnd() {
+	MyRegisterClass(mInstance, mClassName);
+	// mID = generateWndId(); // has no id
+	mWnd = CreateWindow(mClassName, NULL, WS_POPUP,
+		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
+	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
+	applyAttrs();
+}
+
+RECT XExtDialog::getClientRect() {
+	RECT r = {0};
+	GetClientRect(mWnd, &r);
+	r.left += mBorders[0];
+	r.top += mBorders[1];
+	r.right -= mBorders[2];
+	r.bottom -= mBorders[3];
+	return r;
 }

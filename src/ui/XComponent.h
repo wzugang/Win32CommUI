@@ -125,6 +125,7 @@ protected:
 	friend class UIFactory;
 };
 
+// layout like AbsLayout
 class XWindow : public XComponent {
 public:
 	XWindow(XmlNode *node);
@@ -133,21 +134,27 @@ public:
 protected:
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual RECT getClientRect();
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
 	virtual void applyIcon();
 };
 
-// only has one child
+// layout like AbsLayout
 class XDialog : public XComponent {
 public:
 	XDialog(XmlNode *node);
 	int showModal();
+	void showNormal();
 	void close(int nRet);
 protected:
+	void showCenter();
 	virtual void createWnd();
 	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual RECT getClientRect();
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual void onLayout(int width, int height);
+protected:
+	bool mShowModal;
 };
 
