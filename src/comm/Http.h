@@ -5,32 +5,55 @@
 class HttpRequest;
 
 class HttpSession {
-	HttpSession();
-	enum Method {
-		M_GET, M_POST
-	};
-	void connect(const wchar_t *host, int port);
-	HttpRequest *createRequest(Method m, const wchar_t *path);
+public:
+	enum Method {GET, POST};
+	enum Protocal {HTTP, HTTPS};
+
+	HttpSession(const wchar_t *host, int port);
+	HttpSession(const char *host, int port);
+	
+	void connect();
+
+	HttpRequest *createRequest(const wchar_t *path, Method m = GET, Protocal pro = HTTP);
+	HttpRequest *createRequest(const char *path, Method m = GET, Protocal pro = HTTP);
+	
+	void close();
+	~HttpSession();
 protected:
 protected:
 	HINTERNET mSession;
 	HINTERNET mConnection;
+	wchar_t *mHost;
+	int mPort;
 };
 
 class HttpRequest {
 public:
+	enum Encode {
+		UNKNOW, GBK, UTF8
+	};
 	// split every header by \r\n
-	bool setHeaders(const wchar_t *headers);
-	bool sendRequest(void *data, int len);
-	// headerId : see WINHTTP_QUERY_CONTENT_LENGTH
-	bool getHeader(int headerId, char *buf, int *len);
+	bool setReqHeaders(const wchar_t *headers);
+
+	bool sendRequest(void *body = NULL, int len = 0, int totalLen = 0);
+
+	int getAvailableBytes();
+	int getContentLength();
+	int getStatusCode();
+	// free your-self
+	wchar_t *getResHeaders();
+	wchar_t *getResHeader(const wchar_t *name);
+	char *getContentType();
+	Encode getEncode();
 	// return read len
 	int read(void *buf, int bufLen);
+	int write(void *data, int dataLen);
 	bool close();
 protected:
 	HttpRequest(HINTERNET req);
 protected:
 	HINTERNET mRequest;
+	bool mRecevied;
 	friend class HttpSession;
 };
 
