@@ -10,20 +10,10 @@
 				color="#rrggbb"
 				bgcolor="#rrggbb"
 				bgimage="file://xxx.bmp [x y w h] repeat-x repeat-y stretch 9patch | res://..."   路径(file://xxx.bmp)中不允许出现空格; 路径之后的所有内容为可选
-				visible = "false"
+				visible = "true|false|gone"
 				roundConer="cx cy"
 				weight="15"  HLineLayout VLineLayout会用到
 	/>
-					
-	<Button text="OK" />
-	<Label text="" />
-	<ComboBox data="男;女;"  />
-	<Table .../>
-	<Tree ... />
-	<Tab data="tab1; tab2; tab3;" />  有多个子控件，但只有一个可见
-	<Edit multiline= "true" readOnly="true"/>
-	<CheckBox .../>
-	<Radio  group = "true" />
 	
 	<ExtComponent enableFocus="true|false" />
 	<AbsLayout />

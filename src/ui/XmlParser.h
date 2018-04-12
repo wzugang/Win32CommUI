@@ -4,6 +4,7 @@
 #include <string>
 #include <windows.h>
 class XComponent;
+class VComponent;
 class XmlParser;
 
 class XmlNode {
@@ -27,6 +28,8 @@ public:
 
 	void setComponent(XComponent *c);
 	XComponent* getComponent();
+	void setComponentV(VComponent *c);
+	VComponent* getComponentV();
 
 	XmlNode* findById(const char *id);
 	XmlNode* getChildById(const char *id);
@@ -40,6 +43,7 @@ protected:
 	char *mName;
 	XmlNode *mParent;
 	XComponent *mComponent;
+	VComponent *mComponentV;
 	XmlParser *mParser;
 	std::map<std::string, XmlNode*> *mDefaultNode;
 	bool mHasCopyedDefault;

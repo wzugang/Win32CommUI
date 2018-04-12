@@ -1,7 +1,9 @@
 #include "UIFactory.h"
 #include "XmlParser.h"
 #include "XComponent.h"
+#include "VComponent.h"
 #include "XExt.h"
+#include "VExt.h"
 #include "XBinFile.h"
 #include <string.h>
 #include <map>
@@ -556,4 +558,94 @@ void UIFactory::init() {
 
 	UIFactory::registCreator("ExtWindow", XExtWindow_Creator);
 	UIFactory::registCreator("ExtDialog", XExtDialog_Creator);
+}
+
+//------------------------------------------------------
+
+//----------------------------UIFactory-------------------------
+struct NodeCreatorV {
+	NodeCreatorV() {
+		mNodeName[0] = 0;
+		mCreator = NULL;
+	}
+	char mNodeName[32];
+	UIFactoryV::Creator mCreator;
+};
+
+static NodeCreatorV g_creatorsV[64];
+static int g_creatorNumV = 0;
+
+VComponent* UIFactoryV::buildComponent( XmlNode *root) {
+	if (root == NULL) {
+		return NULL;
+	}
+	Creator c = getCreator(root->getName());
+	if (c == NULL) {
+		printf("UIFactoryV.buildingTree: node name [%s] has no creator\n", root->getName());
+		return NULL;
+	}
+	VComponent *x = c(root);
+	root->setComponentV(x);
+	for (int i = 0; i < root->getChildCount(); ++i) {
+		XmlNode *child = root->getChild(i);
+		VComponent *ix = buildComponent(child);
+		child->setComponentV(ix);
+	}
+	return x;
+}
+
+XmlNode* UIFactoryV::buildNode( const char *resPath, const char *partName ) {
+	return UIFactory::buildNode(resPath, partName);
+}
+
+VComponent* UIFactoryV::fastBuild( const char *resPath, const char *partName, VComponent *parent ) {
+	XmlNode *root = buildNode(resPath, partName);
+	if (root == NULL) {
+		return NULL;
+	}
+	if (parent != NULL) {
+		root->setParent(parent->getNode());
+	}
+	VComponent *cc = buildComponent(root);
+	// cc->createWndTree();
+	return cc;
+}
+
+void UIFactoryV::registCreator( const char *nodeName, Creator c ) {
+	if (nodeName == NULL || c == NULL)
+		return;
+	strcpy(g_creatorsV[g_creatorNumV].mNodeName, nodeName);
+	g_creatorsV[g_creatorNumV].mCreator = c;
+	++g_creatorNumV;
+}
+
+UIFactoryV::Creator UIFactoryV::getCreator( const char *nodeName ) {
+	if (nodeName == NULL) {
+		return NULL;
+	}
+	for (int i = 0; i < g_creatorNumV; ++i) {
+		if (strcmp(nodeName, g_creatorsV[i].mNodeName) == 0)
+			return g_creatorsV[i].mCreator;
+	}
+	printf("Node: [%s] has no Creator\n", nodeName);
+	return NULL;
+}
+
+void UIFactoryV::destory( XmlNode *root ) {
+	for (int i = 0; i < root->getChildCount(); ++i) {
+		XmlNode *child = root->getChild(i);
+		destory(child);
+	}
+	delete root->getComponentV();
+	delete root;
+}
+
+static VComponent *VWindow_Creator(XmlNode *n) {return new VWindow(n);}
+static VComponent *VDialog_Creator(XmlNode *n) {return new VDialog(n);}
+static VComponent *VExtLabel_Creator(XmlNode *n) {return new VExtLabel(n);}
+
+void UIFactoryV::init() {
+	registCreator("Window", VWindow_Creator);
+	registCreator("Dialog", VDialog_Creator);
+	registCreator("Label", VExtLabel_Creator);
 }

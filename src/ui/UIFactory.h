@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 class XComponent;
+class VComponent;
 class XmlNode;
 class ResPath;
 class XExtMenuModel;
@@ -69,6 +70,24 @@ public:
 	static XExtMenuModel* fastMenu(const char *resPath, const char *partName);
 	static XExtTreeNode* fastTree(const char *resPath, const char *partName);
 
+	static void destory(XmlNode *root);
+	static void registCreator(const char *nodeName, Creator c);
+	static Creator getCreator(const char *nodeName);
+};
+
+class UIFactoryV {
+public:
+	static void init();
+	typedef VComponent * (*Creator)(XmlNode*);
+
+	static VComponent* buildComponent(XmlNode *root);
+	static VComponent* buildComponentV(XmlNode *root);
+	
+	//@param resPath file://abc.xml  res://abc
+	static XmlNode* buildNode(const char *resPath, const char *partName);
+
+	static VComponent* fastBuild(const char *resPath, const char *partName, VComponent *parent);
+	
 	static void destory(XmlNode *root);
 	static void registCreator(const char *nodeName, Creator c);
 	static Creator getCreator(const char *nodeName);

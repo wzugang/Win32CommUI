@@ -1,0 +1,4 @@
+#################### main-page ############
+<Window text = "Test VApp" rect = "0 0 800 600"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp"  >
+	<Label text="Hello World" rect="40 60 150 30" bgcolor="#FFB6C1" />
+</Window>

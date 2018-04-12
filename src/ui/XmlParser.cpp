@@ -17,6 +17,7 @@ XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mName = name;
 	mParent = parent;
 	mComponent = NULL;
+	mComponentV = NULL;
 	mParser = NULL;
 	mDefaultNode = NULL;
 	mHasCopyedDefault = false;
@@ -102,6 +103,14 @@ void XmlNode::setComponent( XComponent *c ) {
 
 XComponent* XmlNode::getComponent() {
 	return mComponent;
+}
+
+void XmlNode::setComponentV( VComponent *c ) {
+	mComponentV = c;
+}
+
+VComponent* XmlNode::getComponentV() {
+	return mComponentV;
 }
 
 XmlNode* XmlNode::findById( const char *id ) {

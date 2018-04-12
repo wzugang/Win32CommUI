@@ -571,7 +571,7 @@ XDialog::XDialog( XmlNode *node ) : XComponent(node) {
 void XDialog::createWnd() {
 	MyRegisterClass(mInstance, mClassName);
 	// mID = generateWndId(); // has no id
-	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP /*| WS_SYSMENU*/ | WS_CAPTION | WS_DLGFRAME,
+	mWnd = CreateWindow(mClassName, mNode->getAttrValue("text"), WS_POPUP | WS_SYSMENU | WS_CAPTION | WS_DLGFRAME,
 		0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
 	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
 	applyAttrs();
