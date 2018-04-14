@@ -152,7 +152,6 @@ protected:
 	int mTranslateX, mTranslateY; // always >= 0
 	bool mEnableFocus, mHasFocus;
 
-	HBRUSH mBgColorBrush;
 	XImage *mBgImage;
 	VListener *mListener;
 	HFONT mFont;

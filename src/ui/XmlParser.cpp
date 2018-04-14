@@ -777,14 +777,26 @@ bool AttrUtils::parseColor(const char *color, COLORREF *colorOut) {
 		return false;
 	}
 	++color;
+	int len = strlen(color);
+	while (len > 0 && (color[len - 1] == ' ' || color[len - 1] == '\t')) {
+		--len;
+	}
+	if (len != 6 && len != 8) {
+		return false;
+	}
 	COLORREF cc = 0;
-	for (int i = 0; i < 3; ++i) {
+	for (int i = 0; i < len / 2; ++i) {
 		char *p0 = strchr((char *)HEX, toupper(color[i * 2]));
 		char *p1 = strchr((char *)HEX, toupper(color[i * 2 + 1]));
 		if (p0 == NULL || p1 == NULL) {
 			return false;
 		}
-		cc |= ((p0 - HEX) * 16 + (p1 - HEX)) << i * 8;
+		int fl = ((p0 - HEX) * 16 + (p1 - HEX));
+		if (len == 6) {
+			cc |= (fl << i * 8) | 0xff000000;
+		} else {
+			cc |= fl << (i + 3) % 4 * 8;
+		}
 	}
 	if (colorOut) *colorOut = cc;
 	return true;

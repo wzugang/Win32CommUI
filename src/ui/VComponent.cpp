@@ -128,7 +128,6 @@ VComponent::VComponent(XmlNode *node) {
 
 	mFont = NULL;
 	mRectRgn = NULL;
-	mBgColorBrush = NULL;
 	mBgImage = NULL;
 	mAttrRoundConerX = mAttrRoundConerY = 0;
 	mAttrWeight = 0;
@@ -136,9 +135,6 @@ VComponent::VComponent(XmlNode *node) {
 }
 
 VComponent::~VComponent() {
-	if (mBgColorBrush != NULL)  {
-		DeleteObject(mBgColorBrush);
-	}
 	if (mFont != NULL) {
 		DeleteObject(mFont);
 	}
@@ -484,9 +480,9 @@ void VComponent::dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y) {
 	}
 	int sid = SaveDC(dstDc);
 	IntersectClipRect(dstDc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
-	RECT rr = {0};
-	int vv = GetClipBox(dstDc, &rr);
-	mCache->draw(dstDc, self2.mX - x, self2.mY - y, self2.mWidth, self2.mHeight);
+	/*RECT rr = {0};
+	int vv = GetClipBox(dstDc, &rr);*/
+	mCache->draw(dstDc, x, y, mWidth, mHeight);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *cc = getChild(i);
 		cc->dispatchPaintMerge(dstDc, self2, x + cc->mX - mTranslateX, y + cc->mY - mTranslateY);
@@ -497,11 +493,11 @@ void VComponent::dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y) {
 void VComponent::drawCache(HDC dc) {
 	HDC memDc = CreateCompatibleDC(dc);
 	if (mCache == NULL) {
-		mCache = XImage::create(mWidth, mHeight);
+		mCache = XImage::create(mWidth, mHeight, 32);
 	}
 	SelectObject(memDc, mCache->getHBitmap());
-	int cr = IntersectClipRect(memDc, mDirtyRect.mX, mDirtyRect.mY,
-		mDirtyRect.mX + mDirtyRect.mWidth, mDirtyRect.mY + mDirtyRect.mHeight);
+	/*IntersectClipRect(memDc, mDirtyRect.mX, mDirtyRect.mY,
+		mDirtyRect.mX + mDirtyRect.mWidth, mDirtyRect.mY + mDirtyRect.mHeight);*/
 	onPaint(memDc);
 	DeleteObject(memDc);
 }
@@ -547,41 +543,23 @@ RECT VComponent::getDrawRect() {
 }
 
 void VComponent::eraseBackground(HDC dc) {
-	if (mBgImage != NULL) {
-		mBgImage->draw(dc, 0, 0, mWidth, mHeight);
-		return;
-	}
+	bool hasBg = false;
 	if (mAttrFlags & AF_BG_COLOR) {
-		if (mBgColorBrush == NULL) {
-			mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+		mCache->fillColor(mAttrBgColor);
+		hasBg = true;
+	}
+	if (mBgImage != NULL) {
+		if (! hasBg) {
+			mCache->fillAlpha(0xff);
 		}
-		RECT rc = {0, 0, mWidth, mHeight};
-		FillRect(dc, &rc, mBgColorBrush);
-		return;
+		// mBgImage->draw(dc, 0, 0, mWidth, mHeight);
+		mCache->draw(mBgImage, 0, 0, mWidth, mHeight, 0, 0, XImage::DA_COPY);
+		hasBg = true;
 	}
-	// has no background, draw transparent color
-	for (int r = 0; r < mCache->getHeight(); ++r) {
-		int *p = (int *)mCache->getRowBits(r);
-		for (int c = 0; c < mCache->getWidth(); ++c, ++p) {
-			*p = 0;
-		}
+	if (! hasBg) {
+		// has no background, draw transparent color
+		mCache->fillColor(0x00000000);
 	}
-
-	// copy parent's bg to here
-	/*VComponent *parent = getParent();
-	if (parent == NULL) {
-		return;
-	}
-	HDC parentDc = CreateCompatibleDC(dc);
-	SelectObject(parentDc, parent->mCache->getHBitmap());
-	int px = mX - parent->mTranslateX;
-	int py = mY - parent->mTranslateY;
-	int ax = px < 0 ? -px : 0;
-	int ay = py < 0 ? -py : 0;
-	int bx = px < 0 ? 0 : px;
-	int by = py < 0 ? 0 : py;
-	BitBlt(dc, ax, ay, mWidth - ax, mHeight - ay, parentDc, bx, by, SRCCOPY);
-	DeleteObject(parentDc);*/
 }
 
 void VComponent::repaint(RECT *dirtyRect) {

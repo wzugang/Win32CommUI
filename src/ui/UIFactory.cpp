@@ -200,6 +200,36 @@ void XImage::draw( HDC dc, int destX, int destY, int destW, int destH ) {
 	DeleteObject(memDc);
 }
 
+void XImage::draw(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX, int srcY, DrawAction a) {
+	if (src == NULL || dstX < 0 || dstY < 0 || dstW <= 0 || dstH <= 0 || srcX < 0 || srcY < 0) {
+		return;
+	}
+	/*if (src->mWidth <= srcX || src->mHeight <= srcY) {
+		return;
+	}*/
+	if (dstX + dstW > mWidth) {
+		dstW = mWidth - dstX;
+	}
+	if (srcX + dstW > src->mWidth) {
+		dstW = src->mWidth - srcX;
+	}
+	if (dstY + dstH > mHeight) {
+		dstH = mHeight - dstY;
+	}
+	if (srcY + dstH > src->mHeight) {
+		dstH = src->mHeight - srcY;
+	}
+	if (dstW <= 0 || dstH <= 0) {
+		return;
+	}
+
+	if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
+		drawCopy(src, dstX, dstY, dstW, dstH, srcX, srcY);
+	} else if (a == DA_BLEND) {
+		drawAlphaBlend(src, dstX, dstY, dstW, dstH, srcX, srcY);
+	}
+}
+
 void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	for (int w = 0, lw = destW; w < destW; w += mWidth, lw -= mWidth) {
 		if (hasAlphaChannel()) {
@@ -344,6 +374,79 @@ HICON XImage::loadIcon( const char *resPath ) {
 	}
 	// HBITMAP bp = cimg; // cimg.operator HBITMAP();
 	return (HICON)cimg.Detach();
+}
+
+void XImage::fillAlpha(BYTE alpha) {
+	if (! mHasAlphaChannel) {
+		return;
+	}
+	for (int r = 0; r < mHeight; ++r) {
+		BYTE *p = (BYTE *)getRowBits(r);
+		for (int c = 0; c < mWidth; ++c, p += 4) {
+			p[3] = alpha;
+		}
+	}
+}
+
+void XImage::fillColor(COLORREF rgba) {
+	if (mHasAlphaChannel) {
+		for (int r = 0; r < mHeight; ++r) {
+			DWORD *p = (DWORD *)getRowBits(r);
+			for (int c = 0; c < mWidth; ++c, ++p) {
+				*p = rgba;
+			}
+		}
+	} else {
+		BYTE r = rgba & 0xff, g = (rgba >> 8) & 0xff, b = (rgba >> 16) & 0xff;
+		for (int r = 0; r < mHeight; ++r) {
+			BYTE *p = (BYTE *)getRowBits(r);
+			for (int c = 0; c < mWidth; ++c, p += 3) {
+				p[0] = r;
+				p[1] = g;
+				p[2] = b;
+			}
+		}
+	}
+}
+
+void XImage::drawCopy(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX, int srcY) {
+	const int SRC_STEP = src->mBitPerPix / 8;
+	const int DST_STEP = mBitPerPix / 8;
+	if (SRC_STEP < 3 || DST_STEP < 3) {
+		return;
+	}
+	for (int r = 0; r < dstH; ++r) {
+		BYTE *s = (BYTE *)src->getRowBits(srcY + r) + srcX * SRC_STEP;
+		BYTE *d = (BYTE *)getRowBits(dstY + r) + dstX * DST_STEP;
+		if (SRC_STEP == DST_STEP) {
+			memcpy(d, s, dstW * DST_STEP);
+		} else {
+			for (int c = 0; c < dstW; ++c) {
+				d[0] = s[0];
+				d[1] = s[1];
+				d[2] = s[2];
+				if (DST_STEP == 4) {
+					d[3] = 255;
+				}
+				s += SRC_STEP;
+				d += DST_STEP;
+			}
+		}
+	}
+}
+
+void XImage::drawAlphaBlend(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX, int srcY) {
+	for (int r = 0; r < dstH; ++r) {
+		BYTE *s = (BYTE *)src->getRowBits(srcY + r) + srcX * 4;
+		BYTE *d = (BYTE *)getRowBits(dstY + r) + dstX * 4;
+		for (int c = 0; c < dstW; ++c) {
+			d[0] = (s[0] * s[3] + (255 - s[3]) * d[0]) / 255;
+			d[1] = (s[1] * s[3] + (255 - s[3]) * d[1]) / 255;
+			d[2] = (s[2] * s[3] + (255 - s[3]) * d[2]) / 255;
+			s += 4;
+			d += 4;
+		}
+	}
 }
 
 //----------------------------UIFactory-------------------------

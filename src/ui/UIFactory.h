@@ -9,6 +9,9 @@ class XExtTreeNode;
 
 class XImage {
 public:
+	enum DrawAction {
+		DA_COPY, DA_BLEND
+	};
 	// @param resPath 
 	// res://xxx [x y width height] repeat-x repeat-y stretch 9patch
 	// file://abc/xx.bmp ...
@@ -23,6 +26,10 @@ public:
 	void *getRowBits(int row);
 	bool hasAlphaChannel();
 	void draw(HDC dc, int destX, int destY, int destW, int destH);
+
+	void fillAlpha(BYTE alpha);
+	void fillColor(COLORREF rgba);
+	void draw(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY, DrawAction a);
 
 	static HICON loadIcon(const char *resPath);
 	~XImage();
@@ -40,6 +47,9 @@ protected:
 	void drawStretch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
 	void draw9Patch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
 	void drawNormal(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+
+	void drawCopy(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
+	void drawAlphaBlend(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
 
 	void *mBits;
 	HBITMAP mHBitmap;
