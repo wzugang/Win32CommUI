@@ -1,4 +1,7 @@
 #################### main-page ############
 <Window text = "Test VApp" rect = "0 0 800 600"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp"  >
-	<Label text="Hello World" rect="200 200 150 50" color="#EE1122" bgcolor="#22FFB6C1" font="size:16;" />
+	<default class="Button" normalImage="file://skin/ext_button.bmp [0 48 75 24] 9patch" hoverImage="file://skin/ext_button.bmp [0 24 75 24] 9patch" pushImage="file://skin/ext_button.bmp [0 0 75 24] 9patch" />
+	
+	<Button id = "ext_btn_1" text = "My Button"  rect = "20 60 75 24" />
+	<Label text="Hello World" rect="200 200 200 50" color="#EE1122" bgcolor="#22FFB6C1" font="name:ËÎÌå; size:26; weight:800;" />
 </Window>

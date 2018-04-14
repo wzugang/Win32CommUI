@@ -10,7 +10,7 @@ class XExtTreeNode;
 class XImage {
 public:
 	enum DrawAction {
-		DA_COPY, DA_BLEND
+		DA_COPY, DA_ALPHA_BLEND
 	};
 	// @param resPath 
 	// res://xxx [x y width height] repeat-x repeat-y stretch 9patch

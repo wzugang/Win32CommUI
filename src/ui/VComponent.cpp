@@ -150,15 +150,15 @@ VComponent::~VComponent() {
 void VComponent::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	mesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
+	onMesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
 		(mMesureHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 }
 
-void VComponent::onLayout( int width, int height ) {
+void VComponent::onLayoutChildren( int width, int height ) {
 	// layout children
 }
 
-void VComponent::layout( int x, int y, int width, int height ) {
+void VComponent::onLayout( int x, int y, int width, int height ) {
 	bool changed = mWidth != width || mHeight != height;
 	mX = x;
 	mY = y;
@@ -173,7 +173,7 @@ void VComponent::layout( int x, int y, int width, int height ) {
 		mRectRgn = CreateRoundRectRgn(0, 0, mWidth, mHeight, mAttrRoundConerX, mAttrRoundConerY);
 		SetWindowRgn(mWnd, mRectRgn, TRUE);
 	}*/
-	onLayout(width, height);
+	onLayoutChildren(width, height);
 	if (changed && mCache != NULL) {
 		delete mCache;
 		mCache = NULL;
@@ -246,7 +246,7 @@ int VComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
 	return 0;
 }
 
-void VComponent::mesureChildren( int widthSpec, int heightSpec ) {
+void VComponent::onMesureChildren( int widthSpec, int heightSpec ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
 		child->onMeasure(widthSpec, heightSpec);
@@ -403,11 +403,11 @@ bool VComponent::dispatchMessage(Msg *msg) {
 		VComponent *target = NULL;
 		for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
 			VComponent *child = getChild(i);
-			int x = msg->mouse.x, y = msg->mouse.y;
+			int x = msg->mouse.x - mTranslateX, y = msg->mouse.y - mTranslateY;
 			if (x >= child->mX && y >= child->mY && x < child->mX + child->mWidth && y < child->mY + child->mHeight) {
 				Msg n = *msg;
-				n.mouse.x -= child->mX;
-				n.mouse.y -= child->mY;
+				n.mouse.x -= child->mX + mTranslateX;
+				n.mouse.y -= child->mY + mTranslateY;
 				if (child->dispatchMessage(&n)) {
 					msg->mResult = n.mResult;
 					return true;
@@ -562,8 +562,84 @@ void VComponent::eraseBackground(HDC dc) {
 	}
 }
 
-void VComponent::repaint(RECT *dirtyRect) {
-	// TODO:
+void VComponent::repaint(XRect *dirtyRect) {
+	XRect rect;
+	if (dirtyRect == NULL) {
+		mDirtyRect.mX = mDirtyRect.mY = 0;
+		mDirtyRect.mWidth = mWidth;
+		mDirtyRect.mHeight = mHeight;
+		rect = mDirtyRect;
+	} else {
+		mDirtyRect = mDirtyRect.join(*dirtyRect);
+		rect = *dirtyRect;
+	}
+	mDirty = true;
+	VComponent *parent = getParent();
+	while (parent != NULL) {
+		parent->mHasDirtyChild = true;
+		parent = parent->getParent();
+	}
+	POINT pt = getDrawPoint();
+	rect.offset(pt.x, pt.y);
+	RECT rr = rect.to();
+	InvalidateRect(getWnd(), &rr, FALSE);
+}
+
+HWND VComponent::getWnd() {
+	if (getParent() != NULL) {
+		return getParent()->getWnd();
+	}
+	return NULL;
+}
+
+VBaseWindow * VComponent::getRoot() {
+	VComponent *v = getParent();
+	while (v != NULL) {
+		VComponent *vv = v->getParent();
+		if (vv != NULL) {
+			v = vv;
+		} else {
+			break;
+		}
+	}
+	return dynamic_cast<VBaseWindow*>(v);
+}
+
+void VComponent::setCapture() {
+	VBaseWindow *w = getRoot();
+	if (w) {
+		w->mCapture = this;
+	}
+}
+
+void VComponent::releaseCapture() {
+	VBaseWindow *w = getRoot();
+	if (w) {
+		w->mCapture = NULL;
+	}
+}
+
+bool VComponent::hasBackground() {
+	return (mAttrFlags & AF_BG_COLOR) || mBgImage != NULL;
+}
+
+void VComponent::setFocus() {
+	VBaseWindow *w = getRoot();
+	if (w) {
+		w->mFocus = this;
+	}
+}
+
+void VComponent::releaseFocus() {
+	VBaseWindow *w = getRoot();
+	if (w) {
+		w->mFocus = NULL;
+	}
+}
+
+void VComponent::updateWindow() {
+	HWND wnd = getWnd();
+	UpdateWindow(wnd);
 }
 
 //----------------------------------------------------------
@@ -744,9 +820,11 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 //-------------VBaseWindow---------------------------------
 VBaseWindow::VBaseWindow(XmlNode *node) : VComponent(node) {
 	mWnd = NULL;
+	mCapture = NULL;
+	mFocus = NULL;
 }
 
-void VBaseWindow::onLayout(int width, int height) {
+void VBaseWindow::onLayoutChildren(int width, int height) {
 	RECT r = getClientRect();
 	width = r.right - r.left;
 	height = r.bottom - r.top;
@@ -754,7 +832,7 @@ void VBaseWindow::onLayout(int width, int height) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
 		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
 		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
-		child->layout(r.left + x, r.top + y, child->getMesureWidth(), child->getMesureHeight());
+		child->onLayout(r.left + x, r.top + y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
 
@@ -777,7 +855,25 @@ void VBaseWindow::applyIcon() {
 }
 
 bool VBaseWindow::dispatchMessage(Msg *msg) {
-	if (msg->mId == WM_SIZE && msg->def.lParam > 0) {
+	if (msg->mId == WM_ACTIVATE) {
+		if (WA_INACTIVE == LOWORD(msg->def.wParam)) {
+			if (mCapture != NULL) {
+				Msg m = *msg;
+				m.mId = Msg::MOUSE_CANCEL;
+				mCapture->onMouseEvent(&m);
+			}
+		}
+		// go through
+	} else if (msg->mId >= Msg::LBUTTONDOWN && msg->mId <= Msg::MOUSE_LEAVE) {
+		if (mCapture != NULL) {
+			Msg m = *msg;
+			POINT pt = mCapture->getDrawPoint();
+			m.mouse.x -= pt.x;
+			m.mouse.y -= pt.y;
+			return mCapture->dispatchMessage(&m);
+		}
+		// go through
+	} else if (msg->mId == WM_SIZE && msg->def.lParam > 0) {
 		// int w = LOWORD(msg->def.lParam) , h = HIWORD(msg->def.lParam);
 		notifyLayout();
 		return true;
@@ -797,7 +893,7 @@ RECT VBaseWindow::getClientRect() {
 void VBaseWindow::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = getSpecSize(widthSpec);
 	mMesureHeight = getSpecSize(heightSpec);
-	mesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
+	onMesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
 		(mMesureHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 }
 
@@ -805,7 +901,7 @@ void VBaseWindow::notifyLayout() {
 	RECT rr = getClientRect();
 	int w = rr.right - rr.left, h = rr.bottom - rr.top;
 	onMeasure(w | VComponent::MS_ATMOST, h | VComponent::MS_ATMOST);
-	layout(0, 0, mMesureWidth, mMesureHeight);
+	onLayout(0, 0, mMesureWidth, mMesureHeight);
 	mDirty = true;
 	mHasDirtyChild = true;
 }
@@ -845,6 +941,10 @@ DWORD VBaseWindow::getStyle(DWORD def) {
 
 void VBaseWindow::setWnd(HWND wnd) {
 	mWnd = wnd;
+}
+
+HWND VBaseWindow::getWnd() {
+	return mWnd;
 }
 
 //--------------------------------------------------------

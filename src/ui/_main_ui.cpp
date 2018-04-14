@@ -7,7 +7,6 @@
 #include "VComponent.h"
 #include "VExt.h"
 
-VWindow *win;
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
@@ -21,12 +20,18 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
 
+#if 0
+	UIFactory::init();
+	XWindow *xwin = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
+	xwin->show(nCmdShow);
+	xwin->messageLoop();
+#else
 	UIFactoryV::init();
-
-	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
+	VWindow *win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 	win->createWnd();
 	win->show();
 	win->msgLoop();
 	UIFactoryV::destory(win->getNode());
+#endif
 	return 0;
 }

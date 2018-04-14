@@ -32,29 +32,28 @@ protected:
 	char *mText;
 };
 
-#if 0
-
 class VExtEmptyComponent : public VExtComponent {
 public:
 	VExtEmptyComponent(XmlNode *node);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void dispatchPaintEvent(Msg *m);
+	virtual void dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y);
 };
-
 
 class VExtButton : public VExtComponent {
 public:
 	VExtButton(XmlNode *node);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual StateImage getStateImage();
+	virtual bool onPaint(HDC dc);
+	bool onMouseEvent(Msg *m);
+	virtual StateImage getStateImage(void *param1, void *param2);
 protected:
-	XImage *mStateImages[8];
 	bool mIsMouseDown;
 	bool mIsMouseMoving;
 	bool mIsMouseLeave;
 };
 
+#if 0
 class VExtOption : public VExtButton {
 public:
 	VExtOption(XmlNode *node);

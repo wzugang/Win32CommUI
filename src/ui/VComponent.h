@@ -3,12 +3,13 @@
 #include <CommCtrl.h>
 #include <vector>
 #include <list>
+
 class XmlNode;
 class UIFactory;
 class VComponent;
 class XImage;
-class XTreeRootNode;
 struct Msg;
+class VBaseWindow;
 
 class VListener {
 public:
@@ -32,13 +33,13 @@ struct XRect {
 struct Msg {
 	enum ID {
 		NONE = -100,
-		LBUTTONDOWN, LBUTTONUP, RBUTTONDOWN, RBUTTONUP,
-		CLICK, DBCLICK, MOUSE_MOVE, MOUSE_WHEEL, MOUSE_LEAVE,
+		LBUTTONDOWN, LBUTTONUP, RBUTTONDOWN, RBUTTONUP,MOUSE_CANCEL,
+		CLICK, DBCLICK, MOUSE_MOVE, MOUSE_WHEEL, MOUSE_LEAVE, 
 
 		KEY_DOWN, KEY_UP, CHAR,
 		LOST_FOCUS, GAIN_FOCUS,
 		PAINT,
-		SET_CURSOR
+		SET_CURSOR,
 	};
 	union VKeys {
 		int ctrl:1;
@@ -82,14 +83,12 @@ public:
 	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
-	//virtual void createWnd();
 	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onLayout(int width, int height);
-	virtual void layout(int x, int y, int width, int height);
-	virtual void mesureChildren(int widthSpec, int heighSpec);
+	virtual void onMesureChildren(int widthSpec, int heighSpec);
+	virtual void onLayout(int x, int y, int width, int height);
+	virtual void onLayoutChildren(int width, int height);
 
-	//void createWndTree();
-	// HWND getWnd();
+	virtual HWND getWnd();
 	XmlNode *getNode() {return mNode;}
 	VComponent* findById(const char *id);
 	VComponent* getChildById(const char *id);
@@ -135,7 +134,14 @@ public:
 	virtual bool onPaint(HDC dc);
 	void drawCache(HDC dc);
 	virtual void eraseBackground(HDC dc);
-	virtual void repaint(RECT *dirtyRect = NULL);
+	virtual void repaint(XRect *dirtyRect = NULL);
+	void updateWindow();
+	virtual void setCapture();
+	virtual void releaseCapture();
+	virtual void setFocus();
+	virtual void releaseFocus();
+	virtual VBaseWindow *getRoot();
+	bool hasBackground();
 
 	virtual ~VComponent();
 protected:
@@ -172,16 +178,19 @@ public:
 	VBaseWindow(XmlNode *node);
 	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
+	virtual HWND getWnd();
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
-	virtual void onLayout(int width, int height);
+	virtual void onLayoutChildren(int width, int height);
 	virtual void applyIcon();
 	virtual void applyAttrs();
 	virtual void onMeasure(int widthSpec, int heightSpec);
 	virtual DWORD getStyle(DWORD def);
 protected:
 	HWND mWnd;
+	VComponent *mCapture, *mFocus;
+	friend class VComponent;
 };
 
 class VWindow : public VBaseWindow {

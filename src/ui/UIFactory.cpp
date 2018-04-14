@@ -225,7 +225,7 @@ void XImage::draw(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX,
 
 	if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
 		drawCopy(src, dstX, dstY, dstW, dstH, srcX, srcY);
-	} else if (a == DA_BLEND) {
+	} else if (a == DA_ALPHA_BLEND) {
 		drawAlphaBlend(src, dstX, dstY, dstW, dstH, srcX, srcY);
 	}
 }
@@ -745,10 +745,14 @@ void UIFactoryV::destory( XmlNode *root ) {
 
 static VComponent *VWindow_Creator(XmlNode *n) {return new VWindow(n);}
 static VComponent *VDialog_Creator(XmlNode *n) {return new VDialog(n);}
+static VComponent *VExtEmpty_Creator(XmlNode *n) {return new VExtEmptyComponent(n);}
 static VComponent *VExtLabel_Creator(XmlNode *n) {return new VExtLabel(n);}
+static VComponent *VExtButton_Creator(XmlNode *n) {return new VExtButton(n);}
 
 void UIFactoryV::init() {
 	registCreator("Window", VWindow_Creator);
 	registCreator("Dialog", VDialog_Creator);
+	registCreator("Empty", VExtEmpty_Creator);
 	registCreator("Label", VExtLabel_Creator);
+	registCreator("Button", VExtButton_Creator);
 }

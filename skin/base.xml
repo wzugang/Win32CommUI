@@ -14,36 +14,15 @@
 	<default class="ExtTextArea" vbarTrack="file://skin/ext_vscrollbar_track.bmp" vbarThumb="file://skin/ext_vscrollbar_thumb.bmp" />
 	
 <AbsLayout id = "main-layout" rect="0  0 100% 100%" font="size:18;"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp" >
-	<Tab id="tab" rect = "10% 10% 80% 80%" data = "早上; 中午; 下午;Area;"  >
-		<AbsLayout  bgcolor="#dFB6C1" bgimage="file://skin/b.bmp" rect="0 0 100% 100%">
-			<ExtButton id = "ext_btn_1" text = "ExtBtn"  rect = "20 60 75 24"    />
-			<ExtLabel text = "This is a ExtLabel" rect="150 50 200 25"   padding="5 5 5 5" font="name:宋体; size:18; "/>
-			<ExtCheckBox text="It a ExtCheckBox" rect = "150 90 200 30" color="#ff4f70" />
-			<ExtRadio text="It a ExtRadio A" rect="150 130 200 30" group="XX-VV" />
-			<ExtRadio text="It a ExtRadio B" rect="150 160 200 30" group="XX-VV" />
-			<ExtRadio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
-			<ExtButton id = "ext_btn_2" text = "ExtBtn"  rect = "20 200 100 24"  />
-			<ExtCalendar rect = "350 20 220 200"  />
-			<ExtDatePicker rect="20 250 150 30"  readOnly="false" arrowSize="20 15" popupSize="220 200" />
-		</AbsLayout>
-
-		<AbsLayout  bgimage="file://skin/c.bmp" visible = "false" rect="0 0 100% 100%" >
-			<ExtEdit text = "Hello World B!" bgcolor="#F5FFFA" color="#880000" rect = "20 20 200 30" roundConer="5 5"  enableBorder="true" />
-			<ExtMaskEdit mask="HH-HH-HH" placeHolder=" " case="upper" bgcolor="#F5FFFA" color="#880000" rect = "20 60 200 30" roundConer="5 5" />
-			<ExtButton id = "btn_1" text = "ClickMe"  rect = "250 20 75 24"  margin="0 0 20 0" />
-			<ExtList id = "list_1" bgcolor="#F5FFFA" rect="350 20 170 200"/>
-			<ExtComboBox id="combox_1" rect="20 100 150 25" readOnly="true" arrowSize="20 15" popupSize="100% 120"/>
-			<ExtTree id="ext_tree" rect="20 150 300 200" bgcolor="#F5FFFA"  />
-		</AbsLayout>
-
-		<AbsLayout  bgimage="file://skin/d.bmp" visible = "false" rect="0 0 100% 100%">
-			<ExtTable id="my-table" rect="10% 10% 80% 80%" bgcolor="#D5DFDA" />
-		</AbsLayout>
-		
-		<AbsLayout  bgimage="file://skin/d.bmp" visible = "false" rect="0 0 100% 100%">
-			<ExtTextArea id="ext_area" bgcolor="#F5FFFA" rect="10% 10% 80% 80%"  />
-		</AbsLayout>
-	</Tab>
+	<ExtButton id = "ext_btn_1" text = "ExtBtn"  rect = "20 60 75 24"    />
+	<ExtLabel text = "This is a ExtLabel" rect="150 50 200 25"   padding="5 5 5 5" font="name:宋体; size:18; "/>
+	<ExtCheckBox text="It a ExtCheckBox" rect = "150 90 200 30" color="#ff4f70" />
+	<ExtRadio text="It a ExtRadio A" rect="150 130 200 30" group="XX-VV" />
+	<ExtRadio text="It a ExtRadio B" rect="150 160 200 30" group="XX-VV" />
+	<ExtRadio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
+	<ExtButton id = "ext_btn_2" text = "ExtBtn"  rect = "20 200 100 24"  />
+	<ExtCalendar rect = "350 20 220 200"  />
+	<ExtDatePicker rect="20 250 150 30"  readOnly="false" arrowSize="20 15" popupSize="220 200" />
 </AbsLayout>
 </Window>
 
