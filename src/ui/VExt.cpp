@@ -45,16 +45,19 @@ VExtLabel::VExtLabel( XmlNode *node ) : VExtComponent(node) {
 	mText = mNode->getAttrValue("text");
 }
 
-bool VExtLabel::onPaint(HDC dc) {
+void VExtLabel::onPaint(Msg *m) {
+	HDC dc = m->paint.dc;
 	RECT r = {mAttrPadding[0], mAttrPadding[1], mWidth - mAttrPadding[2], mHeight - mAttrPadding[3]};
-	eraseBackground(dc);
+	eraseBackground(m);
+	if (mText == NULL) {
+		return;
+	}
 	if (mAttrFlags & AF_COLOR) {
 		SetTextColor(dc, mAttrColor & 0xffffff);
 	}
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
 	DrawText(dc, mText, -1, &r, 0);
-	return true;
 }
 
 char * VExtLabel::getText() {
@@ -63,18 +66,6 @@ char * VExtLabel::getText() {
 
 void VExtLabel::setText( char *text ) {
 	mText = text;
-}
-
-
-
-//------------------VExtEmptyComponent---------------------------------
-VExtEmptyComponent::VExtEmptyComponent(XmlNode *node) : VExtComponent(node) {
-}
-
-void VExtEmptyComponent::dispatchPaintEvent(Msg *m) {
-}
-
-void VExtEmptyComponent::dispatchPaintMerge(HDC dstDc, XImage *dst, XRect &clip, int x, int y) {
 }
 
 //-------------------VExtButton-----------------------------------
@@ -135,17 +126,13 @@ bool VExtButton::onMouseEvent(Msg *m) {
 	return true;
 }
 
-bool VExtButton::onPaint(HDC dc) {
-	RECT r = {0, 0, mWidth, mHeight};
+void VExtButton::onPaint(Msg *m) {
+	HDC dc = m->paint.dc;
+	RECT r = {0,0, mWidth, mHeight};
 	XImage *cur = mStateImages[getStateImage(NULL, NULL)];
-	eraseBackground(dc);
+	eraseBackground(m);
 	if (cur != NULL) {
-		if (hasBackground()) {
-			// cur->draw(dc, 0, 0, mWidth, mHeight);
-			mCache->draw(cur, 0, 0, mWidth, mHeight, XImage::DA_ALPHA_BLEND);
-		} else {
-			mCache->draw(cur, 0, 0, mWidth, mHeight, XImage::DA_COPY);
-		}
+		cur->draw(dc, 0, 0, mWidth, mHeight);
 	}
 
 	if (mAttrFlags & AF_COLOR) {
@@ -154,7 +141,6 @@ bool VExtButton::onPaint(HDC dc) {
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
 	DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-	return true;
 }
 
 VExtButton::StateImage VExtButton::getStateImage(void *param1, void *param2) {

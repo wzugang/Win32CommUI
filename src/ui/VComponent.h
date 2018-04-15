@@ -21,6 +21,8 @@ struct XRect {
 	int mX, mY, mWidth, mHeight;
 	XRect();
 	XRect(int x, int y, int w, int h);
+	XRect(RECT &r);
+
 	bool isValid() const;
 	void offset(int dx, int dy);
 	XRect intersect(XRect &r);
@@ -56,7 +58,7 @@ struct Msg {
 	// if has MK_CONTROL bit, means ctrl is press down
 	struct {int x; int y; VKeys vkey; int deta;} mouse;
 	struct {VKeys vkey; wchar_t code;} key;
-	struct {HDC dc; XRect rect;} paint;
+	struct {HDC dc; XRect clip; int x; int y;} paint;
 	struct {WPARAM wParam; LPARAM lParam;} def;
 	
 	LRESULT mResult;
@@ -129,12 +131,10 @@ public:
 	virtual bool onMouseEvent(Msg *m);
 	virtual bool onKeyEvent(Msg *m);
 	virtual bool onFocusEvent(bool gainFocus);
-	virtual void dispatchPaintEvent(Msg *m);
-	virtual void dispatchPaintMerge(XImage *dst, XRect &clip, int x, int y);
-	// return true means merge cache image to parent layer
-	virtual bool onPaint(HDC dc);
+	virtual void dispatchPaintEvent2(Msg *m);
+	virtual void onPaint(Msg *m);
 	virtual void drawCache(HDC dc);
-	virtual void eraseBackground(HDC dc);
+	virtual void eraseBackground(Msg *m);
 	virtual void repaint(XRect *dirtyRect = NULL);
 	void updateWindow();
 	virtual void setCapture();
@@ -181,7 +181,7 @@ public:
 	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
 	virtual HWND getWnd();
-	virtual XImage *dispatchPaintMerge(XRect &clip);
+	virtual void dispatchPaintEvent2(Msg *m);
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);

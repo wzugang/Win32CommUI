@@ -25,6 +25,10 @@ XRect::XRect(int x, int y, int w, int h) {
 	mHeight = h;
 }
 
+XRect::XRect(RECT &r) {
+	from(r);
+}
+
 void XRect::offset(int dx, int dy) {
 	mX += dx;
 	mY += dy;
@@ -438,44 +442,31 @@ bool VComponent::onFocusEvent(bool gainFocus) {
 	return false;
 }
 
-bool VComponent::onPaint(HDC dc) {
-	eraseBackground(dc);
-	return true;
+void VComponent::onPaint(Msg *m) {
+	eraseBackground(m);
 }
 
-void VComponent::dispatchPaintEvent(Msg *msg) {
-	if (mDirty) {
-		drawCache(msg->paint.dc);
-		mDirty = false;
-		mDirtyRect.reset();
-	}
-	if (! mHasDirtyChild) {
-		return;
-	}
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = getChild(i);
-		child->dispatchPaintEvent(msg);
-	}
-	mHasDirtyChild = false;
-}
-
-void VComponent::dispatchPaintMerge(XImage *dst, XRect &clip, int x, int y) {
-	XRect self(x, y, mWidth, mHeight);
-	XRect self2 = self.intersect(clip);
+void VComponent::dispatchPaintEvent2(Msg *m) {
+	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
+	XRect self2 = self.intersect(m->paint.clip);
 	if (! self2.isValid()) {
 		return;
 	}
-	// int sid = SaveDC(dstDc);
-	// IntersectClipRect(dstDc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
-	// RECT rr = {0};
-	// int vv = GetClipBox(dstDc, &rr);
-	// mCache->draw(dstDc, x, y, mWidth, mHeight);
-	dst->drawCopy(mCache, self2.mX, self2.mY, self2.mWidth, self2.mHeight, self2.mX - x, self2.mY - y);
+	int sid = SaveDC(m->paint.dc);
+	IntersectClipRect(m->paint.dc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
+	int sid2 = SaveDC(m->paint.dc);
+	SetViewportOrgEx(m->paint.dc, m->paint.x, m->paint.y, NULL);
+	onPaint(m);
+	RestoreDC(m->paint.dc, sid2);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *cc = getChild(i);
-		cc->dispatchPaintMerge(dst, self2, x + cc->mX - mTranslateX, y + cc->mY - mTranslateY);
+		Msg mm = *m;
+		mm.paint.x += cc->mX - mTranslateX;
+		mm.paint.y += cc->mY - mTranslateY;
+		mm.paint.clip = self2;
+		cc->dispatchPaintEvent2(&mm);
 	}
-	// RestoreDC(dstDc, sid);
+	RestoreDC(m->paint.dc, sid);
 }
 
 void VComponent::drawCache(HDC dc) {
@@ -486,7 +477,7 @@ void VComponent::drawCache(HDC dc) {
 	SelectObject(memDc, mCache->getHBitmap());
 	/*IntersectClipRect(memDc, mDirtyRect.mX, mDirtyRect.mY,
 		mDirtyRect.mX + mDirtyRect.mWidth, mDirtyRect.mY + mDirtyRect.mHeight);*/
-	onPaint(memDc);
+	// onPaint(memDc);
 	DeleteObject(memDc);
 }
 
@@ -530,23 +521,20 @@ RECT VComponent::getDrawRect() {
 	return rs;
 }
 
-void VComponent::eraseBackground(HDC dc) {
-	bool hasBg = false;
+void VComponent::eraseBackground(Msg *m) {
+	HDC dc = m->paint.dc;
 	if (mAttrFlags & AF_BG_COLOR) {
-		mCache->fillColor(mAttrBgColor);
-		hasBg = true;
+		static XImage *src = XImage::create(1, 1, 32);
+		src->fillColor(mAttrBgColor);
+		HDC mdc = CreateCompatibleDC(dc);
+		SelectObject(mdc, src->getHBitmap());
+		
+		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+		AlphaBlend(dc, 0, 0, mWidth, mHeight, mdc, 0, 0, 1, 1, bf);
+		DeleteObject(mdc);
 	}
 	if (mBgImage != NULL) {
-		/*if (! hasBg) {
-			mCache->fillAlpha(0xff);
-		}*/
-		// mBgImage->draw(dc, 0, 0, mWidth, mHeight);
-		mCache->draw(mBgImage, 0, 0, mWidth, mHeight, XImage::DA_COPY);
-		hasBg = true;
-	}
-	if (! hasBg) {
-		// has no background, draw transparent color
-		mCache->fillColor(0x00000000);
+		mBgImage->draw(dc, 0, 0, mWidth, mHeight);
 	}
 }
 
@@ -629,6 +617,8 @@ void VComponent::updateWindow() {
 	HWND wnd = getWnd();
 	UpdateWindow(wnd);
 }
+
+
 
 //----------------------------------------------------------
 void MyRegisterClassV(HINSTANCE ins, const char *className) {
@@ -757,21 +747,9 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(wnd, &ps);
 		msg.paint.dc = dc;
-		msg.paint.rect.from(ps.rcPaint);
-		cc->dispatchPaintEvent(&msg);
-
-		XRect clip(0, 0, cc->getWidth(), cc->getHeight());
-		clip = clip.intersect(msg.paint.rect);
-		IntersectClipRect(dc, 0, 0, cc->getWidth(), cc->getHeight());
-		VBaseWindow *win = static_cast<VBaseWindow*>(cc);
-		XRect clp = clip;
-		XImage *canvas = win->dispatchPaintMerge(clp);
-
-		HDC mdc = CreateCompatibleDC(dc);
-		SelectObject(mdc, canvas->getHBitmap());
-		BitBlt(dc, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
-		DeleteObject(mdc);
-
+		msg.paint.clip.from(ps.rcPaint);
+		msg.paint.x = msg.paint.y = 0;
+		cc->dispatchPaintEvent2(&msg);
 		EndPaint(wnd, &ps);
 		return 0;}
 	case WM_SETCURSOR:
@@ -945,13 +923,19 @@ HWND VBaseWindow::getWnd() {
 	return mWnd;
 }
 
-XImage* VBaseWindow::dispatchPaintMerge(XRect &clip) {
+void VBaseWindow::dispatchPaintEvent2(Msg *m) {
 	if (mCanvas == NULL || mCanvas->getWidth() != mWidth || mCanvas->getHeight() != mHeight) {
 		delete mCanvas;
 		mCanvas = XImage::create(mWidth, mHeight, 24);
 	}
-	VComponent::dispatchPaintMerge(mCanvas, clip, 0, 0);
-	return mCanvas;
+	HDC old = m->paint.dc;
+	XRect clip = m->paint.clip;
+	HDC mdc = CreateCompatibleDC(old);
+	SelectObject(mdc, mCanvas->getHBitmap());
+	m->paint.dc = mdc;
+	VComponent::dispatchPaintEvent2(m);
+	BitBlt(old, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
+	DeleteObject(mdc);
 }
 
 //--------------------------------------------------------

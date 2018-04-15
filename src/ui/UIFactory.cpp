@@ -540,7 +540,9 @@ void XImage::fillAlpha(BYTE alpha) {
 }
 
 void XImage::fillColor(COLORREF rgba) {
+	BYTE r = rgba & 0xff, g = (rgba >> 8) & 0xff, b = (rgba >> 16) & 0xff, a = (rgba >> 24) & 0xff;
 	if (mHasAlphaChannel) {
+		rgba = (a << 24) | ((b * a / 255) << 16) | ((g * a / 255) << 8) | (r * a / 255);
 		for (int r = 0; r < mHeight; ++r) {
 			DWORD *p = (DWORD *)getRowBits(r);
 			for (int c = 0; c < mWidth; ++c, ++p) {
@@ -548,7 +550,6 @@ void XImage::fillColor(COLORREF rgba) {
 			}
 		}
 	} else {
-		BYTE r = rgba & 0xff, g = (rgba >> 8) & 0xff, b = (rgba >> 16) & 0xff;
 		for (int r = 0; r < mHeight; ++r) {
 			BYTE *p = (BYTE *)getRowBits(r);
 			for (int c = 0; c < mWidth; ++c, p += 3) {
@@ -905,14 +906,12 @@ void UIFactoryV::destory( XmlNode *root ) {
 
 static VComponent *VWindow_Creator(XmlNode *n) {return new VWindow(n);}
 static VComponent *VDialog_Creator(XmlNode *n) {return new VDialog(n);}
-static VComponent *VExtEmpty_Creator(XmlNode *n) {return new VExtEmptyComponent(n);}
 static VComponent *VExtLabel_Creator(XmlNode *n) {return new VExtLabel(n);}
 static VComponent *VExtButton_Creator(XmlNode *n) {return new VExtButton(n);}
 
 void UIFactoryV::init() {
 	registCreator("Window", VWindow_Creator);
 	registCreator("Dialog", VDialog_Creator);
-	registCreator("Empty", VExtEmpty_Creator);
 	registCreator("Label", VExtLabel_Creator);
 	registCreator("Button", VExtButton_Creator);
 }

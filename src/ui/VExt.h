@@ -27,24 +27,16 @@ public:
 	char *getText();
 	void setText(char *text);
 protected:
-	virtual bool onPaint(HDC dc);
+	virtual void onPaint(Msg *m);
 protected:
 	char *mText;
-};
-
-class VExtEmptyComponent : public VExtComponent {
-public:
-	VExtEmptyComponent(XmlNode *node);
-protected:
-	virtual void dispatchPaintEvent(Msg *m);
-	virtual void dispatchPaintMerge(HDC dstDc, XImage *dst, XRect &clip, int x, int y);
 };
 
 class VExtButton : public VExtComponent {
 public:
 	VExtButton(XmlNode *node);
 protected:
-	virtual bool onPaint(HDC dc);
+	virtual void onPaint(Msg *m);
 	bool onMouseEvent(Msg *m);
 	virtual StateImage getStateImage(void *param1, void *param2);
 protected:
