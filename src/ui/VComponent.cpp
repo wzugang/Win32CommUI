@@ -60,7 +60,7 @@ XRect XRect::join(XRect &r) {
 	return v;
 }
 
-bool XRect::isValid() {
+bool XRect::isValid() const {
 	return mWidth > 0 && mHeight > 0;
 }
 
@@ -83,6 +83,13 @@ RECT XRect::to() {
 	r.right = r.left + mWidth;
 	r.bottom = r.top + mHeight;
 	return r;
+}
+
+void XRect::set(int x, int y, int w, int h) {
+	mX = x;
+	mY = y;
+	mWidth = w;
+	mHeight = h;
 }
 
 
@@ -549,11 +556,11 @@ void VComponent::eraseBackground(HDC dc) {
 		hasBg = true;
 	}
 	if (mBgImage != NULL) {
-		if (! hasBg) {
+		/*if (! hasBg) {
 			mCache->fillAlpha(0xff);
-		}
+		}*/
 		// mBgImage->draw(dc, 0, 0, mWidth, mHeight);
-		mCache->draw(mBgImage, 0, 0, mWidth, mHeight, 0, 0, XImage::DA_COPY);
+		mCache->draw(mBgImage, 0, 0, mWidth, mHeight, XImage::DA_COPY);
 		hasBg = true;
 	}
 	if (! hasBg) {

@@ -200,34 +200,36 @@ void XImage::draw( HDC dc, int destX, int destY, int destW, int destH ) {
 	DeleteObject(memDc);
 }
 
-void XImage::draw(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX, int srcY, DrawAction a) {
-	if (src == NULL || dstX < 0 || dstY < 0 || dstW <= 0 || dstH <= 0 || srcX < 0 || srcY < 0) {
+void XImage::draw(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	if (src == NULL || destX < 0 || destY < 0 || destW <= 0 || destH <= 0) {
 		return;
 	}
-	/*if (src->mWidth <= srcX || src->mHeight <= srcY) {
+	if (destX + destW > mWidth) {
+		destW = mWidth - destX;
+	}
+	if (destY + destH > mHeight) {
+		destH = mHeight - destY;
+	}
+	if (destW <= 0 || destH <= 0) {
 		return;
-	}*/
-	if (dstX + dstW > mWidth) {
-		dstW = mWidth - dstX;
 	}
-	if (srcX + dstW > src->mWidth) {
-		dstW = src->mWidth - srcX;
-	}
-	if (dstY + dstH > mHeight) {
-		dstH = mHeight - dstY;
-	}
-	if (srcY + dstH > src->mHeight) {
-		dstH = src->mHeight - srcY;
-	}
-	if (dstW <= 0 || dstH <= 0) {
-		return;
+	if (src->mRepeatX) {
+		drawRepeatX(src, destX, destY, destW, destH, a);
+	} else if (src->mRepeatY) {
+		drawRepeatY(src, destX, destY, destW, destH, a);
+	} else if (src->mStretch) {
+		drawStretch(src, destX, destY, destW, destH, a);
+	} else if (src->m9Patch) {
+		draw9Patch(src, destX, destY, destW, destH, a);
+	} else {
+		drawNormal(src, destX, destY, destW, destH, a);
 	}
 
-	if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
+	/*if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
 		drawCopy(src, dstX, dstY, dstW, dstH, srcX, srcY);
 	} else if (a == DA_ALPHA_BLEND) {
 		drawAlphaBlend(src, dstX, dstY, dstW, dstH, srcX, srcY);
-	}
+	}*/
 }
 
 void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
@@ -241,6 +243,17 @@ void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HD
 		}
 	}
 }
+
+void XImage::drawRepeatX(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	for (int w = 0, lw = destW; w < destW; w += src->mWidth, lw -= src->mWidth) {
+		if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
+			drawCopy(src, destX + w, destY, min(src->mWidth, lw), min(destH, src->mHeight), 0, 0);
+		} else {
+			drawAlphaBlend(src, destX + w, destY, min(src->mWidth, lw), min(destH, src->mHeight), 0, 0);
+		}
+	}
+}
+
 void XImage::drawRepeatY( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	for (int h = 0, lh = destH; h < destH; h += mHeight, lh -= mHeight) {
 		if (hasAlphaChannel()) {
@@ -252,6 +265,17 @@ void XImage::drawRepeatY( HDC dc, int destX, int destY, int destW, int destH, HD
 		}
 	}
 }
+
+void XImage::drawRepeatY(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	for (int h = 0, lh = destH; h < destH; h += src->mHeight, lh -= src->mHeight) {
+		if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
+			drawCopy(src, destX, destY + h, min(destW, src->mWidth), min(src->mHeight, lh), 0, 0);
+		} else {
+			drawAlphaBlend(src, destX, destY + h, min(destW, src->mWidth), min(src->mHeight, lh), 0, 0);
+		}
+	}
+}
+
 void XImage::drawStretch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	if (hasAlphaChannel()) {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
@@ -260,6 +284,65 @@ void XImage::drawStretch( HDC dc, int destX, int destY, int destW, int destH, HD
 		StretchBlt(dc, destX, destY, destW, destH, memDc, 0, 0, mWidth, mHeight, SRCCOPY);
 	}
 }
+
+void XImage::drawStretch(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	XRect srcRect(0, 0, src->mWidth, src->mHeight);
+	XRect dstRect(destX, destY, destW, destH);
+	drawStretch(src, srcRect, dstRect, a);
+}
+
+void XImage::drawStretch(XImage *src, const XRect &srcRect, const XRect &destRect, DrawAction a) {
+	if (src == NULL || !srcRect.isValid() || !destRect.isValid()) {
+		return;
+	}
+	int sw = srcRect.mWidth - 1, sh = srcRect.mHeight - 1, dw = destRect.mWidth - 1, dh = destRect.mHeight - 1;
+	int B, N, x, y;
+	int nPixelSize = src->mBitPerPix / 8;
+	BYTE * pLinePrev, *pLineNext;
+	BYTE * pDest;
+	BYTE * pA, *pB, *pC, *pD;
+	for ( int i = 0; i <= dh; ++i ) {
+		pDest = ( BYTE * )getRowBits(i + destRect.mY) + destRect.mX * (mBitPerPix / 8);
+		y = i * sh / dh;
+		N = dh - i * sh % dh;
+		pLinePrev = ( BYTE * )src->getRowBits(srcRect.mY + y++);
+		pLineNext = ( N == dh ) ? pLinePrev : ( BYTE * )src->getRowBits(srcRect.mY + y);
+		for ( int j = 0; j <= dw; ++j ) {
+			x = (j * sw / dw + srcRect.mX)* nPixelSize;
+			B = dw - j * sw % dw;
+			pA = pLinePrev + x;
+			pB = pA + nPixelSize;
+			pC = pLineNext + x;
+			pD = pC + nPixelSize;
+			if ( B == dw ) {
+				pB = pA;
+				pD = pC;
+			}
+			BYTE alpha = 255;
+			bool doAlpha = (a == DA_ALPHA_BLEND && src->mBitPerPix == 32 && mBitPerPix == 32);
+			if (doAlpha) {
+				alpha = pA[3];
+			}
+			for ( int k = 0; k < mBitPerPix / 8 && k < 3; ++k ) {
+				BYTE dd = ( BYTE )( int )(
+				( B * N * ( *pA++ - *pB - *pC + *pD ) + dw * N * *pB++
+				+ dh * B * *pC++ + ( dw * dh - dh * B - dw * N ) * *pD++
+				+ dw * dh / 2 ) / ( dw * dh ) );
+				
+				if (! doAlpha) {
+					pDest[k] = dd;
+				} else {
+					pDest[k] = dd + ((255 - alpha) * pDest[k]) / 255;
+				}
+			}
+			if (! doAlpha && mBitPerPix == 32) {
+				pDest[3] = 255;
+			}
+			pDest += (mBitPerPix / 8);
+		}
+	}
+}
+
 void XImage::draw9Patch( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	if (mWidth <= 0 || mHeight <= 0) return;
 	// draw left-top corner
@@ -340,6 +423,66 @@ void XImage::draw9Patch( HDC dc, int destX, int destY, int destW, int destH, HDC
 			memDc, mWidth/3, mHeight/3, mWidth-mWidth/3*2, mHeight-mHeight/3*2, SRCCOPY);
 	}
 }
+
+void XImage::draw9Patch(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	if (src->mWidth <= 0 || src->mHeight <= 0) {
+		return;
+	}
+	bool doAlpha = (a == DA_ALPHA_BLEND && src->mBitPerPix == 32 && mBitPerPix == 32);
+	// draw left-top corner
+	if (doAlpha) {
+		drawAlphaBlend(src, destX, destY, src->mWidth/3, src->mHeight/3, 0, 0);
+	} else {
+		drawCopy(src, destX, destY, src->mWidth/3, src->mHeight/3, 0, 0);
+	}
+	// draw right-top corner
+	if (doAlpha) {
+		drawAlphaBlend(src, destX + destW - src->mWidth/3, destY, src->mWidth/3, src->mHeight/3, src->mWidth-src->mWidth/3, 0);
+	} else {
+		drawCopy(src, destX + destW - src->mWidth/3, destY, src->mWidth/3, src->mHeight/3, src->mWidth-src->mWidth/3, 0);
+	}
+	// draw left-bottom corner
+	if (doAlpha) {
+		drawAlphaBlend(src, destX, destY + destH - src->mHeight/3, src->mWidth/3, src->mHeight/3, 0, src->mHeight-src->mHeight/3);
+	} else {
+		drawCopy(src, destX, destY + destH - src->mHeight/3, src->mWidth/3, src->mHeight/3, 0, src->mHeight-src->mHeight/3);
+	}
+	// draw right-bottom corner
+	if (doAlpha) {
+		drawAlphaBlend(src, destX + destW - src->mWidth/3, destY + destH - src->mHeight/3, src->mWidth/3, src->mHeight/3, src->mWidth-src->mWidth/3, src->mHeight-src->mHeight/3);
+	} else {
+		drawCopy(src, destX + destW - src->mWidth/3, destY + destH - src->mHeight/3, src->mWidth/3, src->mHeight/3, src->mWidth-src->mWidth/3, src->mHeight-src->mHeight/3);
+	}
+
+	XRect srcRect, dstRect;
+	int cw = destW - src->mWidth / 3 * 2;
+	int ch = destH - src->mHeight / 3 * 2;
+	// draw top center
+	dstRect.set(destX+src->mWidth/3, destY, cw, src->mHeight/3);
+	srcRect.set(src->mWidth/3, 0, src->mWidth/3, src->mHeight/3);
+	drawStretch(src, srcRect, dstRect, a);
+	
+	// draw bottom center
+	dstRect.set(destX+src->mWidth/3, destY+destH-src->mHeight/3, destW-src->mWidth/3*2, src->mHeight/3);
+	srcRect.set(src->mWidth/3, src->mHeight-src->mHeight/3, src->mWidth/3, src->mHeight/3);
+	drawStretch(src, srcRect, dstRect, a);
+
+	// draw left center
+	dstRect.set(destX, destY+src->mHeight/3, src->mWidth/3, destH-src->mHeight/3*2);
+	srcRect.set(0, src->mHeight/3, src->mWidth/3, src->mHeight-src->mHeight/3*2);
+	drawStretch(src, srcRect, dstRect, a);
+
+	// draw right center
+	dstRect.set(destX+destW-src->mWidth/3, destY+src->mHeight/3, src->mWidth/3, destH-src->mHeight/3*2);
+	srcRect.set(src->mWidth-src->mWidth/3, src->mHeight/3, src->mWidth/3, src->mHeight-src->mHeight/3*2);
+	drawStretch(src, srcRect, dstRect, a);
+
+	// draw center
+	dstRect.set(destX+src->mWidth/3, destY+src->mHeight/3, destW-src->mWidth/3*2, destH-src->mHeight/3*2);
+	srcRect.set(src->mWidth/3, src->mHeight/3, src->mWidth-src->mWidth/3*2, src->mHeight-src->mHeight/3*2);
+	drawStretch(src, srcRect, dstRect, a);
+}
+
 void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	if (hasAlphaChannel())  {
 		BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
@@ -347,6 +490,14 @@ void XImage::drawNormal( HDC dc, int destX, int destY, int destW, int destH, HDC
 			memDc, 0, 0,min(destW, mWidth), min(destH, mHeight), bf);
 	} else {
 		BitBlt(dc, destX, destY, min(destW, mWidth), min(destH, mHeight), memDc, 0, 0, SRCCOPY);
+	}
+}
+
+void XImage::drawNormal(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
+	if (a == DA_COPY || src->mBitPerPix != 32 || mBitPerPix != 32) {
+		drawCopy(src, destX, destY, min(destW, src->mWidth), min(destH, src->mHeight), 0, 0);
+	} else if (a == DA_ALPHA_BLEND) {
+		drawAlphaBlend(src, destX, destY, min(destW, src->mWidth), min(destH, src->mHeight), 0, 0);
 	}
 }
 
@@ -440,14 +591,18 @@ void XImage::drawAlphaBlend(XImage *src, int dstX, int dstY, int dstW, int dstH,
 		BYTE *s = (BYTE *)src->getRowBits(srcY + r) + srcX * 4;
 		BYTE *d = (BYTE *)getRowBits(dstY + r) + dstX * 4;
 		for (int c = 0; c < dstW; ++c) {
-			d[0] = (s[0] * s[3] + (255 - s[3]) * d[0]) / 255;
-			d[1] = (s[1] * s[3] + (255 - s[3]) * d[1]) / 255;
-			d[2] = (s[2] * s[3] + (255 - s[3]) * d[2]) / 255;
+			// d[0] = (s[0] * s[3] + (255 - s[3]) * d[0]) / 255;
+			// d[1] = (s[1] * s[3] + (255 - s[3]) * d[1]) / 255;
+			// d[2] = (s[2] * s[3] + (255 - s[3]) * d[2]) / 255;
+			d[0] = s[0] + ((255 - s[3]) * d[0]) / 255;
+			d[1] = s[1] + ((255 - s[3]) * d[1]) / 255;
+			d[2] = s[2] + ((255 - s[3]) * d[2]) / 255;
 			s += 4;
 			d += 4;
 		}
 	}
 }
+
 
 //----------------------------UIFactory-------------------------
 struct NodeCreator {

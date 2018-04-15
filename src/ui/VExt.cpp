@@ -141,9 +141,10 @@ bool VExtButton::onPaint(HDC dc) {
 	eraseBackground(dc);
 	if (cur != NULL) {
 		if (hasBackground()) {
-			cur->draw(dc, 0, 0, mWidth, mHeight);
+			// cur->draw(dc, 0, 0, mWidth, mHeight);
+			mCache->draw(cur, 0, 0, mWidth, mHeight, XImage::DA_ALPHA_BLEND);
 		} else {
-			mCache->draw(cur, 0, 0, mWidth, mHeight, 0, 0, XImage::DA_COPY);
+			mCache->draw(cur, 0, 0, mWidth, mHeight, XImage::DA_COPY);
 		}
 	}
 

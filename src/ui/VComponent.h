@@ -21,11 +21,12 @@ struct XRect {
 	int mX, mY, mWidth, mHeight;
 	XRect();
 	XRect(int x, int y, int w, int h);
-	bool isValid();
+	bool isValid() const;
 	void offset(int dx, int dy);
 	XRect intersect(XRect &r);
 	XRect join(XRect &r);
 	void reset();
+	void set(int x, int y, int w, int h);
 	void from(RECT &r);
 	RECT to();
 };
@@ -132,7 +133,7 @@ public:
 	virtual void dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y);
 	// return true means merge cache image to parent layer
 	virtual bool onPaint(HDC dc);
-	void drawCache(HDC dc);
+	virtual void drawCache(HDC dc);
 	virtual void eraseBackground(HDC dc);
 	virtual void repaint(XRect *dirtyRect = NULL);
 	void updateWindow();

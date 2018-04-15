@@ -6,6 +6,7 @@ class XmlNode;
 class ResPath;
 class XExtMenuModel;
 class XExtTreeNode;
+struct XRect;
 
 class XImage {
 public:
@@ -29,7 +30,7 @@ public:
 
 	void fillAlpha(BYTE alpha);
 	void fillColor(COLORREF rgba);
-	void draw(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY, DrawAction a);
+	void draw(XImage *src, int dstX, int dstY, int destW, int destH, DrawAction a);
 
 	static HICON loadIcon(const char *resPath);
 	~XImage();
@@ -43,14 +44,19 @@ protected:
 	static XImage *loadImage(ResPath *info);
 	void buildAlphaChannel();
 	void drawRepeatX(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawRepeatX(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 	void drawRepeatY(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawRepeatY(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 	void drawStretch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawStretch(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 	void draw9Patch(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void draw9Patch(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 	void drawNormal(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
+	void drawNormal(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 
 	void drawCopy(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
 	void drawAlphaBlend(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
-
+	void drawStretch(XImage *src, const XRect &srcRect, const XRect &destRect, DrawAction a);
 	void *mBits;
 	HBITMAP mHBitmap;
 	int mWidth;
