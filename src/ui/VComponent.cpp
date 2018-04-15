@@ -446,7 +446,7 @@ void VComponent::onPaint(Msg *m) {
 	eraseBackground(m);
 }
 
-void VComponent::dispatchPaintEvent2(Msg *m) {
+void VComponent::dispatchPaintMsg(Msg *m) {
 	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
 	XRect self2 = self.intersect(m->paint.clip);
 	if (! self2.isValid()) {
@@ -464,7 +464,7 @@ void VComponent::dispatchPaintEvent2(Msg *m) {
 		mm.paint.x += cc->mX - mTranslateX;
 		mm.paint.y += cc->mY - mTranslateY;
 		mm.paint.clip = self2;
-		cc->dispatchPaintEvent2(&mm);
+		cc->dispatchPaintMsg(&mm);
 	}
 	RestoreDC(m->paint.dc, sid);
 }
@@ -749,7 +749,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		msg.paint.dc = dc;
 		msg.paint.clip.from(ps.rcPaint);
 		msg.paint.x = msg.paint.y = 0;
-		cc->dispatchPaintEvent2(&msg);
+		cc->dispatchPaintMsg(&msg);
 		EndPaint(wnd, &ps);
 		return 0;}
 	case WM_SETCURSOR:
@@ -923,7 +923,7 @@ HWND VBaseWindow::getWnd() {
 	return mWnd;
 }
 
-void VBaseWindow::dispatchPaintEvent2(Msg *m) {
+void VBaseWindow::dispatchPaintMsg(Msg *m) {
 	if (mCanvas == NULL || mCanvas->getWidth() != mWidth || mCanvas->getHeight() != mHeight) {
 		delete mCanvas;
 		mCanvas = XImage::create(mWidth, mHeight, 24);
@@ -933,7 +933,7 @@ void VBaseWindow::dispatchPaintEvent2(Msg *m) {
 	HDC mdc = CreateCompatibleDC(old);
 	SelectObject(mdc, mCanvas->getHBitmap());
 	m->paint.dc = mdc;
-	VComponent::dispatchPaintEvent2(m);
+	VComponent::dispatchPaintMsg(m);
 	BitBlt(old, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
 	DeleteObject(mdc);
 }

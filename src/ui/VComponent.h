@@ -121,18 +121,17 @@ public:
 	void setAttrBgColor(COLORREF c);
 	COLORREF getAttrColor();
 	void setAttrColor(COLORREF c);
-
-	virtual bool dispatchMessage(Msg *msg);
-	POINT getDrawPoint();
-	RECT getDrawRect();
-
 	void parseAttrs();
 	HFONT getFont();
+
+	virtual bool dispatchMessage(Msg *msg);
+	virtual void dispatchPaintMsg(Msg *m);
+	
 	virtual bool onMouseEvent(Msg *m);
 	virtual bool onKeyEvent(Msg *m);
 	virtual bool onFocusEvent(bool gainFocus);
-	virtual void dispatchPaintEvent2(Msg *m);
 	virtual void onPaint(Msg *m);
+
 	virtual void drawCache(HDC dc);
 	virtual void eraseBackground(Msg *m);
 	virtual void repaint(XRect *dirtyRect = NULL);
@@ -143,7 +142,8 @@ public:
 	virtual void releaseFocus();
 	virtual VBaseWindow *getRoot();
 	bool hasBackground();
-	XImage *getCache() {return mCache;}
+	POINT getDrawPoint();
+	RECT getDrawRect();
 
 	virtual ~VComponent();
 protected:
@@ -181,7 +181,7 @@ public:
 	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
 	virtual HWND getWnd();
-	virtual void dispatchPaintEvent2(Msg *m);
+	virtual void dispatchPaintMsg(Msg *m);
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
