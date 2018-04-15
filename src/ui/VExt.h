@@ -37,7 +37,7 @@ public:
 	VExtEmptyComponent(XmlNode *node);
 protected:
 	virtual void dispatchPaintEvent(Msg *m);
-	virtual void dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y);
+	virtual void dispatchPaintMerge(HDC dstDc, XImage *dst, XRect &clip, int x, int y);
 };
 
 class VExtButton : public VExtComponent {

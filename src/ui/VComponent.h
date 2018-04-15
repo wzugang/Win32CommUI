@@ -130,7 +130,7 @@ public:
 	virtual bool onKeyEvent(Msg *m);
 	virtual bool onFocusEvent(bool gainFocus);
 	virtual void dispatchPaintEvent(Msg *m);
-	virtual void dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y);
+	virtual void dispatchPaintMerge(XImage *dst, XRect &clip, int x, int y);
 	// return true means merge cache image to parent layer
 	virtual bool onPaint(HDC dc);
 	virtual void drawCache(HDC dc);
@@ -143,6 +143,7 @@ public:
 	virtual void releaseFocus();
 	virtual VBaseWindow *getRoot();
 	bool hasBackground();
+	XImage *getCache() {return mCache;}
 
 	virtual ~VComponent();
 protected:
@@ -180,6 +181,7 @@ public:
 	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
 	virtual HWND getWnd();
+	virtual XImage *dispatchPaintMerge(XRect &clip);
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
@@ -191,6 +193,7 @@ protected:
 protected:
 	HWND mWnd;
 	VComponent *mCapture, *mFocus;
+	XImage *mCanvas;
 	friend class VComponent;
 };
 

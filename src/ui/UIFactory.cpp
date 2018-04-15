@@ -587,18 +587,23 @@ void XImage::drawCopy(XImage *src, int dstX, int dstY, int dstW, int dstH, int s
 }
 
 void XImage::drawAlphaBlend(XImage *src, int dstX, int dstY, int dstW, int dstH, int srcX, int srcY) {
+	const int SRC_STEP = src->mBitPerPix / 8;
+	const int DST_STEP = mBitPerPix / 8;
+	if (SRC_STEP != 4 || DST_STEP < 3) {
+		return;
+	}
 	for (int r = 0; r < dstH; ++r) {
-		BYTE *s = (BYTE *)src->getRowBits(srcY + r) + srcX * 4;
-		BYTE *d = (BYTE *)getRowBits(dstY + r) + dstX * 4;
+		BYTE *s = (BYTE *)src->getRowBits(srcY + r) + srcX * SRC_STEP;
+		BYTE *d = (BYTE *)getRowBits(dstY + r) + dstX * DST_STEP;
 		for (int c = 0; c < dstW; ++c) {
 			// d[0] = (s[0] * s[3] + (255 - s[3]) * d[0]) / 255;
 			// d[1] = (s[1] * s[3] + (255 - s[3]) * d[1]) / 255;
 			// d[2] = (s[2] * s[3] + (255 - s[3]) * d[2]) / 255;
-			d[0] = s[0] + ((255 - s[3]) * d[0]) / 255;
-			d[1] = s[1] + ((255 - s[3]) * d[1]) / 255;
-			d[2] = s[2] + ((255 - s[3]) * d[2]) / 255;
-			s += 4;
-			d += 4;
+			d[0] = s[0] + (255 - s[3]) * d[0] / 255;
+			d[1] = s[1] + (255 - s[3]) * d[1] / 255;
+			d[2] = s[2] + (255 - s[3]) * d[2] / 255;
+			s += SRC_STEP;
+			d += DST_STEP;
 		}
 	}
 }

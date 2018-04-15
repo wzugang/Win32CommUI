@@ -74,7 +74,7 @@ VExtEmptyComponent::VExtEmptyComponent(XmlNode *node) : VExtComponent(node) {
 void VExtEmptyComponent::dispatchPaintEvent(Msg *m) {
 }
 
-void VExtEmptyComponent::dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y) {
+void VExtEmptyComponent::dispatchPaintMerge(HDC dstDc, XImage *dst, XRect &clip, int x, int y) {
 }
 
 //-------------------VExtButton-----------------------------------

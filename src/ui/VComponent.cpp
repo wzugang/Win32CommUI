@@ -92,26 +92,6 @@ void XRect::set(int x, int y, int w, int h) {
 	mHeight = h;
 }
 
-
-#if 0
-bool VComponent::bubbleMsg(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
-	POINT pt;
-	GetCursorPos(&pt);
-	HWND ptWnd = WindowFromPoint(pt);
-	VComponent *pc = (VComponent *)GetWindowLong(ptWnd, GWL_USERDATA);
-	XmlNode *node = pc != NULL ? pc->getNode() : NULL;
-	
-	/*while (node != NULL) {
-		VComponent *x = node->getComponent();
-		if (x == NULL) break;
-		if (x->wndProc(msg, wParam, lParam, result))
-			return true;
-		node = node->getParent();
-	}*/
-	return false;
-}
-#endif
-
 VComponent::VComponent(XmlNode *node) {
 	static int s_id = 1000;
 
@@ -479,22 +459,23 @@ void VComponent::dispatchPaintEvent(Msg *msg) {
 	mHasDirtyChild = false;
 }
 
-void VComponent::dispatchPaintMerge(HDC dstDc, XRect &clip, int x, int y) {
+void VComponent::dispatchPaintMerge(XImage *dst, XRect &clip, int x, int y) {
 	XRect self(x, y, mWidth, mHeight);
 	XRect self2 = self.intersect(clip);
 	if (! self2.isValid()) {
 		return;
 	}
-	int sid = SaveDC(dstDc);
-	IntersectClipRect(dstDc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
-	/*RECT rr = {0};
-	int vv = GetClipBox(dstDc, &rr);*/
-	mCache->draw(dstDc, x, y, mWidth, mHeight);
+	// int sid = SaveDC(dstDc);
+	// IntersectClipRect(dstDc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
+	// RECT rr = {0};
+	// int vv = GetClipBox(dstDc, &rr);
+	// mCache->draw(dstDc, x, y, mWidth, mHeight);
+	dst->drawCopy(mCache, self2.mX, self2.mY, self2.mWidth, self2.mHeight, self2.mX - x, self2.mY - y);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *cc = getChild(i);
-		cc->dispatchPaintMerge(dstDc, self2, x + cc->mX - mTranslateX, y + cc->mY - mTranslateY);
+		cc->dispatchPaintMerge(dst, self2, x + cc->mX - mTranslateX, y + cc->mY - mTranslateY);
 	}
-	RestoreDC(dstDc, sid);
+	// RestoreDC(dstDc, sid);
 }
 
 void VComponent::drawCache(HDC dc) {
@@ -778,10 +759,19 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		msg.paint.dc = dc;
 		msg.paint.rect.from(ps.rcPaint);
 		cc->dispatchPaintEvent(&msg);
+
 		XRect clip(0, 0, cc->getWidth(), cc->getHeight());
 		clip = clip.intersect(msg.paint.rect);
 		IntersectClipRect(dc, 0, 0, cc->getWidth(), cc->getHeight());
-		cc->dispatchPaintMerge(dc, clip, 0, 0);
+		VBaseWindow *win = static_cast<VBaseWindow*>(cc);
+		XRect clp = clip;
+		XImage *canvas = win->dispatchPaintMerge(clp);
+
+		HDC mdc = CreateCompatibleDC(dc);
+		SelectObject(mdc, canvas->getHBitmap());
+		BitBlt(dc, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
+		DeleteObject(mdc);
+
 		EndPaint(wnd, &ps);
 		return 0;}
 	case WM_SETCURSOR:
@@ -829,6 +819,7 @@ VBaseWindow::VBaseWindow(XmlNode *node) : VComponent(node) {
 	mWnd = NULL;
 	mCapture = NULL;
 	mFocus = NULL;
+	mCanvas = NULL;
 }
 
 void VBaseWindow::onLayoutChildren(int width, int height) {
@@ -952,6 +943,15 @@ void VBaseWindow::setWnd(HWND wnd) {
 
 HWND VBaseWindow::getWnd() {
 	return mWnd;
+}
+
+XImage* VBaseWindow::dispatchPaintMerge(XRect &clip) {
+	if (mCanvas == NULL || mCanvas->getWidth() != mWidth || mCanvas->getHeight() != mHeight) {
+		delete mCanvas;
+		mCanvas = XImage::create(mWidth, mHeight, 24);
+	}
+	VComponent::dispatchPaintMerge(mCanvas, clip, 0, 0);
+	return mCanvas;
 }
 
 //--------------------------------------------------------
