@@ -797,7 +797,6 @@ VBaseWindow::VBaseWindow(XmlNode *node) : VComponent(node) {
 	mWnd = NULL;
 	mCapture = NULL;
 	mFocus = NULL;
-	mCanvas = NULL;
 }
 
 void VBaseWindow::onLayoutChildren(int width, int height) {
@@ -924,14 +923,14 @@ HWND VBaseWindow::getWnd() {
 }
 
 void VBaseWindow::dispatchPaintMsg(Msg *m) {
-	if (mCanvas == NULL || mCanvas->getWidth() != mWidth || mCanvas->getHeight() != mHeight) {
-		delete mCanvas;
-		mCanvas = XImage::create(mWidth, mHeight, 24);
+	if (mCache == NULL || mCache->getWidth() != mWidth || mCache->getHeight() != mHeight) {
+		delete mCache;
+		mCache = XImage::create(mWidth, mHeight, 24);
 	}
 	HDC old = m->paint.dc;
 	XRect clip = m->paint.clip;
 	HDC mdc = CreateCompatibleDC(old);
-	SelectObject(mdc, mCanvas->getHBitmap());
+	SelectObject(mdc, mCache->getHBitmap());
 	m->paint.dc = mdc;
 	VComponent::dispatchPaintMsg(m);
 	BitBlt(old, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);

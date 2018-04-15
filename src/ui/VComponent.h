@@ -193,7 +193,6 @@ protected:
 protected:
 	HWND mWnd;
 	VComponent *mCapture, *mFocus;
-	XImage *mCanvas;
 	friend class VComponent;
 };
 

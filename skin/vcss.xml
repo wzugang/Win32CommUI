@@ -1,2 +1,3 @@
 <Window style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
-<VComponent />
+<VComponent bgcolor="AARRGGBB" />
+<Label align="left|top|right|bottom|center|ver-center|single-line" />

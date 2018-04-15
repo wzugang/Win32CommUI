@@ -30,6 +30,7 @@ protected:
 	virtual void onPaint(Msg *m);
 protected:
 	char *mText;
+	int mTextAlign;
 };
 
 class VExtButton : public VExtComponent {

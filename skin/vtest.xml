@@ -2,6 +2,6 @@
 <Window text = "Test VApp" rect = "0 0 800 600"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp"  >
 	<default class="Button" normalImage="file://skin/ext_button.bmp [0 48 75 24] 9patch" hoverImage="file://skin/ext_button.bmp [0 24 75 24] 9patch" pushImage="file://skin/ext_button.bmp [0 0 75 24] 9patch" />
 	
-	<Label text="Hello World" rect="180 250 200 50" color="#EE1122" bgcolor="#55FFB6C1" font="name:ËÎÌו; size:26; weight:800;" />
+	<Label text="Hello World" rect="180 250 200 50" color="#EE1122" bgcolor="#55FFB6C1" align="center|ver-center|single-line"  font="name:ËÎÌו; size:26; weight:800;" />
 	<Button id = "ext_btn_1" text = "My Button"  rect = "50 80 120 40" />
 </Window>

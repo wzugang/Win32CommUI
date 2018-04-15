@@ -43,6 +43,24 @@ VExtComponent::StateImage VExtComponent::getStateImage(void *param1, void *param
 //--------------------VExtLabel-------------------------------------
 VExtLabel::VExtLabel( XmlNode *node ) : VExtComponent(node) {
 	mText = mNode->getAttrValue("text");
+	mTextAlign = 0;
+
+	char *align = mNode->getAttrValue("align");
+	if (align != NULL && strstr(align, "center") != NULL) {
+		mTextAlign |= DT_CENTER;
+	}
+	if (align != NULL && strstr(align, "ver-center") != NULL) {
+		mTextAlign |= DT_VCENTER;
+	}
+	if (align != NULL && strstr(align, "right") != NULL) {
+		mTextAlign |= DT_RIGHT;
+	}
+	if (align != NULL && strstr(align, "bottom") != NULL) {
+		mTextAlign |= DT_BOTTOM;
+	}
+	if (align != NULL && strstr(align, "single-line") != NULL) {
+		mTextAlign |= DT_SINGLELINE;
+	}
 }
 
 void VExtLabel::onPaint(Msg *m) {
@@ -57,7 +75,7 @@ void VExtLabel::onPaint(Msg *m) {
 	}
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
-	DrawText(dc, mText, -1, &r, 0);
+	DrawText(dc, mText, -1, &r, mTextAlign);
 }
 
 char * VExtLabel::getText() {
