@@ -36,10 +36,16 @@ struct XRect {
 struct Msg {
 	enum ID {
 		NONE = -100,
-		LBUTTONDOWN, LBUTTONUP, RBUTTONDOWN, RBUTTONUP,MOUSE_CANCEL,
-		CLICK, DBCLICK, MOUSE_MOVE, MOUSE_WHEEL, MOUSE_LEAVE, 
+		MOUSE_MSG_BEGIN,
+		LBUTTONDOWN, LBUTTONUP, RBUTTONDOWN, RBUTTONUP,
+		DBCLICK, MOUSE_MOVE, MOUSE_WHEEL,
+		MOUSE_LEAVE, MOUSE_CANCEL, CLICK,
+		MOUSE_MSG_END,
 
+		KEY_MSG_BEGIN,
 		KEY_DOWN, KEY_UP, CHAR,
+		KEY_MSG_END,
+
 		LOST_FOCUS, GAIN_FOCUS,
 		PAINT,
 		SET_CURSOR,
@@ -56,7 +62,7 @@ struct Msg {
 	// params
 	// vkeys is one bit of MK_CONTROL | MK_LBUTTON | MK_MBUTTON | MK_MBUTTON | MK_SHIFT
 	// if has MK_CONTROL bit, means ctrl is press down
-	struct {int x; int y; VKeys vkey; int deta;} mouse;
+	struct {int x; int y; VKeys vkey; int deta; VComponent *moveAt;} mouse;
 	struct {VKeys vkey; wchar_t code;} key;
 	struct {HDC dc; XRect clip; int x; int y;} paint;
 	struct {WPARAM wParam; LPARAM lParam;} def;
@@ -125,7 +131,8 @@ public:
 	HFONT getFont();
 
 	virtual bool dispatchMessage(Msg *msg);
-	virtual void dispatchPaintMsg(Msg *m);
+	virtual bool dispatchMouseMessage(Msg *msg);
+	virtual bool dispatchPaintMessage(Msg *m);
 	
 	virtual bool onMouseEvent(Msg *m);
 	virtual bool onKeyEvent(Msg *m);
@@ -181,7 +188,7 @@ public:
 	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
 	virtual HWND getWnd();
-	virtual void dispatchPaintMsg(Msg *m);
+	virtual bool dispatchPaintMessage(Msg *m);
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
@@ -193,6 +200,7 @@ protected:
 protected:
 	HWND mWnd;
 	VComponent *mCapture, *mFocus;
+	VComponent *mLastMouseAt;
 	friend class VComponent;
 };
 

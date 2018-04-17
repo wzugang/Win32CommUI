@@ -101,14 +101,17 @@ bool VExtButton::onMouseEvent(Msg *m) {
 		repaint(NULL);
 		break;}
 	case Msg::LBUTTONUP: {
-		bool md = mIsMouseDown;
-		mIsMouseDown = false;
-		mIsMouseMoving = false;
-		releaseCapture();
-		repaint(NULL);
-		updateWindow();
 		RECT r = {0, 0, mWidth, mHeight};
 		POINT pt = {m->mouse.x, m->mouse.y};
+		bool md = mIsMouseDown;
+		releaseCapture();
+		mIsMouseDown = false;
+		if (PtInRect(&r, pt)) {
+			mIsMouseMoving = true;
+		} else {
+			mIsMouseMoving = false;
+		}
+		repaint(NULL);
 		if (md && PtInRect(&r, pt) && mListener != NULL) {
 			m->mId = Msg::CLICK;
 			mListener->onEvent(this, m);
@@ -126,7 +129,8 @@ bool VExtButton::onMouseEvent(Msg *m) {
 			mIsMouseMoving = false;
 			mIsMouseLeave = true;
 		}
-		if (bi != getStateImage(NULL, NULL)) {
+		StateImage bi2 = getStateImage(NULL, NULL);
+		if (bi != bi2) {
 			repaint(NULL);
 		}
 		break;}
@@ -139,6 +143,7 @@ bool VExtButton::onMouseEvent(Msg *m) {
 		mIsMouseDown = false;
 		mIsMouseMoving = false;
 		mIsMouseLeave = false;
+		repaint(NULL);
 		break;}
 	}
 	return true;
@@ -162,7 +167,7 @@ void VExtButton::onPaint(Msg *m) {
 }
 
 VExtButton::StateImage VExtButton::getStateImage(void *param1, void *param2) {
-	// if (mEnable)
+	// if (! mEnable)
 	//	return STATE_IMG_DISABLE;
 	if (mIsMouseDown && ! mIsMouseLeave) {
 		return STATE_IMG_PUSH;

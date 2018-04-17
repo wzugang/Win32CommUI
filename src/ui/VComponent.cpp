@@ -389,48 +389,70 @@ void VComponent::setAttrBgColor(COLORREF c) {
 }
 
 bool VComponent::dispatchMessage(Msg *msg) {
-	// is mouse event, but not mouse_leave
-	if (msg->mId >= Msg::LBUTTONDOWN && msg->mId < Msg::MOUSE_LEAVE) {
-		VComponent *target = NULL;
-		for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
-			VComponent *child = getChild(i);
-			int x = msg->mouse.x - mTranslateX, y = msg->mouse.y - mTranslateY;
-			if (x >= child->mX && y >= child->mY && x < child->mX + child->mWidth && y < child->mY + child->mHeight) {
-				Msg n = *msg;
-				n.mouse.x -= child->mX + mTranslateX;
-				n.mouse.y -= child->mY + mTranslateY;
-				if (child->dispatchMessage(&n)) {
-					msg->mResult = n.mResult;
-					return true;
-				}
-				break;
-			}
-		}
+	if (msg->mId > Msg::MOUSE_MSG_BEGIN && msg->mId < Msg::MOUSE_MSG_END) {
+		return dispatchMouseMessage(msg);
 	}
-	// go here, means mouse msg is not deal, or is mouse_leave
-	if (msg->mId >= Msg::LBUTTONDOWN && msg->mId <= Msg::MOUSE_LEAVE) {
-		if (mListener != NULL) {
-			if (mListener->onEvent(this, msg)) {
-				return true;
-			}
-		}
-		return onMouseEvent(msg);
-	}
-	if (msg->mId >= Msg::KEY_DOWN && msg->mId <= Msg::CHAR) {
+	if (msg->mId > Msg::KEY_MSG_BEGIN && msg->mId < Msg::KEY_MSG_END) {
 		return onKeyEvent(msg);
 	}
 	if (msg->mId == Msg::GAIN_FOCUS || msg->mId == Msg::LOST_FOCUS) {
 		return onFocusEvent(msg->mId == Msg::GAIN_FOCUS);
+	}
+	if (msg->mId == Msg::PAINT) {
+		return dispatchPaintMessage(msg);
 	}
 
 	/*if (msg->mId == Msg::SET_CURSOR) {
 		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		return true;
 	}*/
+
+	/*if (mListener != NULL) {
+		return mListener->onEvent(this, msg);
+	}*/
 	return false;
 }
 
+
+bool VComponent::dispatchMouseMessage(Msg *msg) {
+	if (msg->mId == Msg::MOUSE_LEAVE || msg->mId == Msg::MOUSE_CANCEL) {
+		return onMouseEvent(msg);
+	}
+
+	VComponent *target = NULL;
+	int oldX = msg->mouse.x, oldY = msg->mouse.y;
+	bool inChild = false;
+	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
+		VComponent *child = getChild(i);
+		if (child->mVisibility != VISIBLE) {
+			continue;
+		}
+		int x = msg->mouse.x - mTranslateX, y = msg->mouse.y - mTranslateY;
+		if (x >= child->mX && y >= child->mY && x < child->mX + child->mWidth && y < child->mY + child->mHeight) {
+			inChild = true;
+			msg->mouse.x = oldX - child->mX + mTranslateX;
+			msg->mouse.y = oldY - child->mY + mTranslateY;
+			if (child->dispatchMouseMessage(msg)) {
+				return true;
+			}
+			break;
+		}
+	}
+
+	if (!inChild && msg->mId == Msg::MOUSE_MOVE && msg->mouse.moveAt == NULL) {
+		msg->mouse.moveAt = this;
+	}
+
+	// go here, means mouse msg is not deal
+	return onMouseEvent(msg);
+}
+
 bool VComponent::onMouseEvent(Msg *m) {
+	if (mListener != NULL) {
+		if (mListener->onEvent(this, m)) {
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -446,16 +468,20 @@ void VComponent::onPaint(Msg *m) {
 	eraseBackground(m);
 }
 
-void VComponent::dispatchPaintMsg(Msg *m) {
+bool VComponent::dispatchPaintMessage(Msg *m) {
+	if (mVisibility != VISIBLE) {
+		return false;
+	}
 	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
 	XRect self2 = self.intersect(m->paint.clip);
 	if (! self2.isValid()) {
-		return;
+		return false;
 	}
 	int sid = SaveDC(m->paint.dc);
 	IntersectClipRect(m->paint.dc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
 	int sid2 = SaveDC(m->paint.dc);
 	SetViewportOrgEx(m->paint.dc, m->paint.x, m->paint.y, NULL);
+	m->paint.clip = self2;
 	onPaint(m);
 	RestoreDC(m->paint.dc, sid2);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
@@ -464,9 +490,10 @@ void VComponent::dispatchPaintMsg(Msg *m) {
 		mm.paint.x += cc->mX - mTranslateX;
 		mm.paint.y += cc->mY - mTranslateY;
 		mm.paint.clip = self2;
-		cc->dispatchPaintMsg(&mm);
+		cc->dispatchPaintMessage(&mm);
 	}
 	RestoreDC(m->paint.dc, sid);
+	return true;
 }
 
 void VComponent::drawCache(HDC dc) {
@@ -618,8 +645,6 @@ void VComponent::updateWindow() {
 	UpdateWindow(wnd);
 }
 
-
-
 //----------------------------------------------------------
 void MyRegisterClassV(HINSTANCE ins, const char *className) {
 	static std::map<std::string, bool> sCache;
@@ -749,7 +774,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		msg.paint.dc = dc;
 		msg.paint.clip.from(ps.rcPaint);
 		msg.paint.x = msg.paint.y = 0;
-		cc->dispatchPaintMsg(&msg);
+		cc->dispatchMessage(&msg);
 		EndPaint(wnd, &ps);
 		return 0;}
 	case WM_SETCURSOR:
@@ -770,24 +795,6 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 	if (cc->dispatchMessage(&msg)) {
 		return msg.mResult;
 	}
-
-	/*if (cc->getListener() != NULL && cc->getListener()->onEvent(cc, msg, wParam, lParam, &ret))
-		return ret;
-	if (cc->wndProc(msg, wParam, lParam, &ret))
-		return ret;
-	// bubble mouse wheel, mouse down msg
-	if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL || msg == WM_LBUTTONDOWN) {
-		UINT bmsg = 0;
-		switch (msg) {
-		case WM_MOUSEWHEEL:
-		case WM_MOUSEHWHEEL:
-			bmsg = MSG_MOUSEWHEEL_BUBBLE;break;
-		case WM_LBUTTONDOWN:
-			bmsg = MSG_LBUTTONDOWN_BUBBLE;break;
-		}
-		bubbleMsg(bmsg, wParam, lParam, &ret);
-		return ret;
-	}*/
 	_end:
 	return DefWindowProc(wnd, msgId, wParam, lParam);
 }
@@ -797,6 +804,7 @@ VBaseWindow::VBaseWindow(XmlNode *node) : VComponent(node) {
 	mWnd = NULL;
 	mCapture = NULL;
 	mFocus = NULL;
+	mLastMouseAt = NULL;
 }
 
 void VBaseWindow::onLayoutChildren(int width, int height) {
@@ -835,27 +843,45 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 			if (mCapture != NULL) {
 				Msg m = *msg;
 				m.mId = Msg::MOUSE_CANCEL;
-				mCapture->onMouseEvent(&m);
+				mCapture->dispatchMouseMessage(&m);
 			}
+			mCapture = NULL;
+			mLastMouseAt = NULL;
 		}
-		// go through
-	} else if (msg->mId >= Msg::LBUTTONDOWN && msg->mId <= Msg::MOUSE_LEAVE) {
+		return VComponent::dispatchMessage(msg);
+	}
+
+	if (msg->mId > Msg::MOUSE_MSG_BEGIN && msg->mId < Msg::MOUSE_MSG_END) {
 		if (mCapture != NULL) {
 			Msg m = *msg;
 			POINT pt = mCapture->getDrawPoint();
 			m.mouse.x -= pt.x;
 			m.mouse.y -= pt.y;
-			return mCapture->dispatchMessage(&m);
+			return mCapture->dispatchMouseMessage(&m);
 		}
-		// go through
-	} else if (msg->mId == WM_SIZE && msg->def.lParam > 0) {
+		VComponent::dispatchMessage(msg);
+		if (msg->mId == Msg::MOUSE_MOVE) {
+			if (mLastMouseAt != NULL && mLastMouseAt != msg->mouse.moveAt) {
+				Msg n;
+				n.mId = Msg::MOUSE_LEAVE;
+				mLastMouseAt->dispatchMouseMessage(&n);
+			}
+			mLastMouseAt = msg->mouse.moveAt;
+		}
+		return true;
+	}
+
+	if (msg->mId == WM_SIZE && msg->def.lParam > 0) {
 		// int w = LOWORD(msg->def.lParam) , h = HIWORD(msg->def.lParam);
 		notifyLayout();
 		return true;
-	} else if (msg->mId == WM_DESTROY) {
+	}
+
+	if (msg->mId == WM_DESTROY) {
 		PostQuitMessage(msg->def.wParam);
 		return true;
 	}
+
 	return VComponent::dispatchMessage(msg);
 }
 
@@ -922,7 +948,7 @@ HWND VBaseWindow::getWnd() {
 	return mWnd;
 }
 
-void VBaseWindow::dispatchPaintMsg(Msg *m) {
+bool VBaseWindow::dispatchPaintMessage(Msg *m) {
 	if (mCache == NULL || mCache->getWidth() != mWidth || mCache->getHeight() != mHeight) {
 		delete mCache;
 		mCache = XImage::create(mWidth, mHeight, 24);
@@ -932,9 +958,10 @@ void VBaseWindow::dispatchPaintMsg(Msg *m) {
 	HDC mdc = CreateCompatibleDC(old);
 	SelectObject(mdc, mCache->getHBitmap());
 	m->paint.dc = mdc;
-	VComponent::dispatchPaintMsg(m);
+	VComponent::dispatchPaintMessage(m);
 	BitBlt(old, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
 	DeleteObject(mdc);
+	return true;
 }
 
 //--------------------------------------------------------
