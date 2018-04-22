@@ -155,6 +155,14 @@ void VComponent::onMeasure(int widthSpec, int heightSpec) {
 
 void VComponent::onLayoutChildren( int width, int height ) {
 	// layout children
+	width -= mAttrPadding[0] + mAttrPadding[2];
+	height -= mAttrPadding[1] + mAttrPadding[3];
+	for (int i = 0; i < mNode->getChildCount(); ++i) {
+		VComponent *child = mNode->getChild(i)->getComponentV();
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
+		int y = calcSize(child->getAttrY(), height | MS_ATMOST);
+		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
+	}
 }
 
 void VComponent::onLayout( int x, int y, int width, int height ) {
@@ -405,17 +413,17 @@ void VComponent::setAttrBgColor(COLORREF c) {
 	mAttrBgColor = c;
 }
 
-bool VComponent::dispatchMessage(VMsg *msg) {
-	if (msg->mId > VMsg::MOUSE_MSG_BEGIN && msg->mId < VMsg::MOUSE_MSG_END) {
+bool VComponent::dispatchMessage(Msg *msg) {
+	if (msg->mId > Msg::MOUSE_MSG_BEGIN && msg->mId < Msg::MOUSE_MSG_END) {
 		return dispatchMouseMessage(msg);
 	}
-	if (msg->mId > VMsg::KEY_MSG_BEGIN && msg->mId < VMsg::KEY_MSG_END) {
+	if (msg->mId > Msg::KEY_MSG_BEGIN && msg->mId < Msg::KEY_MSG_END) {
 		return onKeyEvent(msg);
 	}
-	if (msg->mId == VMsg::GAIN_FOCUS || msg->mId == VMsg::LOST_FOCUS) {
-		return onFocusEvent(msg->mId == VMsg::GAIN_FOCUS);
+	if (msg->mId == Msg::GAIN_FOCUS || msg->mId == Msg::LOST_FOCUS) {
+		return onFocusEvent(msg->mId == Msg::GAIN_FOCUS);
 	}
-	if (msg->mId == VMsg::PAINT) {
+	if (msg->mId == Msg::PAINT) {
 		return dispatchPaintMessage(msg);
 	}
 
@@ -431,8 +439,8 @@ bool VComponent::dispatchMessage(VMsg *msg) {
 }
 
 
-bool VComponent::dispatchMouseMessage(VMsg *msg) {
-	if (msg->mId == VMsg::MOUSE_LEAVE || msg->mId == VMsg::MOUSE_CANCEL) {
+bool VComponent::dispatchMouseMessage(Msg *msg) {
+	if (msg->mId == Msg::MOUSE_LEAVE || msg->mId == Msg::MOUSE_CANCEL) {
 		return onMouseEvent(msg);
 	}
 
@@ -449,14 +457,14 @@ bool VComponent::dispatchMouseMessage(VMsg *msg) {
 			inChild = true;
 			msg->mouse.x = oldX - child->mX + mTranslateX;
 			msg->mouse.y = oldY - child->mY + mTranslateY;
-			if (child->dispatchMouseMessage(msg)) {
+			if (child->dispatchMessage(msg)) {
 				return true;
 			}
 			break;
 		}
 	}
 
-	if (!inChild && msg->mId == VMsg::MOUSE_MOVE && msg->mouse.moveAt == NULL) {
+	if (!inChild && msg->mId == Msg::MOUSE_MOVE && msg->mouse.moveAt == NULL) {
 		msg->mouse.moveAt = this;
 	}
 
@@ -464,7 +472,7 @@ bool VComponent::dispatchMouseMessage(VMsg *msg) {
 	return onMouseEvent(msg);
 }
 
-bool VComponent::onMouseEvent(VMsg *m) {
+bool VComponent::onMouseEvent(Msg *m) {
 	if (mListener != NULL) {
 		if (mListener->onEvent(this, m)) {
 			return true;
@@ -473,7 +481,7 @@ bool VComponent::onMouseEvent(VMsg *m) {
 	return false;
 }
 
-bool VComponent::onKeyEvent(VMsg *m) {
+bool VComponent::onKeyEvent(Msg *m) {
 	return false;
 }
 
@@ -481,11 +489,11 @@ bool VComponent::onFocusEvent(bool gainFocus) {
 	return false;
 }
 
-void VComponent::onPaint(VMsg *m) {
+void VComponent::onPaint(Msg *m) {
 	eraseBackground(m);
 }
 
-bool VComponent::dispatchPaintMessage(VMsg *m) {
+bool VComponent::dispatchPaintMessage(Msg *m) {
 	if (mVisibility != VISIBLE) {
 		return false;
 	}
@@ -503,11 +511,11 @@ bool VComponent::dispatchPaintMessage(VMsg *m) {
 	RestoreDC(m->paint.dc, sid2);
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *cc = getChild(i);
-		VMsg mm = *m;
+		Msg mm = *m;
 		mm.paint.x += cc->mX - mTranslateX;
 		mm.paint.y += cc->mY - mTranslateY;
 		mm.paint.clip = self2;
-		cc->dispatchPaintMessage(&mm);
+		cc->dispatchMessage(&mm);
 	}
 	RestoreDC(m->paint.dc, sid);
 	return true;
@@ -565,7 +573,7 @@ RECT VComponent::getDrawRect() {
 	return rs;
 }
 
-void VComponent::eraseBackground(VMsg *m) {
+void VComponent::eraseBackground(Msg *m) {
 	HDC dc = m->paint.dc;
 	if (mAttrFlags & AF_BG_COLOR) {
 		static XImage *src = XImage::create(1, 1, 32);
@@ -645,22 +653,37 @@ bool VComponent::hasBackground() {
 }
 
 void VComponent::setFocus() {
+	if (! mEnableFocus) {
+		return;
+	}
+	mHasFocus = true;
 	VBaseWindow *w = getRoot();
 	if (w) {
-		w->mFocus = this;
+		w->setFocus(this);
 	}
 }
 
 void VComponent::releaseFocus() {
 	VBaseWindow *w = getRoot();
 	if (w) {
-		w->mFocus = NULL;
+		w->setFocus(NULL);
 	}
 }
 
 void VComponent::updateWindow() {
 	HWND wnd = getWnd();
 	UpdateWindow(wnd);
+}
+
+VComponent::Visibility VComponent::getVisibility() {
+	return mVisibility;
+}
+
+void VComponent::setVisibility(Visibility v) {
+	if (v != mVisibility) {
+		mVisibility = v;
+		repaint();
+	}
 }
 
 //----------------------------------------------------------
@@ -689,7 +712,7 @@ void MyRegisterClassV(HINSTANCE ins, const char *className) {
 static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lParam) {
 	VComponent* cc = NULL;
 	LRESULT ret = 0;
-	VMsg msg;
+	Msg msg;
 	// printf("WndProc msgId: %x \n", msgId);
 
 	if (msgId == WM_NCCREATE) {
@@ -716,31 +739,31 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 	switch (msgId) {
 	case WM_LBUTTONDOWN:
 		SetCapture(wnd);
-		msg.mId = VMsg::LBUTTONDOWN;
+		msg.mId = Msg::LBUTTONDOWN;
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_LBUTTONUP:
-		msg.mId = VMsg::LBUTTONUP;
+		msg.mId = Msg::LBUTTONUP;
 		ReleaseCapture();
 		cc->dispatchMessage(&msg);
 		// TODO: send a CLICK msg here
 		return 0;
 	case WM_RBUTTONDOWN:
-		msg.mId = VMsg::RBUTTONDOWN;
+		msg.mId = Msg::RBUTTONDOWN;
 		SetCapture(wnd);
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_RBUTTONUP:
-		msg.mId = VMsg::RBUTTONUP;
+		msg.mId = Msg::RBUTTONUP;
 		ReleaseCapture();
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_LBUTTONDBLCLK:
-		msg.mId = VMsg::DBCLICK;
+		msg.mId = Msg::DBCLICK;
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_MOUSEMOVE:
-		msg.mId = VMsg::MOUSE_MOVE;
+		msg.mId = Msg::MOUSE_MOVE;
 		cc->dispatchMessage(&msg);
 		goto _end;
 		return 0;
@@ -749,7 +772,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 	case WM_MOUSEHWHEEL: {
 		POINT pt = {0};
 		GetCursorPos(&pt);
-		msg.mId = VMsg::MOUSE_WHEEL;
+		msg.mId = Msg::MOUSE_WHEEL;
 		msg.mouse.deta = HIWORD(wParam) / WHEEL_DELTA;
 		msg.mouse.vkey.ctrl = LOWORD(wParam) & MK_CONTROL;
 		msg.mouse.vkey.shift = LOWORD(wParam) & MK_SHIFT;
@@ -761,7 +784,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		cc->dispatchMessage(&msg);
 		return 0;}
 	case WM_KEYDOWN:
-		msg.mId = VMsg::KEY_DOWN;
+		msg.mId = Msg::KEY_DOWN;
 		msg.key.vkey.ctrl = (int)wParam & MK_CONTROL;
 		msg.key.vkey.shift = (int)wParam & MK_SHIFT;
 		msg.key.vkey.lbutton = (int)wParam & MK_LBUTTON;
@@ -770,7 +793,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_KEYUP:
-		msg.mId = VMsg::KEY_UP;
+		msg.mId = Msg::KEY_UP;
 		msg.key.vkey.ctrl = (int)wParam & MK_CONTROL;
 		msg.key.vkey.shift = (int)wParam & MK_SHIFT;
 		msg.key.vkey.lbutton = (int)wParam & MK_LBUTTON;
@@ -780,13 +803,13 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		return 0;
 	case WM_CHAR:
 	case WM_IME_CHAR:
-		msg.mId = VMsg::CHAR;
+		msg.mId = Msg::CHAR;
 		msg.key.code = LOWORD(wParam);
 		cc->dispatchMessage(&msg);
 		return 0;
 	// TODO: gain/lost focus 
 	case WM_PAINT: {
-		msg.mId = VMsg::PAINT;
+		msg.mId = Msg::PAINT;
 		PAINTSTRUCT ps;
 		HDC dc = BeginPaint(wnd, &ps);
 		msg.paint.dc = dc;
@@ -796,7 +819,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		EndPaint(wnd, &ps);
 		return 0;}
 	case WM_SETCURSOR:
-		msg.mId = VMsg::SET_CURSOR;
+		msg.mId = Msg::SET_CURSOR;
 		// every time mouse move will go here
 		// SetCursor(LoadCursor(NULL, IDC_ARROW));
 		if (cc->dispatchMessage(&msg)) {
@@ -805,9 +828,13 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		goto _end;
 	case WM_ERASEBKGND:
 		return 0;
+	case WM_TIMER:
+		msg.mId = Msg::TIMER;
+		cc->dispatchMessage(&msg);
+		return 0;
 	}
 
-	msg.mId = (VMsg::ID)msgId;
+	msg.mId = (Msg::ID)msgId;
 	msg.def.wParam = wParam;
 	msg.def.lParam = lParam;
 	if (cc->dispatchMessage(&msg)) {
@@ -830,12 +857,7 @@ void VBaseWindow::onLayoutChildren(int width, int height) {
 	RECT r = getClientRect();
 	width = r.right - r.left;
 	height = r.bottom - r.top;
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
-		int y  = calcSize(child->getAttrY(), height | MS_ATMOST);
-		child->onLayout(r.left + x, r.top + y, child->getMesureWidth(), child->getMesureHeight());
-	}
+	VComponent::onLayoutChildren(width, height);
 }
 
 void VBaseWindow::applyAttrs() {
@@ -856,13 +878,13 @@ void VBaseWindow::applyIcon() {
 	}
 }
 
-bool VBaseWindow::dispatchMessage(VMsg *msg) {
+bool VBaseWindow::dispatchMessage(Msg *msg) {
 	if (msg->mId == WM_ACTIVATE) {
 		if (WA_INACTIVE == LOWORD(msg->def.wParam)) {
 			if (mCapture != NULL) {
-				VMsg m = *msg;
-				m.mId = VMsg::MOUSE_CANCEL;
-				mCapture->dispatchMouseMessage(&m);
+				Msg m = *msg;
+				m.mId = Msg::MOUSE_CANCEL;
+				mCapture->dispatchMessage(&m);
 			}
 			mCapture = NULL;
 			mLastMouseAt = NULL;
@@ -870,20 +892,20 @@ bool VBaseWindow::dispatchMessage(VMsg *msg) {
 		return VComponent::dispatchMessage(msg);
 	}
 
-	if (msg->mId > VMsg::MOUSE_MSG_BEGIN && msg->mId < VMsg::MOUSE_MSG_END) {
+	if (msg->mId > Msg::MOUSE_MSG_BEGIN && msg->mId < Msg::MOUSE_MSG_END) {
 		if (mCapture != NULL) {
-			VMsg m = *msg;
+			Msg m = *msg;
 			POINT pt = mCapture->getDrawPoint();
 			m.mouse.x -= pt.x;
 			m.mouse.y -= pt.y;
-			return mCapture->dispatchMouseMessage(&m);
+			return mCapture->dispatchMessage(&m);
 		}
 		VComponent::dispatchMessage(msg);
-		if (msg->mId == VMsg::MOUSE_MOVE) {
+		if (msg->mId == Msg::MOUSE_MOVE) {
 			if (mLastMouseAt != NULL && mLastMouseAt != msg->mouse.moveAt) {
-				VMsg n;
-				n.mId = VMsg::MOUSE_LEAVE;
-				mLastMouseAt->dispatchMouseMessage(&n);
+				Msg n;
+				n.mId = Msg::MOUSE_LEAVE;
+				mLastMouseAt->dispatchMessage(&n);
 			}
 			mLastMouseAt = msg->mouse.moveAt;
 		}
@@ -895,7 +917,9 @@ bool VBaseWindow::dispatchMessage(VMsg *msg) {
 		notifyLayout();
 		return true;
 	}
+	if (msg->mId == Msg::TIMER) {
 
+	}
 	if (msg->mId == WM_DESTROY) {
 		PostQuitMessage(msg->def.wParam);
 		return true;
@@ -904,7 +928,7 @@ bool VBaseWindow::dispatchMessage(VMsg *msg) {
 	return VComponent::dispatchMessage(msg);
 }
 
-bool VBaseWindow::dispatchMouseMessage(VMsg *msg) {
+bool VBaseWindow::dispatchMouseMessage(Msg *msg) {
 	int ox = msg->mouse.x, oy = msg->mouse.y;
 
 	for (int i = MAX_POPUP_NUM - 1; i >= 0; --i) {
@@ -924,7 +948,7 @@ bool VBaseWindow::dispatchMouseMessage(VMsg *msg) {
 
 		msg->mouse.x = ox - rr.mX + mTranslateX;
 		msg->mouse.y = oy - rr.mY + mTranslateY;
-		if (pp->onMouseAction(msg)) {
+		if (pp->onMouseActionWhenOut(msg)) {
 			return true;
 		}
 	}
@@ -995,7 +1019,7 @@ HWND VBaseWindow::getWnd() {
 	return mWnd;
 }
 
-bool VBaseWindow::dispatchPaintMessage(VMsg *m) {
+bool VBaseWindow::dispatchPaintMessage(Msg *m) {
 	if (mCache == NULL || mCache->getWidth() != mWidth || mCache->getHeight() != mHeight) {
 		delete mCache;
 		mCache = XImage::create(mWidth, mHeight, 24);
@@ -1011,7 +1035,7 @@ bool VBaseWindow::dispatchPaintMessage(VMsg *m) {
 		if (mPopups[i] == NULL) {
 			continue;
 		}
-		VMsg mm = *m;
+		Msg mm = *m;
 		mm.paint.x += mTranslateX + mPopups[i]->getX(); 
 		mm.paint.y += mTranslateY + mPopups[i]->getY(); 
 		mPopups[i]->dispatchPaintMessage(&mm);
@@ -1020,6 +1044,24 @@ bool VBaseWindow::dispatchPaintMessage(VMsg *m) {
 	BitBlt(old, clip.mX, clip.mY, clip.mWidth, clip.mHeight, mdc, clip.mX, clip.mY, SRCCOPY);
 	DeleteObject(mdc);
 	return true;
+}
+
+void VBaseWindow::setFocus(VComponent *who) {
+	VComponent *old = mFocus;
+	if (mFocus == who) {
+		return;
+	}
+	mFocus = who;
+
+	Msg m;
+	if (old != NULL) {
+		m.mId = Msg::LOST_FOCUS;
+		old->dispatchMessage(&m);
+	}
+	if (mFocus != NULL) {
+		m.mId = Msg::GAIN_FOCUS;
+		mFocus->dispatchMessage(&m);
+	}
 }
 
 //--------------------------------------------------------
@@ -1082,7 +1124,7 @@ void VDialog::createWnd(HWND parent) {
 	applyIcon();
 }
 
-bool VDialog::dispatchMessage(VMsg *msg) {
+bool VDialog::dispatchMessage(Msg *msg) {
 	if (msg->mId == WM_CLOSE) {
 		// default system close button is 0
 		EnableWindow(mParentWnd, TRUE);
@@ -1189,24 +1231,15 @@ void VPopup::close() {
 	}
 }
 
-void VPopup::onLayoutChildren(int width, int height) {
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
-		int y = calcSize(child->getAttrY(), height | MS_ATMOST);
-		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
-	}
-}
-
 void VPopup::setMouseAction(MouseAction ma) {
 	mMouseAction = ma;
 }
 
-bool VPopup::onMouseAction(VMsg *m) {
+bool VPopup::onMouseActionWhenOut(Msg *m) {
 	if (mMouseAction == VPopup::MA_INTERREPT) {
 		return true;
 	}
-	if (mMouseAction == VPopup::MA_CLOSE && m->mId == VMsg::LBUTTONDOWN) {
+	if (mMouseAction == VPopup::MA_CLOSE && m->mId == Msg::LBUTTONDOWN) {
 		close();
 		return true;
 	}

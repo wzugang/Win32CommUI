@@ -16,7 +16,7 @@ public:
 	virtual ~VExtComponent();
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
-	virtual bool doStateImage(VMsg *m);
+	virtual bool doStateImage(Msg *m);
 protected:
 	bool mEnableState;
 	XImage *mStateImages[8];
@@ -26,37 +26,37 @@ protected:
 };
 
 
-class VExtLabel : public VExtComponent {
+class VLabel : public VExtComponent {
 public:
-	VExtLabel(XmlNode *node);
+	VLabel(XmlNode *node);
 	char *getText();
 	void setText(char *text);
 protected:
-	virtual void onPaint(VMsg *m);
+	virtual void onPaint(Msg *m);
 protected:
 	char *mText;
 	int mTextAlign;
 };
 
 
-class VExtButton : public VExtComponent {
+class VButton : public VExtComponent {
 public:
-	VExtButton(XmlNode *node);
+	VButton(XmlNode *node);
 protected:
-	virtual void onPaint(VMsg *m);
-	bool onMouseEvent(VMsg *m);
+	virtual void onPaint(Msg *m);
+	bool onMouseEvent(Msg *m);
 };
 
 
-class VExtOption : public VExtButton {
+class VOption : public VButton {
 public:
-	VExtOption(XmlNode *node);
+	VOption(XmlNode *node);
 	bool isSelect();
 	virtual void setSelect(bool select);
 	void setAutoSelect(bool autoSelect);
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
-	virtual bool doStateImage(VMsg *m);
+	virtual bool doStateImage(Msg *m);
 	enum {
 		BTN_IMG_SELECT = 5
 	};
@@ -65,28 +65,28 @@ protected:
 };
 
 
-class VExtCheckBox : public VExtOption {
+class VCheckBox : public VOption {
 public:
-	VExtCheckBox(XmlNode *node);
+	VCheckBox(XmlNode *node);
 protected:
-	virtual void onPaint(VMsg *m);
+	virtual void onPaint(Msg *m);
 };
 
 
-class VExtRadio : public VExtCheckBox {
+class VRadio : public VCheckBox {
 public:
-	VExtRadio(XmlNode *node);
+	VRadio(XmlNode *node);
 	virtual void setSelect(bool select);
 protected:
 	void unselectOthers();
 };
 
 
-class VExtIconButton : public VExtOption {
+class VIconButton : public VOption {
 public:
-	VExtIconButton(XmlNode *node);
+	VIconButton(XmlNode *node);
 protected:
-	virtual void onPaint(VMsg *m);
+	virtual void onPaint(Msg *m);
 	RECT getRectBy(int *attr);
 protected:
 	XImage *mIcon;
@@ -94,31 +94,96 @@ protected:
 	int mAttrTextRect[4]; // left, top, width, height
 };
 
-#if 0
-class VExtScrollBar : public VExtComponent {
+class VScrollBar : public VExtComponent {
 public:
-	VExtScrollBar(XmlNode *node, bool horizontal = false);
+	VScrollBar(XmlNode *node, bool horizontal = false);
 	int getMax();
 	int getPage();
-	void setMaxAndPage(int maxn, int page);
 	int getPos();
 	void setPos(int pos); // pos = [0 ... max - page]
-	bool isNeedShow();
-	int getThumbSize();
-	void setThumbSize(int sz);
-	virtual void onMeasure(int widthSpec, int heightSpec);
+	void setMaxAndPage(int maxn, int page);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	void calcThumbInfo();
+	virtual void onPaint(Msg *m);
+	virtual bool onMouseEvent(Msg *m);
+	XRect getThumbRect();
+	int getPosBy(int start);
+protected:
 	bool mHorizontal;
 	int mMax;
 	int mPage;
 	int mPos;
-	RECT mThumbRect;
 	XImage *mTrack, *mThumb;
 	bool mPressed;
 	int mMouseX, mMouseY;
 };
+
+class VTextArea : public VExtComponent, public XAreaText {
+public:
+	VTextArea(XmlNode *node);
+	void setReadOnly(bool r);
+	void setEnableShowCaret(bool enable);
+	virtual void setText( const char *txt );
+	virtual void setWideText( const wchar_t *txt );
+	virtual ~VTextArea();
+
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	virtual void onLayoutChildren( int width, int height );
+	virtual HFONT getTextFont();
+protected:
+	virtual void notifyChanged();
+	virtual bool dispatchMessage(Msg *msg);
+	virtual void onChar( wchar_t ch );
+	virtual void onLButtonDown(Msg *m);
+	virtual void onLButtonUp(Msg *m);
+	virtual void onMouseMove(int x, int y);
+	virtual void onPaint(Msg *m);
+	virtual void drawSelRange(HDC hdc, int begin, int end);
+	virtual void onKeyDown(int key);
+	virtual void move(int key);
+
+	// override XAreaText function
+	virtual int getScrollX();
+	virtual int getScrollY();
+	virtual void setScrollX(int x);
+	virtual void setScrollY(int y);
+	virtual SIZE getClientSize();
+	virtual HWND getBindWnd();
+	virtual int getRealX(int x);
+	virtual int getRealY(int y);
+
+	virtual void getVisibleRows(int *from, int *to);
+	virtual void ensureVisible(int pos);
+
+	virtual void back();
+	virtual void del();
+	virtual void copy();
+	virtual void paste();
+protected:
+	int mInsertPos;
+	int mBeginSelPos, mEndSelPos;
+	bool mReadOnly;
+	HPEN mCaretPen;
+	bool mCaretShowing;
+	bool mEnableShowCaret;
+	bool mEnableScrollBars;
+	VScrollBar *mVerBar;
+	XmlNode *mVerBarNode;
+};
+
+#if 0
+
+class VExtLineEdit : public VExtTextArea {
+public:
+	VExtLineEdit(XmlNode *node);
+	virtual ~VExtLineEdit();
+	virtual void insertText( int pos, wchar_t *txt, int len );
+protected:
+	virtual void onChar(wchar_t ch);
+	virtual void createWnd();
+};
+
+
+
 
 class VExtScroll : public VExtComponent {
 public:
@@ -198,70 +263,7 @@ protected:
 	CellRender *mCellRender;
 };
 
-class VExtTextArea : public VExtComponent, public XAreaText {
-public:
-	VExtTextArea(XmlNode *node);
-	void setReadOnly(bool r);
-	void setEnableShowCaret(bool enable);
-	virtual void setText( const char *txt );
-	virtual void setWideText( const wchar_t *txt );
-	virtual ~VExtTextArea();
 
-	virtual void createWnd();
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
-	virtual HFONT getTextFont();
-protected:
-	virtual void notifyChanged();
-
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onChar(wchar_t ch);
-	virtual void onLButtonDown(int keyState, int x, int y);
-	virtual void onLButtonUp(int keyState, int x, int y);
-	virtual void onMouseMove(int x, int y);
-	virtual void onPaint(HDC hdc);
-	virtual void drawSelRange(HDC hdc, int begin, int end);
-	virtual void onKeyDown(int key);
-	virtual void move(int key);
-
-	// override XAreaText function
-	virtual int getScrollX();
-	virtual int getScrollY();
-	virtual void setScrollX(int x);
-	virtual void setScrollY(int y);
-	virtual SIZE getClientSize();
-	virtual HWND getBindWnd();
-	virtual int getRealX(int x);
-	virtual int getRealY(int y);
-
-	virtual void getVisibleRows(int *from, int *to);
-	virtual void ensureVisible(int pos);
-
-	virtual void back();
-	virtual void del();
-	virtual void copy();
-	virtual void paste();
-protected:
-	int mInsertPos;
-	int mBeginSelPos, mEndSelPos;
-	bool mReadOnly;
-	HPEN mCaretPen;
-	bool mCaretShowing;
-	bool mEnableShowCaret;
-	bool mEnableScrollBars;
-	VExtScrollBar *mVerBar;
-	XmlNode *mVerBarNode;
-};
-
-class VExtLineEdit : public VExtTextArea {
-public:
-	VExtLineEdit(XmlNode *node);
-	virtual ~VExtLineEdit();
-	virtual void insertText( int pos, wchar_t *txt, int len );
-protected:
-	virtual void onChar(wchar_t ch);
-	virtual void createWnd();
-};
 
 class XListModel {
 public:
@@ -640,43 +642,17 @@ protected:
 	bool mPoupShow;
 };
 
-class XAbsLayout : public VExtComponent {
-public:
-	XAbsLayout(XmlNode *node);
-	virtual void onLayout(int width, int height);
-};
-
-class XHLineLayout : public VExtComponent {
-public:
-	XHLineLayout(XmlNode *node);
-	virtual void onLayout(int width, int height);
-};
-
-class XVLineLayout : public VExtComponent {
-public:
-	XVLineLayout(XmlNode *node);
-	virtual void onLayout(int width, int height);
-};
-
-class VExtWindow : public XWindow {
-public:
-	VExtWindow(XmlNode *node);
-protected:
-	virtual void createWnd();
-	virtual RECT getClientRect();
-protected:
-	int mBorders[4]; // left top right bottom border's width/height
-	bool mSizable;
-};
-
-class VExtDialog : public XDialog {
-public:
-	VExtDialog(XmlNode *node);
-protected:
-	virtual void createWnd();
-	virtual RECT getClientRect();
-protected:
-	int mBorders[4]; // left top right bottom border's width/height
-	bool mSizable;
-};
 #endif
+
+
+class VHLineLayout : public VExtComponent {
+public:
+	VHLineLayout(XmlNode *node);
+	virtual void onLayoutChildren(int width, int height);
+};
+
+class VVLineLayout : public VExtComponent {
+public:
+	VVLineLayout(XmlNode *node);
+	virtual void onLayoutChildren(int width, int height);
+};

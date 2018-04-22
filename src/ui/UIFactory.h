@@ -105,7 +105,7 @@ public:
 	static VComponent* fastBuild(const char *resPath, const char *partName, VComponent *parent);
 	
 	static void destory(XmlNode *root);
-	static void registCreator(const char *nodeName, Creator c);
-	static Creator getCreator(const char *nodeName);
+	static void registCreator(Creator c);
+	static VComponent *create(XmlNode *node);
 };
 

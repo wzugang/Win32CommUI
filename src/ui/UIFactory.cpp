@@ -841,28 +841,15 @@ void UIFactory::init() {
 //------------------------------------------------------
 
 //----------------------------UIFactory-------------------------
-struct NodeCreatorV {
-	NodeCreatorV() {
-		mNodeName[0] = 0;
-		mCreator = NULL;
-	}
-	char mNodeName[32];
-	UIFactoryV::Creator mCreator;
-};
 
-static NodeCreatorV g_creatorsV[64];
+static UIFactoryV::Creator g_creatorsV[64];
 static int g_creatorNumV = 0;
 
 VComponent* UIFactoryV::buildComponent( XmlNode *root) {
 	if (root == NULL) {
 		return NULL;
 	}
-	Creator c = getCreator(root->getName());
-	if (c == NULL) {
-		printf("UIFactoryV.buildingTree: node name [%s] has no creator\n", root->getName());
-		return NULL;
-	}
-	VComponent *x = c(root);
+	VComponent *x = create(root);
 	root->setComponentV(x);
 	for (int i = 0; i < root->getChildCount(); ++i) {
 		XmlNode *child = root->getChild(i);
@@ -889,24 +876,11 @@ VComponent* UIFactoryV::fastBuild( const char *resPath, const char *partName, VC
 	return cc;
 }
 
-void UIFactoryV::registCreator( const char *nodeName, Creator c ) {
-	if (nodeName == NULL || c == NULL)
+void UIFactoryV::registCreator(Creator c ) {
+	if (c == NULL)
 		return;
-	strcpy(g_creatorsV[g_creatorNumV].mNodeName, nodeName);
-	g_creatorsV[g_creatorNumV].mCreator = c;
+	g_creatorsV[g_creatorNumV] = c;
 	++g_creatorNumV;
-}
-
-UIFactoryV::Creator UIFactoryV::getCreator( const char *nodeName ) {
-	if (nodeName == NULL) {
-		return NULL;
-	}
-	for (int i = 0; i < g_creatorNumV; ++i) {
-		if (strcmp(nodeName, g_creatorsV[i].mNodeName) == 0)
-			return g_creatorsV[i].mCreator;
-	}
-	printf("Node: [%s] has no Creator\n", nodeName);
-	return NULL;
 }
 
 void UIFactoryV::destory( XmlNode *root ) {
@@ -918,24 +892,42 @@ void UIFactoryV::destory( XmlNode *root ) {
 	delete root;
 }
 
-static VComponent *VWindow_Creator(XmlNode *n) {return new VWindow(n);}
-static VComponent *VDialog_Creator(XmlNode *n) {return new VDialog(n);}
-static VComponent *VPopup_Creator(XmlNode *n) {return new VPopup(n);}
+VComponent * UIFactoryV::create(XmlNode *node) {
+	if (node == NULL) {
+		return NULL;
+	}
+	if (node->getName() == NULL) {
+		printf("UIFactoryV.create: node name is NULL \n");
+		return NULL;
+	}
+	for (int i = 0; i < g_creatorNumV; ++i) {
+		VComponent *find = g_creatorsV[i](node);
+		if (find != NULL) {
+			return find;
+		}
+	}
+	printf("UIFactoryV.create: not find creator for '%s'\n", node->getName());
+	return NULL;
+}
 
-static VComponent *VExtLabel_Creator(XmlNode *n) {return new VExtLabel(n);}
-static VComponent *VExtButton_Creator(XmlNode *n) {return new VExtButton(n);}
-static VComponent *VExtOption_Creator(XmlNode *n) {return new VExtOption(n);}
-static VComponent *VExtCheckBox_Creator(XmlNode *n) {return new VExtCheckBox(n);}
-static VComponent *VExtRadio_Creator(XmlNode *n) {return new VExtRadio(n);}
+static VComponent *UIFactoryV_Creator(XmlNode *n) {
+	char *name = n->getName();
+	if (strcmp(name, "Window") == 0) return new VWindow(n);
+	if (strcmp(name, "Dialog") == 0) return new VDialog(n);
+	if (strcmp(name, "Popup") == 0) return new VPopup(n);
+	if (strcmp(name, "Label") == 0) return new VLabel(n);
+	if (strcmp(name, "Button") == 0) return new VButton(n);
+	if (strcmp(name, "Option") == 0) return new VOption(n);
+	if (strcmp(name, "CheckBox") == 0) return new VCheckBox(n);
+	if (strcmp(name, "Radio") == 0) return new VRadio(n);
+	if (strcmp(name, "ScrollBar") == 0) return new VScrollBar(n);
+	if (strcmp(name, "AbsLayout") == 0) return new VComponent(n);
+	if (strcmp(name, "HLineLayout") == 0) return new VHLineLayout(n);
+	if (strcmp(name, "VLineLayout") == 0) return new VVLineLayout(n);
+	if (strcmp(name, "TextArea") == 0) return new VTextArea(n);
+	return NULL;
+}
 
 void UIFactoryV::init() {
-	registCreator("Window", VWindow_Creator);
-	registCreator("Dialog", VDialog_Creator);
-	registCreator("Popup", VPopup_Creator);
-
-	registCreator("Label", VExtLabel_Creator);
-	registCreator("Button", VExtButton_Creator);
-	registCreator("Option", VExtOption_Creator);
-	registCreator("CheckBox", VExtCheckBox_Creator);
-	registCreator("Radio", VExtRadio_Creator);
+	registCreator(UIFactoryV_Creator);
 }

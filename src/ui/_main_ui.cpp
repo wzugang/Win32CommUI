@@ -11,8 +11,8 @@ VWindow *win;
 
 class BtnListener : public VListener {
 public:
-	virtual bool onEvent(VComponent *src, VMsg *msg) {
-		if (msg->mId == VMsg::CLICK) {
+	virtual bool onEvent(VComponent *src, Msg *msg) {
+		if (msg->mId == Msg::CLICK) {
 			VPopup *pp = (VPopup *) UIFactoryV::fastBuild("file://skin/vtest.xml", "my-popup", win);
 			pp->setMouseAction(VPopup::MA_INTERREPT);
 			pp->show(VComponent::getSpecSize(pp->getAttrX()), 
@@ -44,7 +44,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	UIFactoryV::init();
 	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
-	win->findById("ext_btn_1")->setListener(new BtnListener());
+	// win->findById("ext_btn_1")->setListener(new BtnListener());
 
 	win->createWnd();
 	win->show();

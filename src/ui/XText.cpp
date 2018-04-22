@@ -138,6 +138,7 @@ void XAreaText::buildLines() {
 	}
 	mTextHeight = mLinesNum * mLineHeight;
 }
+
 void XAreaText::buildLinesWrap() {
 	wchar_t *p = mWideText;
 	const int DEF_WORD_NUM = 20;
