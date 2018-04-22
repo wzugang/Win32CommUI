@@ -667,6 +667,7 @@ void VComponent::setFocus() {
 
 void VComponent::releaseFocus() {
 	VBaseWindow *w = getRoot();
+	mHasFocus = false;
 	if (w) {
 		w->setFocus(NULL);
 	}
@@ -682,9 +683,13 @@ VComponent::Visibility VComponent::getVisibility() {
 }
 
 void VComponent::setVisibility(Visibility v) {
-	if (v != mVisibility) {
-		mVisibility = v;
-		repaint();
+	if (v == mVisibility) {
+		return;
+	}
+	mVisibility = v;
+	repaint();
+	if (mVisibility != VISIBLE && mHasFocus) {
+		releaseFocus();
 	}
 }
 

@@ -925,6 +925,7 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 	if (strcmp(name, "HLineLayout") == 0) return new VHLineLayout(n);
 	if (strcmp(name, "VLineLayout") == 0) return new VVLineLayout(n);
 	if (strcmp(name, "TextArea") == 0) return new VTextArea(n);
+	if (strcmp(name, "LineEdit") == 0) return new VLineEdit(n);
 	return NULL;
 }
 

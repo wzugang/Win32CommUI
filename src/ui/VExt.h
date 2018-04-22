@@ -94,6 +94,7 @@ protected:
 	int mAttrTextRect[4]; // left, top, width, height
 };
 
+
 class VScrollBar : public VExtComponent {
 public:
 	VScrollBar(XmlNode *node, bool horizontal = false);
@@ -119,6 +120,7 @@ protected:
 	int mMouseX, mMouseY;
 };
 
+
 class VTextArea : public VExtComponent, public XAreaText, public VListener {
 public:
 	VTextArea(XmlNode *node);
@@ -126,7 +128,6 @@ public:
 	void setEnableShowCaret(bool enable);
 	virtual void setText( const char *txt );
 	virtual void setWideText( const wchar_t *txt );
-	virtual ~VTextArea();
 
 	virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayoutChildren( int width, int height );
@@ -170,21 +171,19 @@ protected:
 	bool mEnableShowCaret;
 	bool mEnableScrollBars;
 	VScrollBar *mVerBar;
+	int mScrollX, mScrollY;
 };
 
-#if 0
 
-class VExtLineEdit : public VExtTextArea {
+class VLineEdit : public VTextArea {
 public:
-	VExtLineEdit(XmlNode *node);
-	virtual ~VExtLineEdit();
+	VLineEdit(XmlNode *node);
 	virtual void insertText( int pos, wchar_t *txt, int len );
 protected:
 	virtual void onChar(wchar_t ch);
-	virtual void createWnd();
 };
 
-
+#if 0
 
 
 class VExtScroll : public VExtComponent {

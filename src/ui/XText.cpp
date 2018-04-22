@@ -47,17 +47,18 @@ void XAreaText::setWideText( const wchar_t *txt ) {
 	mNeedRebuildLines = true;
 }
 void XAreaText::insertText( int pos, wchar_t *txt, int len ) {
+	if (len <= 0 || txt == NULL) {
+		return;
+	}
 	if (pos < 0 || pos > mWideTextLen) {
 		pos = mWideTextLen;
-	}
-	if (len <= 0) {
-		return;
 	}
 	if (mWideTextLen + len >= mWideTextCapacity - 10) {
 		mWideTextCapacity = max(mWideTextLen + len + 50, mWideTextCapacity * 2);
 		mWideTextCapacity = (mWideTextCapacity & (~63)) + 64;
 		mWideText = (wchar_t *)realloc(mWideText, sizeof(wchar_t) * mWideTextCapacity);
 	}
+
 	for (int i = mWideTextLen - 1; i >= pos; --i) {
 		mWideText[i + len] = mWideText[i];
 	}

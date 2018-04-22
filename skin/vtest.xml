@@ -6,7 +6,7 @@
 	<Label text="Hello World" rect="380 250 200 80" color="#EE1122" bgimage="color://#80FFB6C1" align="center|ver-center|single-line"  font="name:??; size:26; weight:800;"  />
 	<Button id = "ext_btn_1" text = "My Button"  rect = "50 80 120 40" />
 	
-	<TextArea text="Hello Sya Kia" rect="350 50 200 80" bgcolor="#C0ddccdd" font="size:22;" />
+	<LineEdit text="Hello Sya Kia" rect="350 50 200 80" bgcolor="#C0ddccdd" font="size:22;" />
 </Window>
 
 #################### my-popup ############

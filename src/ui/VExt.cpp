@@ -510,6 +510,7 @@ VTextArea::VTextArea( XmlNode *node ) : VExtComponent(node) {
 		mAttrPadding[0] = mAttrPadding[2] = 2;
 	}
 	mAutoNewLine = true;
+	mScrollX = mScrollY = 0;
 }
 
 bool VTextArea::dispatchMessage(Msg *m) {
@@ -658,7 +659,7 @@ void VTextArea::onPaint(Msg *m) {
 	for (int i = from; i < to; ++i) {
 		int bg = mLines[i].mBeginPos;
 		int ln = mLines[i].mLen;
-		RECT rr = {mAttrPadding[0], y, mAttrPadding[0] + clientSize.cx, y + mLineHeight};
+		RECT rr = {mAttrPadding[0] - getScrollX(), y, mAttrPadding[0] + clientSize.cx, y + mLineHeight};
 		DrawTextW(hdc, &mWideText[bg], ln, &rr, DT_SINGLELINE|DT_VCENTER);
 		// TextOutW(hdc, 0, y, &mWideText[bg], ln);
 		y += mLineHeight;
@@ -916,26 +917,28 @@ void VTextArea::onLayoutChildren( int width, int height ) {
 	}
 }
 
-VTextArea::~VTextArea() {
-}
-
 int VTextArea::getScrollX() {
-	// TODO:
-	return 0;
+	return mScrollX;
 }
 
 int VTextArea::getScrollY() {
-	if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+	return mScrollY;
+	/*if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
 		return mVerBar->getPos();
 	}
-	return 0;
+	return 0;*/
 }
 
 void VTextArea::setScrollX( int x ) {
-	// TODO:
+	mScrollX = x;
 }
 
 void VTextArea::setScrollY( int y ) {
+	int mm = mTextHeight - (mMesureHeight - mAttrPadding[1] - mAttrPadding[3]);
+	if (mm <= 0) {
+		return;
+	}
+	mScrollY = min(y, mm);
 	if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
 		mVerBar->setPos(y);
 	}
@@ -977,7 +980,7 @@ void VTextArea::ensureVisible( int pos ) {
 	if (pt.x < getScrollX()) {
 		setScrollX(pt.x);
 	} else if (pt.x > getScrollX() + sz.cx) {
-		setScrollX(pt.x + mCharWidth - sz.cx);
+		setScrollX(pt.x - sz.cx);
 	}
 }
 
@@ -1014,22 +1017,21 @@ bool VTextArea::onEvent(VComponent *evtSource, Msg *msg) {
 	return false;
 }
 
-#if 0
+
 //------------------------VExtLineEdit--------------------
-VExtLineEdit::VExtLineEdit(XmlNode *node) : VExtTextArea(node) {
+VLineEdit::VLineEdit(XmlNode *node) : VTextArea(node) {
 	mAutoNewLine = false;
+	mEnableScrollBars = false;
 }
-void VExtLineEdit::onChar( wchar_t ch ) {
+
+void VLineEdit::onChar( wchar_t ch ) {
 	if (ch == VK_RETURN || ch == VK_TAB) {
 		return;
 	}
-	VExtTextArea::onChar(ch);
+	VTextArea::onChar(ch);
 }
 
-void VExtLineEdit::createWnd() {
-	VExtComponent::createWnd();
-}
-void VExtLineEdit::insertText( int pos, wchar_t *txt, int len ) {
+void VLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 	if (len <= 0 || txt == NULL) {
 		return;
 	}
@@ -1041,6 +1043,7 @@ void VExtLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 		mWideTextCapacity = (mWideTextCapacity & (~63)) + 64;
 		mWideText = (wchar_t *)realloc(mWideText, sizeof(wchar_t) * mWideTextCapacity);
 	}
+
 	int nlen = 0;
 	wchar_t *pt = txt;
 	for (int i = 0; i < len; ++i) {
@@ -1057,12 +1060,14 @@ void VExtLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 		}
 	}
 	mWideTextLen += nlen;
+	if (mWideTextLen > 0) {
+		mWideText[mWideTextLen] = 0;
+	}
+	mNeedRebuildLines = true;
 }
 
-VExtLineEdit::~VExtLineEdit() {
-}
 
-
+#if 0
 //----------VExtScroll-----------------------------
 VExtScroll::VExtScroll( XmlNode *node ) : VExtComponent(node) {
 	mHorNode = new XmlNode("ExtHorScrollBar", mNode);
