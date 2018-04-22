@@ -255,7 +255,9 @@ public:
 	virtual void close();
 	void setMouseAction(MouseAction ma);
 protected:
+	virtual bool onMouseAction(VMsg *m);
 	virtual void onLayoutChildren(int width, int height);
+
 	MouseAction mMouseAction;
 	friend class VBaseWindow;
 };

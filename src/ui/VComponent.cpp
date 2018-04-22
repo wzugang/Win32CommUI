@@ -905,6 +905,8 @@ bool VBaseWindow::dispatchMessage(VMsg *msg) {
 }
 
 bool VBaseWindow::dispatchMouseMessage(VMsg *msg) {
+	int ox = msg->mouse.x, oy = msg->mouse.y;
+
 	for (int i = MAX_POPUP_NUM - 1; i >= 0; --i) {
 		if (mPopups[i] == NULL) {
 			continue;
@@ -912,20 +914,18 @@ bool VBaseWindow::dispatchMouseMessage(VMsg *msg) {
 		VPopup *pp = mPopups[i];
 		XRect rr(pp->getX(), pp->getY(), pp->getWidth(), pp->getHeight());
 
+		msg->mouse.x = ox;
+		msg->mouse.y = oy;
 		if (rr.contains(msg->mouse.x, msg->mouse.y)) {
 			msg->mouse.x -= rr.mX + mTranslateX;
 			msg->mouse.y -= rr.mY + mTranslateY;
 			return pp->dispatchMessage(msg);
 		}
-		if (pp->mMouseAction == VPopup::MA_INTERREPT) {
+
+		msg->mouse.x = ox - rr.mX + mTranslateX;
+		msg->mouse.y = oy - rr.mY + mTranslateY;
+		if (pp->onMouseAction(msg)) {
 			return true;
-		}
-		if (pp->mMouseAction == VPopup::MA_CLOSE && msg->mId == VMsg::LBUTTONDOWN) {
-			pp->close();
-			return true;
-		}
-		if (pp->mMouseAction == VPopup::MA_TO_NEXT) {
-			// go through
 		}
 	}
 
@@ -1200,6 +1200,20 @@ void VPopup::onLayoutChildren(int width, int height) {
 
 void VPopup::setMouseAction(MouseAction ma) {
 	mMouseAction = ma;
+}
+
+bool VPopup::onMouseAction(VMsg *m) {
+	if (mMouseAction == VPopup::MA_INTERREPT) {
+		return true;
+	}
+	if (mMouseAction == VPopup::MA_CLOSE && m->mId == VMsg::LBUTTONDOWN) {
+		close();
+		return true;
+	}
+	if (mMouseAction == VPopup::MA_TO_NEXT) {
+		return false;
+	}
+	return true;
 }
 
 
