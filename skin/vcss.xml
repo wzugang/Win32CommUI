@@ -3,9 +3,11 @@
 		bgimage="color://#AARRGGBB | color://#RRGGBB" 
 		focusImage=""
 	/>
-		
-		
+	
+	
 	<Window style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
 	
 	
 	<Label align="left|top|right|bottom|center|ver-center|single-line" />
+	
+	

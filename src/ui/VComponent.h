@@ -8,13 +8,14 @@ class XmlNode;
 class UIFactory;
 class VComponent;
 class XImage;
-struct Msg;
+struct VMsg;
 class VBaseWindow;
+class VPopup;
 
 class VListener {
 public:
 	// if event has deal, return true
-	virtual bool onEvent(VComponent *evtSource, Msg *msg) = 0;
+	virtual bool onEvent(VComponent *evtSource, VMsg *msg) = 0;
 };
 
 struct XRect {
@@ -35,7 +36,7 @@ struct XRect {
 	RECT to();
 };
 
-struct Msg {
+struct VMsg {
 	enum ID {
 		NONE = -100,
 		MOUSE_MSG_BEGIN,
@@ -59,7 +60,7 @@ struct Msg {
 		int mbutton:1;
 		int rbutton:1;
 	};
-	Msg() {memset(this, 0, sizeof(Msg));}
+	VMsg() {memset(this, 0, sizeof(VMsg));}
 	ID mId;
 	// params
 	// vkeys is one bit of MK_CONTROL | MK_LBUTTON | MK_MBUTTON | MK_MBUTTON | MK_SHIFT
@@ -115,6 +116,8 @@ public:
 	int getMesureWidth();
 	int getMesureHeight();
 
+	int getX();
+	int getY();
 	int getAttrX();
 	int getAttrY();
 	void setAttrX(int attrX);
@@ -132,17 +135,17 @@ public:
 	void parseAttrs();
 	HFONT getFont();
 
-	virtual bool dispatchMessage(Msg *msg);
-	virtual bool dispatchMouseMessage(Msg *msg);
-	virtual bool dispatchPaintMessage(Msg *m);
+	virtual bool dispatchMessage(VMsg *msg);
+	virtual bool dispatchMouseMessage(VMsg *msg);
+	virtual bool dispatchPaintMessage(VMsg *m);
 	
-	virtual bool onMouseEvent(Msg *m);
-	virtual bool onKeyEvent(Msg *m);
+	virtual bool onMouseEvent(VMsg *m);
+	virtual bool onKeyEvent(VMsg *m);
 	virtual bool onFocusEvent(bool gainFocus);
-	virtual void onPaint(Msg *m);
+	virtual void onPaint(VMsg *m);
 
 	virtual void drawCache(HDC dc);
-	virtual void eraseBackground(Msg *m);
+	virtual void eraseBackground(VMsg *m);
 	virtual void repaint(XRect *dirtyRect = NULL);
 	void updateWindow();
 	virtual void setCapture();
@@ -188,13 +191,15 @@ protected:
 class VBaseWindow : public VComponent {
 public:
 	VBaseWindow(XmlNode *node);
-	virtual void notifyLayout();
 	void setWnd(HWND hwnd);
 	virtual HWND getWnd();
-	virtual bool dispatchPaintMessage(Msg *m);
+
+	virtual void notifyLayout();
 protected:
 	virtual RECT getClientRect();
-	virtual bool dispatchMessage(Msg *msg);
+	virtual bool dispatchMessage(VMsg *msg);
+	virtual bool dispatchPaintMessage(VMsg *m);
+	virtual bool dispatchMouseMessage(VMsg *msg);
 	virtual void onLayoutChildren(int width, int height);
 	virtual void applyIcon();
 	virtual void applyAttrs();
@@ -204,7 +209,13 @@ protected:
 	HWND mWnd;
 	VComponent *mCapture, *mFocus;
 	VComponent *mLastMouseAt;
+	enum {
+		MAX_POPUP_NUM = 10
+	};
+	VPopup *mPopups[MAX_POPUP_NUM];
+
 	friend class VComponent;
+	friend class VPopup;
 };
 
 class VWindow : public VBaseWindow {
@@ -217,6 +228,7 @@ public:
 
 class VDialog : public VBaseWindow {
 public:
+	// node's parent should be a VBaseWindow
 	VDialog(XmlNode *node);
 	virtual void createWnd(HWND parent);
 	int showModal();
@@ -224,9 +236,26 @@ public:
 	void close(int nRet);
 protected:
 	void showCenter();
-	virtual bool dispatchMessage(Msg *msg);
+	virtual bool dispatchMessage(VMsg *msg);
 protected:
 	bool mShowModal;
 	HWND mParentWnd;
 };
 
+class VPopup : public VComponent {
+public:
+	enum MouseAction {
+		MA_INTERREPT, // 拦截
+		MA_TO_NEXT,   // 下发到下一层
+		MA_CLOSE      // 关闭自己
+	};
+	// node's parent should be a VBaseWindow
+	VPopup(XmlNode *node);
+	virtual void show(int x, int y);
+	virtual void close();
+	void setMouseAction(MouseAction ma);
+protected:
+	virtual void onLayoutChildren(int width, int height);
+	MouseAction mMouseAction;
+	friend class VBaseWindow;
+};

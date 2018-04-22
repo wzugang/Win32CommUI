@@ -920,12 +920,22 @@ void UIFactoryV::destory( XmlNode *root ) {
 
 static VComponent *VWindow_Creator(XmlNode *n) {return new VWindow(n);}
 static VComponent *VDialog_Creator(XmlNode *n) {return new VDialog(n);}
+static VComponent *VPopup_Creator(XmlNode *n) {return new VPopup(n);}
+
 static VComponent *VExtLabel_Creator(XmlNode *n) {return new VExtLabel(n);}
 static VComponent *VExtButton_Creator(XmlNode *n) {return new VExtButton(n);}
+static VComponent *VExtOption_Creator(XmlNode *n) {return new VExtOption(n);}
+static VComponent *VExtCheckBox_Creator(XmlNode *n) {return new VExtCheckBox(n);}
+static VComponent *VExtRadio_Creator(XmlNode *n) {return new VExtRadio(n);}
 
 void UIFactoryV::init() {
 	registCreator("Window", VWindow_Creator);
 	registCreator("Dialog", VDialog_Creator);
+	registCreator("Popup", VPopup_Creator);
+
 	registCreator("Label", VExtLabel_Creator);
 	registCreator("Button", VExtButton_Creator);
+	registCreator("Option", VExtOption_Creator);
+	registCreator("CheckBox", VExtCheckBox_Creator);
+	registCreator("Radio", VExtRadio_Creator);
 }

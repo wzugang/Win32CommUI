@@ -16,7 +16,7 @@ public:
 	virtual ~VExtComponent();
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
-	virtual bool doStateImage(Msg *m);
+	virtual bool doStateImage(VMsg *m);
 protected:
 	bool mEnableState;
 	XImage *mStateImages[8];
@@ -32,7 +32,7 @@ public:
 	char *getText();
 	void setText(char *text);
 protected:
-	virtual void onPaint(Msg *m);
+	virtual void onPaint(VMsg *m);
 protected:
 	char *mText;
 	int mTextAlign;
@@ -43,8 +43,8 @@ class VExtButton : public VExtComponent {
 public:
 	VExtButton(XmlNode *node);
 protected:
-	virtual void onPaint(Msg *m);
-	bool onMouseEvent(Msg *m);
+	virtual void onPaint(VMsg *m);
+	bool onMouseEvent(VMsg *m);
 };
 
 
@@ -56,7 +56,7 @@ public:
 	void setAutoSelect(bool autoSelect);
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
-	virtual bool doStateImage(Msg *m);
+	virtual bool doStateImage(VMsg *m);
 	enum {
 		BTN_IMG_SELECT = 5
 	};
@@ -69,7 +69,7 @@ class VExtCheckBox : public VExtOption {
 public:
 	VExtCheckBox(XmlNode *node);
 protected:
-	virtual void onPaint(Msg *m);
+	virtual void onPaint(VMsg *m);
 };
 
 
@@ -86,14 +86,13 @@ class VExtIconButton : public VExtOption {
 public:
 	VExtIconButton(XmlNode *node);
 protected:
-	virtual void onPaint(Msg *m);
+	virtual void onPaint(VMsg *m);
 	RECT getRectBy(int *attr);
 protected:
 	XImage *mIcon;
 	int mAttrIconRect[4]; // left, top, width, height
 	int mAttrTextRect[4]; // left, top, width, height
 };
-
 
 #if 0
 class VExtScrollBar : public VExtComponent {
@@ -140,21 +139,7 @@ protected:
 	XmlNode *mHorNode, *mVerNode;
 };
 
-class VExtPopup : public VComponent {
-public:
-	VExtPopup(XmlNode *node);
-	virtual void show(int screenX, int screenY);
-	virtual void close();
-	void disableChildrenFocus();
-	virtual ~VExtPopup();
-protected:
-	virtual void createWnd();
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onLayout(int width, int height);
-	virtual int messageLoop();
-protected:
-	bool mMsgLooping;
-};
+
 
 class VExtTableModel {
 public:

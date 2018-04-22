@@ -7,6 +7,21 @@
 #include "VComponent.h"
 #include "VExt.h"
 
+VWindow *win;
+
+class BtnListener : public VListener {
+public:
+	virtual bool onEvent(VComponent *src, VMsg *msg) {
+		if (msg->mId == VMsg::CLICK) {
+			VPopup *pp = (VPopup *) UIFactoryV::fastBuild("file://skin/vtest.xml", "my-popup", win);
+			pp->setMouseAction(VPopup::MA_INTERREPT);
+			pp->show(VComponent::getSpecSize(pp->getAttrX()), 
+				VComponent::getSpecSize(pp->getAttrY()));
+			return true;
+		}
+		return false;
+	}
+};
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
@@ -27,7 +42,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	xwin->messageLoop();
 #else
 	UIFactoryV::init();
-	VWindow *win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
+	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
+
+	win->findById("ext_btn_1")->setListener(new BtnListener());
+
 	win->createWnd();
 	win->show();
 	win->msgLoop();

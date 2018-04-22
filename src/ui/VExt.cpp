@@ -57,16 +57,16 @@ VExtComponent::StateImage VExtComponent::getStateImage(void *param1, void *param
 	return STATE_IMG_NORMAL;
 }
 
-bool VExtComponent::doStateImage(Msg *m) {
+bool VExtComponent::doStateImage(VMsg *m) {
 	switch (m->mId) {
-	case Msg::LBUTTONDOWN: {
+	case VMsg::LBUTTONDOWN: {
 		mMouseDown = true;
 		mMouseMoving = false;
 		mMouseLeave = false;
 		setCapture();
 		repaint(NULL);
 		return true;}
-	case Msg::LBUTTONUP: {
+	case VMsg::LBUTTONUP: {
 		RECT r = {0, 0, mWidth, mHeight};
 		POINT pt = {m->mouse.x, m->mouse.y};
 		bool md = mMouseDown;
@@ -79,11 +79,11 @@ bool VExtComponent::doStateImage(Msg *m) {
 		}
 		repaint(NULL);
 		if (md && PtInRect(&r, pt) && mListener != NULL) {
-			m->mId = Msg::CLICK;
+			m->mId = VMsg::CLICK;
 			mListener->onEvent(this, m);
 		}
 		return true;}
-	case Msg::MOUSE_MOVE: {
+	case VMsg::MOUSE_MOVE: {
 		StateImage bi = getStateImage(NULL, NULL);
 		POINT pt = {m->mouse.x, m->mouse.y};
 		RECT r = {0, 0, mWidth, mHeight};
@@ -100,12 +100,12 @@ bool VExtComponent::doStateImage(Msg *m) {
 			repaint(NULL);
 		}
 		return true;}
-	case Msg::MOUSE_LEAVE: {
+	case VMsg::MOUSE_LEAVE: {
 		mMouseMoving = false;
 		mMouseLeave = true;
 		repaint(NULL);
 		return true;}
-	case Msg::MOUSE_CANCEL: {
+	case VMsg::MOUSE_CANCEL: {
 		mMouseDown = false;
 		mMouseMoving = false;
 		mMouseLeave = false;
@@ -138,7 +138,7 @@ VExtLabel::VExtLabel( XmlNode *node ) : VExtComponent(node) {
 	}
 }
 
-void VExtLabel::onPaint(Msg *m) {
+void VExtLabel::onPaint(VMsg *m) {
 	HDC dc = m->paint.dc;
 	RECT r = {mAttrPadding[0], mAttrPadding[1], mWidth - mAttrPadding[2], mHeight - mAttrPadding[3]};
 	eraseBackground(m);
@@ -170,11 +170,11 @@ VExtButton::VExtButton( XmlNode *node ) : VExtComponent(node) {
 	mEnableState = true;
 }
 
-bool VExtButton::onMouseEvent(Msg *m) {
+bool VExtButton::onMouseEvent(VMsg *m) {
 	return doStateImage(m);
 }
 
-void VExtButton::onPaint(Msg *m) {
+void VExtButton::onPaint(VMsg *m) {
 	HDC dc = m->paint.dc;
 	RECT r = {0,0, mWidth, mHeight};
 	StateImage si = getStateImage(NULL, NULL);
@@ -229,8 +229,8 @@ VExtOption::StateImage VExtOption::getStateImage(void *param1, void *param2) {
 	return VExtButton::getStateImage(param1, param2);
 }
 
-bool VExtOption::doStateImage(Msg *m) {
-	if (m->mId == Msg::LBUTTONUP) {
+bool VExtOption::doStateImage(VMsg *m) {
+	if (m->mId == VMsg::LBUTTONUP) {
 		XRect r (0, 0, mWidth, mHeight);
 		if (mAutoSelect && mMouseDown && r.contains(m->mouse.x, m->mouse.y)) {
 			setSelect(! mSelected);
@@ -244,7 +244,7 @@ bool VExtOption::doStateImage(Msg *m) {
 VExtCheckBox::VExtCheckBox( XmlNode *node ) : VExtOption(node) {
 }
 
-void VExtCheckBox::onPaint(Msg *m) {
+void VExtCheckBox::onPaint(VMsg *m) {
 	HDC dc = m->paint.dc;
 	RECT r = {0,0, mWidth, mHeight};
 	StateImage si = getStateImage(NULL, NULL);
@@ -317,7 +317,7 @@ RECT VExtIconButton::getRectBy(int *attr) {
 	return r;
 }
 
-void VExtIconButton::onPaint(Msg *m) {
+void VExtIconButton::onPaint(VMsg *m) {
 	HDC dc = m->paint.dc;
 	StateImage si = getStateImage(NULL, NULL);
 	XImage *cur = mStateImages[si];
@@ -340,6 +340,7 @@ void VExtIconButton::onPaint(Msg *m) {
 		mIcon->draw(dc, r.left, r.top, r.right - r.left, r.bottom - r.top);
 	}
 }
+
 
 #if 0
 //-------------------VExtScroll-----------------------------------
@@ -624,114 +625,7 @@ VExtScrollBar* VExtScroll::getHorBar() {
 VExtScrollBar* VExtScroll::getVerBar() {
 	return mVerBar;
 }
-//-------------------VExtPopup-------------------------------
-VExtPopup::VExtPopup( XmlNode *node ) : VComponent(node) {
-	strcpy(mClassName, "VExtPopup");
-}
 
-void VExtPopup::createWnd() {
-	MyRegisterClassV(mInstance, mClassName);
-	// mID = generateWndId();  // has no id
-	mWnd = CreateWindow(mClassName, NULL, WS_POPUP, 0, 0, 0, 0, getParentWnd(), NULL, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	applyAttrs();
-}
-
-bool VExtPopup::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (VComponent::wndProc(msg, wParam, lParam, result))
-		return true;
-	if (msg == WM_SIZE && lParam > 0) {
-		RECT r = {0};
-		GetWindowRect(mWnd, &r);
-		onMeasure(LOWORD(lParam) | VComponent::MS_ATMOST, HIWORD(lParam) | VComponent::MS_ATMOST);
-		onLayout(LOWORD(lParam), HIWORD(lParam));
-		return true;
-	} else if (msg == WM_DESTROY) {
-		// PostQuitMessage(0); // Do not it
-		return true;
-	} else if (msg == WM_MOUSEACTIVATE) {
-		*result = MA_NOACTIVATE; // 鼠标点击时，不活动
-		return true;
-	}
-	return false;
-}
-
-void VExtPopup::onLayout( int width, int height ) {
-	RECT r = {0};
-	GetClientRect(mWnd, &r);
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponent();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
-		int y = calcSize(child->getAttrY(), height | MS_ATMOST);
-		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
-	}
-}
-
-int VExtPopup::messageLoop() {
-	MSG msg = {0};
-	HWND ownerWnd = GetWindow(mWnd, GW_OWNER);
-	RECT popupRect;
-	GetWindowRect(mWnd, &popupRect);
-	while (TRUE) {
-		if ((GetWindowLong(mWnd, GWL_STYLE) & WS_VISIBLE) == 0)
-			break;
-		if (GetForegroundWindow() != mWnd && GetForegroundWindow() != ownerWnd) {
-			break;
-		}
-		GetMessage(&msg, NULL, 0, 0);
-		if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
-			// transfer the message to menu window
-			msg.hwnd = mWnd;
-		} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
-			POINT pt;
-			GetCursorPos(&pt);
-			if (! PtInRect(&popupRect, pt)) { // click on other window
-				SendMessage(mWnd, MSG_POPUP_CLOSED, 1, 0);
-				break;
-			}
-		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
-			POINT pt = {0};
-			GetCursorPos(&pt);
-			msg.hwnd = WindowFromPoint(pt);
-		} else if (msg.message == WM_QUIT) {
-			break;
-		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-	ShowWindow(mWnd, SW_HIDE);
-	return 0;
-}
-
-void VExtPopup::show( int screenX, int screenY ) {
-	if (mAttrWidth == 0 || mAttrHeight == 0) {
-		SetWindowPos(mWnd, 0, screenX, screenY, 0, 0, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOSIZE);
-	} else {
-		SetWindowPos(mWnd, 0, screenX, screenY, getSpecSize(mAttrWidth), getSpecSize(mAttrHeight), 
-		SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
-	}
-	UpdateWindow(mWnd);
-	messageLoop();
-}
-void VExtPopup::close() {
-	ShowWindow(mWnd, SW_HIDE);
-	SendMessage(mWnd, MSG_POPUP_CLOSED, 0, 0);
-}
-static void DisableFocus(XmlNode *n) {
-	VExtComponent *ext = dynamic_cast<VExtComponent*>(n->getComponent());
-	if (ext == NULL) return;
-	ext->setEnableFocus(false);
-	for (int i = 0; i < n->getChildCount(); ++i) {
-		XmlNode *child = n->getChild(i);
-		DisableFocus(child);
-	}
-}
-void VExtPopup::disableChildrenFocus() {
-	DisableFocus(mNode);
-}
-VExtPopup::~VExtPopup() {
-	if (mWnd) DestroyWindow(mWnd);
-}
 //-------------------VExtTable-------------------------------
 VExtTable::VExtTable( XmlNode *node ) : VExtScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;

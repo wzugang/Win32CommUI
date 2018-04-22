@@ -10,3 +10,7 @@
 	<Button id = "ext_btn_1" text = "My Button"  rect = "50 80 120 40" />
 </Window>
 
+#################### my-popup ############
+<Popup rect="220, 50, 300, 200" bgcolor="#50fab85a" >
+	
+</Popup>
