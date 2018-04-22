@@ -41,6 +41,9 @@ VExtComponent::StateImage VExtComponent::getStateImage(void *param1, void *param
 	if (! mEnable) {
 		return STATE_IMG_DISABLE;
 	}
+	if (mHasFocus) {
+		return STATE_IMG_FOCUS;
+	}
 	if (mMouseDown && ! mMouseLeave) {
 		return STATE_IMG_PUSH;
 	}
@@ -192,11 +195,10 @@ void VExtButton::onPaint(Msg *m) {
 }
 
 
-#if 0
 //-------------------VExtOption-----------------------------------
 VExtOption::VExtOption( XmlNode *node ) : VExtButton(node) {
 	mAutoSelect = true;
-	mIsSelect = false;
+	mSelected = false;
 	char *s = mNode->getAttrValue("selectImage");
 	if (s != NULL) {
 		mStateImages[BTN_IMG_SELECT] = XImage::load(s);
@@ -205,26 +207,14 @@ VExtOption::VExtOption( XmlNode *node ) : VExtButton(node) {
 	if (s != NULL) mAutoSelect = AttrUtils::parseBool(s);
 }
 
-bool VExtOption::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_LBUTTONUP) {
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (mAutoSelect && mIsMouseDown && PtInRect(&r, pt)) {
-			mIsSelect = ! mIsSelect;
-		}
-		return VExtButton::wndProc(msg, wParam, lParam, result);
-	}
-	return VExtButton::wndProc(msg, wParam, lParam, result);
-}
-
 bool VExtOption::isSelect() {
-	return mIsSelect;
+	return mSelected;
 }
 
 void VExtOption::setSelect( bool select ) {
-	if (mIsSelect != select) {
-		mIsSelect = select;
-		InvalidateRect(mWnd, NULL, TRUE);
+	if (mSelected != select) {
+		mSelected = select;
+		repaint(NULL);
 	}
 }
 
@@ -232,71 +222,53 @@ void VExtOption::setAutoSelect(bool autoSelect) {
 	mAutoSelect = autoSelect;
 }
 
-VExtOption::StateImage VExtOption::getStateImage() {
-	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
-		return STATE_IMG_DISABLE;
-	if (mIsMouseDown && ! mIsMouseLeave) {
-		return STATE_IMG_PUSH;
-	}
-	if (!mIsMouseDown && mIsMouseMoving) {
-		return STATE_IMG_HOVER;
-	}
-	if (mIsSelect) {
+VExtOption::StateImage VExtOption::getStateImage(void *param1, void *param2) {
+	if (mSelected) {
 		return StateImage(BTN_IMG_SELECT);
 	}
-	if (mIsMouseLeave) {
-		return STATE_IMG_NORMAL;
-	}
+	return VExtButton::getStateImage(param1, param2);
+}
 
-	return STATE_IMG_NORMAL;
+bool VExtOption::doStateImage(Msg *m) {
+	if (m->mId == Msg::LBUTTONUP) {
+		XRect r (0, 0, mWidth, mHeight);
+		if (mAutoSelect && mMouseDown && r.contains(m->mouse.x, m->mouse.y)) {
+			setSelect(! mSelected);
+		}
+		// go through
+	}
+	return VExtButton::doStateImage(m);
 }
 
 //-------------------VExtCheckBox-----------------------------------
 VExtCheckBox::VExtCheckBox( XmlNode *node ) : VExtOption(node) {
 }
 
-bool VExtCheckBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		RECT r = {0, 0, mWidth, mHeight};
-		XImage *cur = mStateImages[getStateImage()];
-		if (cur != NULL) {
-			int y = (mHeight - cur->getHeight()) / 2;
-			cur->draw(dc, 0, y, cur->getWidth(), cur->getHeight());
-			r.left = cur->getWidth() + 5 + mAttrPadding[0];
-		}
+void VExtCheckBox::onPaint(Msg *m) {
+	HDC dc = m->paint.dc;
+	RECT r = {0,0, mWidth, mHeight};
+	StateImage si = getStateImage(NULL, NULL);
+	XImage *cur = mStateImages[si];
 
-		if (mAttrFlags & AF_COLOR)
-			SetTextColor(dc, mAttrColor);
-		SetBkMode(dc, TRANSPARENT);
-		SelectObject(dc, getFont());
-		DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_VCENTER | DT_SINGLELINE);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (mIsMouseDown && PtInRect(&r, pt)) mIsSelect = ! mIsSelect;
-		return VExtButton::wndProc(msg, wParam, lParam, result);
+	eraseBackground(m);
+	if (cur != NULL) {
+		int y = (mHeight - cur->getHeight()) / 2;
+		cur->draw(dc, 0, y, cur->getWidth(), cur->getHeight());
+		r.left = cur->getWidth() + 5 + mAttrPadding[0];
 	}
-	return VExtOption::wndProc(msg, wParam, lParam, result);
+
+	if (mAttrFlags & AF_COLOR) {
+		SetTextColor(dc, mAttrColor);
+	} else {
+		SetTextColor(dc, 0);
+	}
+	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
+	DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_VCENTER | DT_SINGLELINE);
 }
+
 //-------------------VExtRadio-----------------------------------
 VExtRadio::VExtRadio( XmlNode *node ) : VExtCheckBox(node) {
-}
-
-bool VExtRadio::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_LBUTTONUP) {
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (mIsMouseDown && PtInRect(&r, pt) && mIsSelect)
-			return true;
-		mIsSelect = true;
-		unselectOthers();
-		return VExtButton::wndProc(msg, wParam, lParam, result);
-	}
-	return VExtCheckBox::wndProc(msg, wParam, lParam, result);
 }
 
 void VExtRadio::unselectOthers() {
@@ -304,14 +276,25 @@ void VExtRadio::unselectOthers() {
 	if (groupName == NULL) return;
 	XmlNode *parent = mNode->getParent();
 	for (int i = 0; parent != NULL && i < parent->getChildCount(); ++i) {
-		VExtRadio *child = dynamic_cast<VExtRadio*>(parent->getComponent()->getChild(i));
+		VExtRadio *child = dynamic_cast<VExtRadio*>(parent->getComponentV()->getChild(i));
 		if (child == NULL || child == this) continue;
-		if (child->mIsSelect && strcmp(groupName, child->getNode()->getAttrValue("group")) == 0) {
-			child->mIsSelect = false;
-			InvalidateRect(child->getWnd(), NULL, TRUE);
+		if (child->mSelected && strcmp(groupName, child->getNode()->getAttrValue("group")) == 0) {
+			child->setSelect(false);
 		}
 	}
 }
+
+void VExtRadio::setSelect(bool select) {
+	if (mSelected == select) {
+		return;
+	}
+	mSelected = select;
+	if (mSelected) {
+		unselectOthers();
+	}
+	repaint(NULL);
+}
+
 //-----------------------VExtIconButton----------------------------
 VExtIconButton::VExtIconButton(XmlNode *node) : VExtOption(node) {
 	memset(mAttrIconRect, 0, sizeof(mAttrIconRect));
@@ -319,30 +302,6 @@ VExtIconButton::VExtIconButton(XmlNode *node) : VExtOption(node) {
 	AttrUtils::parseArraySize(mNode->getAttrValue("iconRect"), mAttrIconRect, 4);
 	AttrUtils::parseArraySize(mNode->getAttrValue("textRect"), mAttrTextRect, 4);
 	mIcon = XImage::load(mNode->getAttrValue("icon"));
-}
-bool VExtIconButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
-	if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		XImage *cur = mStateImages[getStateImage()];
-		if (cur != NULL) {
-			cur->draw(dc, 0, 0, mWidth, mHeight);
-		}
-		if (mAttrFlags & AF_COLOR) {
-			SetTextColor(dc, mAttrColor);
-		}
-		SetBkMode(dc, TRANSPARENT);
-		SelectObject(dc, getFont());
-		RECT r = getRectBy(mAttrTextRect);
-		DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-		if (mIcon != NULL) {
-			r = getRectBy(mAttrIconRect);
-			mIcon->draw(dc, r.left, r.top, r.right - r.left, r.bottom - r.top);
-		}
-		EndPaint(mWnd, &ps);
-		return true;
-	}
-	return VExtOption::wndProc(msg, wParam, lParam, result);
 }
 
 RECT VExtIconButton::getRectBy(int *attr) {
@@ -358,6 +317,31 @@ RECT VExtIconButton::getRectBy(int *attr) {
 	return r;
 }
 
+void VExtIconButton::onPaint(Msg *m) {
+	HDC dc = m->paint.dc;
+	StateImage si = getStateImage(NULL, NULL);
+	XImage *cur = mStateImages[si];
+
+	eraseBackground(m);
+	if (cur != NULL) {
+		cur->draw(dc, 0, 0, mWidth, mHeight);
+	}
+	if (mAttrFlags & AF_COLOR) {
+		SetTextColor(dc, mAttrColor);
+	} else {
+		SetTextColor(dc, 0);
+	}
+	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
+	RECT r = getRectBy(mAttrTextRect);
+	DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	if (mIcon != NULL) {
+		r = getRectBy(mAttrIconRect);
+		mIcon->draw(dc, r.left, r.top, r.right - r.left, r.bottom - r.top);
+	}
+}
+
+#if 0
 //-------------------VExtScroll-----------------------------------
 VExtScrollBar::VExtScrollBar( XmlNode *node, bool horizontal ) : VExtComponent(node) {
 	mHorizontal = horizontal;

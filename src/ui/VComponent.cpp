@@ -96,6 +96,13 @@ void XRect::set(int x, int y, int w, int h) {
 	mHeight = h;
 }
 
+bool XRect::contains(int x, int y) {
+	if (isValid()) {
+		return x >= mX && y >= mY && x < mX + mWidth && y < mY + mHeight;
+	}
+	return false;
+}
+
 VComponent::VComponent(XmlNode *node) {
 	static int s_id = 1000;
 

@@ -6,11 +6,11 @@
 class VExtComponent : public VComponent {
 public:
 	enum StateImage {
-		STATE_IMG_NORMAL,
-		STATE_IMG_HOVER,
-		STATE_IMG_PUSH,
-		STATE_IMG_FOCUS,
-		STATE_IMG_DISABLE
+		STATE_IMG_NORMAL = 0,
+		STATE_IMG_HOVER = 1,
+		STATE_IMG_PUSH = 2,
+		STATE_IMG_FOCUS = 3,
+		STATE_IMG_DISABLE = 4
 	};
 	VExtComponent(XmlNode *node);
 	virtual ~VExtComponent();
@@ -25,6 +25,7 @@ protected:
 	bool mMouseLeave;
 };
 
+
 class VExtLabel : public VExtComponent {
 public:
 	VExtLabel(XmlNode *node);
@@ -37,6 +38,7 @@ protected:
 	int mTextAlign;
 };
 
+
 class VExtButton : public VExtComponent {
 public:
 	VExtButton(XmlNode *node);
@@ -45,43 +47,46 @@ protected:
 	bool onMouseEvent(Msg *m);
 };
 
-#if 0
+
 class VExtOption : public VExtButton {
 public:
 	VExtOption(XmlNode *node);
 	bool isSelect();
-	void setSelect(bool select);
+	virtual void setSelect(bool select);
 	void setAutoSelect(bool autoSelect);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual StateImage getStateImage();
+	virtual StateImage getStateImage(void *param1, void *param2);
+	virtual bool doStateImage(Msg *m);
 	enum {
 		BTN_IMG_SELECT = 5
 	};
-	bool mIsSelect;
+	bool mSelected;
 	bool mAutoSelect;
 };
+
 
 class VExtCheckBox : public VExtOption {
 public:
 	VExtCheckBox(XmlNode *node);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onPaint(Msg *m);
 };
+
 
 class VExtRadio : public VExtCheckBox {
 public:
 	VExtRadio(XmlNode *node);
+	virtual void setSelect(bool select);
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	void unselectOthers();
 };
+
 
 class VExtIconButton : public VExtOption {
 public:
 	VExtIconButton(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 protected:
+	virtual void onPaint(Msg *m);
 	RECT getRectBy(int *attr);
 protected:
 	XImage *mIcon;
@@ -89,6 +94,8 @@ protected:
 	int mAttrTextRect[4]; // left, top, width, height
 };
 
+
+#if 0
 class VExtScrollBar : public VExtComponent {
 public:
 	VExtScrollBar(XmlNode *node, bool horizontal = false);

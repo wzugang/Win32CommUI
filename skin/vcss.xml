@@ -1,5 +1,7 @@
 	<VComponent 
-		bgcolor="AARRGGBB | RRGGBB" bgimage="color://#AARRGGBB | color://#RRGGBB" 
+		bgcolor="AARRGGBB | RRGGBB" 
+		bgimage="color://#AARRGGBB | color://#RRGGBB" 
+		focusImage=""
 	/>
 		
 		

@@ -29,6 +29,8 @@ struct XRect {
 	XRect join(XRect &r);
 	void reset();
 	void set(int x, int y, int w, int h);
+	bool contains(int x, int y);
+
 	void from(RECT &r);
 	RECT to();
 };
