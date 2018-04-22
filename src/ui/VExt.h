@@ -99,6 +99,8 @@ public:
 	VScrollBar(XmlNode *node, bool horizontal = false);
 	int getMax();
 	int getPage();
+	int getStart();
+	void setStart(int start);
 	int getPos();
 	void setPos(int pos); // pos = [0 ... max - page]
 	void setMaxAndPage(int maxn, int page);
@@ -117,7 +119,7 @@ protected:
 	int mMouseX, mMouseY;
 };
 
-class VTextArea : public VExtComponent, public XAreaText {
+class VTextArea : public VExtComponent, public XAreaText, public VListener {
 public:
 	VTextArea(XmlNode *node);
 	void setReadOnly(bool r);
@@ -130,6 +132,7 @@ public:
 	virtual void onLayoutChildren( int width, int height );
 	virtual HFONT getTextFont();
 protected:
+	virtual bool onEvent(VComponent *evtSource, Msg *msg);
 	virtual void notifyChanged();
 	virtual bool dispatchMessage(Msg *msg);
 	virtual void onChar( wchar_t ch );
@@ -167,7 +170,6 @@ protected:
 	bool mEnableShowCaret;
 	bool mEnableScrollBars;
 	VScrollBar *mVerBar;
-	XmlNode *mVerBarNode;
 };
 
 #if 0

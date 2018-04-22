@@ -56,19 +56,19 @@ struct Msg {
 
 		HSCROLL, VSCROLL
 	};
-	union VKeys {
-		int ctrl:1;
-		int shift:1;
-		int lbutton:1;
-		int mbutton:1;
-		int rbutton:1;
+	struct VKeys {
+		bool ctrl;
+		bool shift;
+		bool lbutton;
+		bool mbutton;
+		bool rbutton;
 	};
 	Msg() {memset(this, 0, sizeof(Msg));}
 	ID mId;
 	// params
 	// vkeys is one bit of MK_CONTROL | MK_LBUTTON | MK_MBUTTON | MK_MBUTTON | MK_SHIFT
 	// if has MK_CONTROL bit, means ctrl is press down
-	struct {int x; int y; VKeys vkey; int deta; VComponent *moveAt;} mouse;
+	struct {int x; int y; VKeys vkey; int deta; VComponent *moveAt; VComponent *pressAt;} mouse;
 	struct {VKeys vkey; wchar_t code;} key;
 	struct {HDC dc; XRect clip; int x; int y;} paint;
 	struct {WPARAM wParam; LPARAM lParam;} def;
@@ -200,6 +200,8 @@ public:
 	virtual HWND getWnd();
 	void setFocus(VComponent *who);
 	virtual void notifyLayout();
+	void startTimer(VComponent *src, DWORD timerId, int elapse);
+	void killTimer(VComponent *src, DWORD timerId);
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
@@ -218,6 +220,8 @@ protected:
 		MAX_POPUP_NUM = 10
 	};
 	VPopup *mPopups[MAX_POPUP_NUM];
+	struct TimerItem {VComponent *src; DWORD mTimerId;};
+	std::list<TimerItem> mTimerList;
 
 	friend class VComponent;
 	friend class VPopup;

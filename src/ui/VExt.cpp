@@ -450,8 +450,8 @@ XRect VScrollBar::getThumbRect() {
 	if (mMax <= 0 || mPage <= 0 || mPage >= mMax) {
 		return rr;
 	}
-	int sz = mPage * mPage / mMax;
-	int start = mPos * (mPage - sz) / (mMax - mPage);
+	int sz = (int)((float)mPage * mPage / mMax);
+	int start = (int)((float)mPos * (mPage - sz) / (mMax - mPage));
 
 	if (mHorizontal) {
 		float ff = (float)mWidth / mPage;
@@ -471,7 +471,7 @@ int VScrollBar::getPosBy(int start) {
 	if (start < 0 || start > mMax - mPage) {
 		return 0;
 	}
-	int sz = mPage * mPage / mMax;
+	int sz = (int)((float)mPage * mPage / mMax);
 	float ff = 1;
 	if (mHorizontal) {
 		ff = (float)mWidth / mPage;
@@ -479,8 +479,19 @@ int VScrollBar::getPosBy(int start) {
 		ff = (float)mHeight / mPage;
 	}
 	start = (int)(start * ff);
-	int pos = start * (mMax - mPage) / (mPage - sz);
+	int pos = (int)((float)start * (mMax - mPage) / (mPage - sz));
 	return pos;
+}
+
+int VScrollBar::getStart() {
+	int sz = (int)((float)mPage * mPage / mMax);
+	int start = (int)((float)mPos * (mPage - sz) / (mMax - mPage));
+	return start;
+}
+
+void VScrollBar::setStart(int start) {
+	int pos = getPosBy(start);
+	setPos(pos);
 }
 
 //----------------------------VExtTextArea---------------------
@@ -493,9 +504,8 @@ VTextArea::VTextArea( XmlNode *node ) : VExtComponent(node) {
 	mCaretShowing = false;
 	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xff, 0x14, 0x93));
 	mEnableShowCaret = true;
-	mVerBarNode = NULL;
 	mVerBar = NULL;
-	mEnableScrollBars = AttrUtils::parseBool(mNode->getAttrValue("enableScrollBars"), false);
+	mEnableScrollBars = AttrUtils::parseBool(mNode->getAttrValue("enableScrollBars"), true);
 	if (mAttrPadding[0] == 0 && mAttrPadding[2] == 0) {
 		mAttrPadding[0] = mAttrPadding[2] = 2;
 	}
@@ -510,6 +520,13 @@ bool VTextArea::dispatchMessage(Msg *m) {
 		onChar(m->key.code);
 		return true;
 	} else if (m->mId == Msg::LBUTTONDOWN) {
+		if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+			if (m->mouse.x >= mVerBar->getX()) {
+				m->mouse.x -= mVerBar->getX() + mTranslateX;
+				m->mouse.y -= mVerBar->getY() + mTranslateY;
+				return mVerBar->dispatchMessage(m);
+			}
+		}
 		setCapture();
 		if (mEnableFocus) setFocus();
 		onLButtonDown(m);
@@ -541,12 +558,12 @@ bool VTextArea::dispatchMessage(Msg *m) {
 		return true;
 	} else if (m->mId == Msg::GAIN_FOCUS) {
 		if (mEnableShowCaret) {
-			// SetTimer(getWnd(), mID + 1, 500, NULL);
+			getRoot()->startTimer(this, mID, 500);
 		}
 		return true;
 	} else if (m->mId == Msg::LOST_FOCUS) {
 		mCaretShowing = false;
-		// KillTimer(getWnd(), mID + 1);
+		getRoot()->killTimer(this, mID);
 		repaint();
 		return true;
 	}
@@ -597,7 +614,9 @@ void VTextArea::onChar( wchar_t ch ) {
 
 void VTextArea::onLButtonDown(Msg *m) {
 	mCaretShowing = true;
-	mInsertPos = getPosAt(m->mouse.x, m->mouse.y);
+	int x = m->mouse.x + getScrollX();
+	int y = m->mouse.y + getScrollY();
+	mInsertPos = getPosAt(x, y);
 	if (m->mouse.vkey.shift) {
 		mEndSelPos =  mInsertPos;
 	} else {
@@ -612,6 +631,8 @@ void VTextArea::onLButtonUp(Msg *m) {
 }
 
 void VTextArea::onMouseMove(int x, int y) {
+	x += getScrollX();
+	y += getScrollY();
 	mInsertPos = mEndSelPos = getPosAt(x, y);
 	ensureVisible(mInsertPos);
 	repaint();
@@ -670,9 +691,10 @@ void VTextArea::drawSelRange( HDC hdc, int begin, int end ) {
 	int erow = getLineNoByY(ep.y);
 	for (int i = brow; i <= erow && i >= 0; ++i) {
 		r.left = getRealX(i == brow ? bp.x : 0);
-		r.top = getRealY(bp.y + mLineHeight * (i - brow));
+		int ry = bp.y + mLineHeight * (i - brow);
+		r.top = getRealY(ry);
 		r.right = getRealX(i == erow ? ep.x : client.cx);
-		r.bottom = getRealY(r.top + mLineHeight);
+		r.bottom = getRealY(ry + mLineHeight);
 		FillRect(hdc, &r, bg);
 	}
 }
@@ -844,12 +866,14 @@ void VTextArea::notifyChanged() {
 		return;
 	}
 	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
-	mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
-	bool needShow = mTextHeight > mMesureHeight;
+	int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
+	mVerBar->setMaxAndPage(mTextHeight, mh);
+	bool needShow = mTextHeight > mh;
 	mVerBar->setVisibility(needShow ? VISIBLE : VISIBLE_GONE);
 
-	if (needShow != hasVerBar)
+	if (needShow != hasVerBar) {
 		notifyChanged();
+	}
 	repaint();
 }
 
@@ -861,8 +885,9 @@ void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 	buildLines();
 
 	if (mVerBar != NULL) {
-		mVerBar->setMaxAndPage(mTextHeight, mMesureHeight);
-		bool newHas = mTextHeight > mMesureHeight;
+		int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
+		mVerBar->setMaxAndPage(mTextHeight, mh);
+		bool newHas = mTextHeight > mh;
 		mVerBar->setVisibility(newHas ? VISIBLE : VISIBLE_GONE);
 		if (newHas != hasVerBar) onMeasure(widthSpec, heightSpec);
 	}
@@ -870,10 +895,12 @@ void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 
 void VTextArea::onLayoutChildren( int width, int height ) {
 	if (mEnableScrollBars && mVerBar == NULL) {
-		mVerBarNode = new XmlNode("VerScrollBar", mNode);
-		mVerBar = new VScrollBar(mVerBarNode, false);
-		mVerBarNode->setComponentV(mVerBar);
+		XmlNode *node = new XmlNode("VerScrollBar", mNode);
+		mVerBar = new VScrollBar(node, false);
+		node->setComponentV(mVerBar);
 		mVerBar->setVisibility(VISIBLE_GONE);
+		mNode->addChild(node);
+		mVerBar->setListener(this);
 	}
 
 	if (mVerBar != NULL) {
@@ -890,8 +917,6 @@ void VTextArea::onLayoutChildren( int width, int height ) {
 }
 
 VTextArea::~VTextArea() {
-	if (mVerBar) delete mVerBar;
-	if (mVerBarNode) delete mVerBarNode;
 }
 
 int VTextArea::getScrollX() {
@@ -900,7 +925,9 @@ int VTextArea::getScrollX() {
 }
 
 int VTextArea::getScrollY() {
-	// TODO:
+	if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+		return mVerBar->getPos();
+	}
 	return 0;
 }
 
@@ -909,7 +936,9 @@ void VTextArea::setScrollX( int x ) {
 }
 
 void VTextArea::setScrollY( int y ) {
-	// TODO: 
+	if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+		mVerBar->setPos(y);
+	}
 }
 
 void VTextArea::getVisibleRows( int *from, int *to ) {
@@ -942,6 +971,8 @@ void VTextArea::ensureVisible( int pos ) {
 		// mVerBar->setPos(pt.y + mLineHeight - mHeight);
 		//InvalidateRect(mWnd, NULL, TRUE);
 		//UpdateWindow(mWnd);
+	} else if (pt.y + mLineHeight > getScrollY() + sz.cy) {
+		setScrollY(pt.y + mLineHeight - sz.cy);
 	}
 	if (pt.x < getScrollX()) {
 		setScrollX(pt.x);
@@ -972,6 +1003,15 @@ int VTextArea::getRealX( int x ) {
 
 int VTextArea::getRealY( int y ) {
 	return y - getScrollY() + mAttrPadding[1];
+}
+
+bool VTextArea::onEvent(VComponent *evtSource, Msg *msg) {
+	if (evtSource == mVerBar && msg->mId == Msg::VSCROLL) {
+		repaint();
+		updateWindow();
+		return true;
+	}
+	return false;
 }
 
 #if 0

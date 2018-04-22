@@ -467,7 +467,9 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	if (!inChild && msg->mId == Msg::MOUSE_MOVE && msg->mouse.moveAt == NULL) {
 		msg->mouse.moveAt = this;
 	}
-
+	if (!inChild && msg->mId == Msg::LBUTTONDOWN && msg->mouse.pressAt == NULL) {
+		msg->mouse.pressAt = this;
+	}
 	// go here, means mouse msg is not deal
 	return onMouseEvent(msg);
 }
@@ -729,11 +731,11 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 	if (msgId >= WM_MOUSEFIRST && msgId <= WM_MOUSELAST) {
 		msg.mouse.x = (short)LOWORD(lParam);
 		msg.mouse.y = (short)HIWORD(lParam);
-		msg.mouse.vkey.ctrl = (int)wParam & MK_CONTROL;
-		msg.mouse.vkey.shift = (int)wParam & MK_SHIFT;
-		msg.mouse.vkey.lbutton = (int)wParam & MK_LBUTTON;
-		msg.mouse.vkey.rbutton = (int)wParam & MK_RBUTTON;
-		msg.mouse.vkey.mbutton = (int)wParam & MK_MBUTTON;
+		msg.mouse.vkey.ctrl = ((int)wParam & MK_CONTROL) != 0;
+		msg.mouse.vkey.shift = ((int)wParam & MK_SHIFT) != 0;
+		msg.mouse.vkey.lbutton = ((int)wParam & MK_LBUTTON) != 0;
+		msg.mouse.vkey.rbutton = ((int)wParam & MK_RBUTTON) != 0;
+		msg.mouse.vkey.mbutton = ((int)wParam & MK_MBUTTON) != 0;
 	}
 
 	switch (msgId) {
@@ -772,33 +774,31 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 	case WM_MOUSEHWHEEL: {
 		POINT pt = {0};
 		GetCursorPos(&pt);
+		ScreenToClient(wnd, &pt);
 		msg.mId = Msg::MOUSE_WHEEL;
-		msg.mouse.deta = HIWORD(wParam) / WHEEL_DELTA;
-		msg.mouse.vkey.ctrl = LOWORD(wParam) & MK_CONTROL;
-		msg.mouse.vkey.shift = LOWORD(wParam) & MK_SHIFT;
-		msg.mouse.vkey.lbutton = LOWORD(wParam) & MK_LBUTTON;
-		msg.mouse.vkey.rbutton = LOWORD(wParam) & MK_RBUTTON;
-		msg.mouse.vkey.mbutton = LOWORD(wParam) & MK_MBUTTON;
+		msg.mouse.deta = ((int)wParam >> 16) / WHEEL_DELTA;
 		msg.mouse.x = pt.x;
 		msg.mouse.y = pt.y;
 		cc->dispatchMessage(&msg);
 		return 0;}
 	case WM_KEYDOWN:
 		msg.mId = Msg::KEY_DOWN;
-		msg.key.vkey.ctrl = (int)wParam & MK_CONTROL;
-		msg.key.vkey.shift = (int)wParam & MK_SHIFT;
-		msg.key.vkey.lbutton = (int)wParam & MK_LBUTTON;
-		msg.key.vkey.rbutton = (int)wParam & MK_RBUTTON;
-		msg.key.vkey.mbutton = (int)wParam & MK_MBUTTON;
+		msg.key.code = (wchar_t)wParam;
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_KEYUP:
 		msg.mId = Msg::KEY_UP;
-		msg.key.vkey.ctrl = (int)wParam & MK_CONTROL;
-		msg.key.vkey.shift = (int)wParam & MK_SHIFT;
-		msg.key.vkey.lbutton = (int)wParam & MK_LBUTTON;
-		msg.key.vkey.rbutton = (int)wParam & MK_RBUTTON;
-		msg.key.vkey.mbutton = (int)wParam & MK_MBUTTON;
+		msg.key.code = (wchar_t)wParam;
+		cc->dispatchMessage(&msg);
+		return 0;
+	case WM_SYSKEYDOWN:
+		msg.mId = Msg::KEY_DOWN;
+		msg.key.code = (wchar_t)wParam;
+		cc->dispatchMessage(&msg);
+		return 0;
+	case WM_SYSKEYUP:
+		msg.mId = Msg::KEY_UP;
+		msg.key.code = (wchar_t)wParam;
 		cc->dispatchMessage(&msg);
 		return 0;
 	case WM_CHAR:
@@ -830,6 +830,7 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		return 0;
 	case WM_TIMER:
 		msg.mId = Msg::TIMER;
+		msg.def.wParam = wParam;
 		cc->dispatchMessage(&msg);
 		return 0;
 	}
@@ -900,6 +901,7 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 			m.mouse.y -= pt.y;
 			return mCapture->dispatchMessage(&m);
 		}
+		VComponent *lastFocus = mFocus;
 		VComponent::dispatchMessage(msg);
 		if (msg->mId == Msg::MOUSE_MOVE) {
 			if (mLastMouseAt != NULL && mLastMouseAt != msg->mouse.moveAt) {
@@ -908,8 +910,19 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 				mLastMouseAt->dispatchMessage(&n);
 			}
 			mLastMouseAt = msg->mouse.moveAt;
+		} else if (msg->mId == Msg::LBUTTONDOWN) {
+			if (lastFocus == mFocus && mFocus != NULL && mFocus != msg->mouse.pressAt && msg->mouse.pressAt != NULL) {
+				mFocus->releaseFocus();
+			}
 		}
 		return true;
+	}
+
+	if (msg->mId > Msg::KEY_MSG_BEGIN && msg->mId < Msg::KEY_MSG_END) {
+		if (mFocus != NULL) {
+			return mFocus->dispatchMessage(msg);
+		}
+		return VComponent::dispatchMessage(msg);
 	}
 
 	if (msg->mId == WM_SIZE && msg->def.lParam > 0) {
@@ -918,7 +931,15 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 		return true;
 	}
 	if (msg->mId == Msg::TIMER) {
-
+		std::list<TimerItem>::iterator it = mTimerList.begin();
+		for (; it != mTimerList.end(); ++it) {
+			TimerItem &tt = *it;
+			if (tt.mTimerId == msg->def.wParam) {
+				tt.src->dispatchMessage(msg);
+				break;
+			}
+		}
+		return true;
 	}
 	if (msg->mId == WM_DESTROY) {
 		PostQuitMessage(msg->def.wParam);
@@ -1061,6 +1082,34 @@ void VBaseWindow::setFocus(VComponent *who) {
 	if (mFocus != NULL) {
 		m.mId = Msg::GAIN_FOCUS;
 		mFocus->dispatchMessage(&m);
+	}
+}
+
+void VBaseWindow::startTimer(VComponent *src, DWORD timerId, int elapse) {
+	std::list<TimerItem>::iterator it = mTimerList.begin();
+	for (; it != mTimerList.end(); ++it) {
+		TimerItem &tt = *it;
+		if (tt.src == src && tt.mTimerId == timerId) {
+			// already exists
+			return;
+		}
+	}
+	TimerItem tt;
+	tt.src = src;
+	tt.mTimerId = timerId;
+	mTimerList.push_back(tt);
+	SetTimer(mWnd, timerId, elapse, NULL);
+}
+
+void VBaseWindow::killTimer(VComponent *src, DWORD timerId) {
+	KillTimer(mWnd, timerId);
+	std::list<TimerItem>::iterator it = mTimerList.begin();
+	for (; it != mTimerList.end(); ++it) {
+		TimerItem &tt = *it;
+		if (tt.src == src && tt.mTimerId == timerId) {
+			mTimerList.erase(it);
+			break;
+		}
 	}
 }
 
