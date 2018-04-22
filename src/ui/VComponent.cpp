@@ -112,6 +112,7 @@ VComponent::VComponent(XmlNode *node) {
 	mTranslateX = mTranslateY = 0;
 	mEnableFocus = false;
 	mHasFocus = false;
+	mEnable = true;
 
 	mDirty = true;
 	mHasDirtyChild = true;
@@ -287,8 +288,9 @@ VListener* VComponent::getListener() {
 }
 
 HFONT VComponent::getFont() {
-	if (mFont != NULL)
+	if (mFont != NULL) {
 		return mFont;
+	}
 	if (mNode->getParent() == NULL || mNode->getAttrValue("font") != NULL) {
 		LOGFONT ff = {0};
 		HFONT font = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -424,7 +426,7 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	bool inChild = false;
 	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
 		VComponent *child = getChild(i);
-		if (child->mVisibility != VISIBLE) {
+		if (child->mVisibility != VISIBLE || !child->mEnable) {
 			continue;
 		}
 		int x = msg->mouse.x - mTranslateX, y = msg->mouse.y - mTranslateY;
@@ -589,8 +591,9 @@ void VComponent::repaint(XRect *dirtyRect) {
 }
 
 HWND VComponent::getWnd() {
-	if (getParent() != NULL) {
-		return getParent()->getWnd();
+	VBaseWindow *win = getRoot();
+	if (win != NULL) {
+		return win->mWnd;
 	}
 	return NULL;
 }

@@ -1,3 +1,9 @@
-<Window style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
-<VComponent bgcolor="AARRGGBB" />
-<Label align="left|top|right|bottom|center|ver-center|single-line" />
+	<VComponent 
+		bgcolor="AARRGGBB | RRGGBB" bgimage="color://#AARRGGBB | color://#RRGGBB" 
+	/>
+		
+		
+	<Window style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
+	
+	
+	<Label align="left|top|right|bottom|center|ver-center|single-line" />

@@ -16,9 +16,13 @@ public:
 	virtual ~VExtComponent();
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
+	virtual bool doStateImage(Msg *m);
 protected:
 	bool mEnableState;
 	XImage *mStateImages[8];
+	bool mMouseDown;
+	bool mMouseMoving;
+	bool mMouseLeave;
 };
 
 class VExtLabel : public VExtComponent {
@@ -39,11 +43,6 @@ public:
 protected:
 	virtual void onPaint(Msg *m);
 	bool onMouseEvent(Msg *m);
-	virtual StateImage getStateImage(void *param1, void *param2);
-protected:
-	bool mIsMouseDown;
-	bool mIsMouseMoving;
-	bool mIsMouseLeave;
 };
 
 #if 0

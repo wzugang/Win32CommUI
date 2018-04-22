@@ -16,6 +16,7 @@ extern void MyRegisterClassV(HINSTANCE ins, const char *className);
 VExtComponent::VExtComponent(XmlNode *node) : VComponent(node) {
 	mEnableState = false;
 	memset(mStateImages, 0, sizeof(mStateImages));
+	mMouseDown = mMouseMoving = mMouseLeave = false;
 
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
 		XmlNode::Attr *attr = mNode->getAttr(i);
@@ -37,7 +38,78 @@ VExtComponent::~VExtComponent() {
 }
 
 VExtComponent::StateImage VExtComponent::getStateImage(void *param1, void *param2) {
+	if (! mEnable) {
+		return STATE_IMG_DISABLE;
+	}
+	if (mMouseDown && ! mMouseLeave) {
+		return STATE_IMG_PUSH;
+	}
+	if (!mMouseDown && mMouseMoving) {
+		return STATE_IMG_HOVER;
+	}
+	if (mMouseLeave) {
+		return STATE_IMG_NORMAL;
+	}
+
 	return STATE_IMG_NORMAL;
+}
+
+bool VExtComponent::doStateImage(Msg *m) {
+	switch (m->mId) {
+	case Msg::LBUTTONDOWN: {
+		mMouseDown = true;
+		mMouseMoving = false;
+		mMouseLeave = false;
+		setCapture();
+		repaint(NULL);
+		return true;}
+	case Msg::LBUTTONUP: {
+		RECT r = {0, 0, mWidth, mHeight};
+		POINT pt = {m->mouse.x, m->mouse.y};
+		bool md = mMouseDown;
+		releaseCapture();
+		mMouseDown = false;
+		if (PtInRect(&r, pt)) {
+			mMouseMoving = true;
+		} else {
+			mMouseMoving = false;
+		}
+		repaint(NULL);
+		if (md && PtInRect(&r, pt) && mListener != NULL) {
+			m->mId = Msg::CLICK;
+			mListener->onEvent(this, m);
+		}
+		return true;}
+	case Msg::MOUSE_MOVE: {
+		StateImage bi = getStateImage(NULL, NULL);
+		POINT pt = {m->mouse.x, m->mouse.y};
+		RECT r = {0, 0, mWidth, mHeight};
+		if (PtInRect(&r, pt)) {
+			mMouseMoving = true;
+			mMouseLeave = false;
+		} else {
+			// mouse leave ( mouse is down now)
+			mMouseMoving = false;
+			mMouseLeave = true;
+		}
+		StateImage bi2 = getStateImage(NULL, NULL);
+		if (bi != bi2) {
+			repaint(NULL);
+		}
+		return true;}
+	case Msg::MOUSE_LEAVE: {
+		mMouseMoving = false;
+		mMouseLeave = true;
+		repaint(NULL);
+		return true;}
+	case Msg::MOUSE_CANCEL: {
+		mMouseDown = false;
+		mMouseMoving = false;
+		mMouseLeave = false;
+		repaint(NULL);
+		return true;}
+	}
+	return false;
 }
 
 //--------------------VExtLabel-------------------------------------
@@ -67,11 +139,14 @@ void VExtLabel::onPaint(Msg *m) {
 	HDC dc = m->paint.dc;
 	RECT r = {mAttrPadding[0], mAttrPadding[1], mWidth - mAttrPadding[2], mHeight - mAttrPadding[3]};
 	eraseBackground(m);
+
 	if (mText == NULL) {
 		return;
 	}
 	if (mAttrFlags & AF_COLOR) {
 		SetTextColor(dc, mAttrColor & 0xffffff);
+	} else {
+		SetTextColor(dc, 0);
 	}
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
@@ -86,73 +161,21 @@ void VExtLabel::setText( char *text ) {
 	mText = text;
 }
 
+
 //-------------------VExtButton-----------------------------------
 VExtButton::VExtButton( XmlNode *node ) : VExtComponent(node) {
-	mIsMouseDown = mIsMouseMoving = mIsMouseLeave = false;
+	mEnableState = true;
 }
 
 bool VExtButton::onMouseEvent(Msg *m) {
-	switch (m->mId) {
-	case Msg::LBUTTONDOWN: {
-		mIsMouseDown = true;
-		mIsMouseMoving = false;
-		mIsMouseLeave = false;
-		setCapture();
-		repaint(NULL);
-		break;}
-	case Msg::LBUTTONUP: {
-		RECT r = {0, 0, mWidth, mHeight};
-		POINT pt = {m->mouse.x, m->mouse.y};
-		bool md = mIsMouseDown;
-		releaseCapture();
-		mIsMouseDown = false;
-		if (PtInRect(&r, pt)) {
-			mIsMouseMoving = true;
-		} else {
-			mIsMouseMoving = false;
-		}
-		repaint(NULL);
-		if (md && PtInRect(&r, pt) && mListener != NULL) {
-			m->mId = Msg::CLICK;
-			mListener->onEvent(this, m);
-		}
-		break;}
-	case Msg::MOUSE_MOVE: {
-		StateImage bi = getStateImage(NULL, NULL);
-		POINT pt = {m->mouse.x, m->mouse.y};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (PtInRect(&r, pt)) {
-			mIsMouseMoving = true;
-			mIsMouseLeave = false;
-		} else {
-			// mouse leave ( mouse is down now)
-			mIsMouseMoving = false;
-			mIsMouseLeave = true;
-		}
-		StateImage bi2 = getStateImage(NULL, NULL);
-		if (bi != bi2) {
-			repaint(NULL);
-		}
-		break;}
-	case Msg::MOUSE_LEAVE: {
-		mIsMouseMoving = false;
-		mIsMouseLeave = true;
-		repaint(NULL);
-		break;}
-	case Msg::MOUSE_CANCEL: {
-		mIsMouseDown = false;
-		mIsMouseMoving = false;
-		mIsMouseLeave = false;
-		repaint(NULL);
-		break;}
-	}
-	return true;
+	return doStateImage(m);
 }
 
 void VExtButton::onPaint(Msg *m) {
 	HDC dc = m->paint.dc;
 	RECT r = {0,0, mWidth, mHeight};
-	XImage *cur = mStateImages[getStateImage(NULL, NULL)];
+	StateImage si = getStateImage(NULL, NULL);
+	XImage *cur = mStateImages[si];
 	eraseBackground(m);
 	if (cur != NULL) {
 		cur->draw(dc, 0, 0, mWidth, mHeight);
@@ -160,26 +183,12 @@ void VExtButton::onPaint(Msg *m) {
 
 	if (mAttrFlags & AF_COLOR) {
 		SetTextColor(dc, mAttrColor);
+	} else {
+		SetTextColor(dc, 0);
 	}
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
 	DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-}
-
-VExtButton::StateImage VExtButton::getStateImage(void *param1, void *param2) {
-	// if (! mEnable)
-	//	return STATE_IMG_DISABLE;
-	if (mIsMouseDown && ! mIsMouseLeave) {
-		return STATE_IMG_PUSH;
-	}
-	if (!mIsMouseDown && mIsMouseMoving) {
-		return STATE_IMG_HOVER;
-	}
-	if (mIsMouseLeave) {
-		return STATE_IMG_NORMAL;
-	}
-
-	return STATE_IMG_NORMAL;
 }
 
 

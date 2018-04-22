@@ -43,8 +43,9 @@ XImage::XImage(HBITMAP bmp, int w, int h, void *bits, int bitPerPix, int rowByte
 
 XImage * XImage::load( const char *resPath ) {
 	ResPath info;
-	if (! info.parse(resPath))
+	if (! info.parse(resPath)) {
 		return NULL;
+	}
 	XImage *img = findInCache(getCacheName(&info, false));
 	if (img != NULL) {
 		goto _end;
@@ -52,8 +53,9 @@ XImage * XImage::load( const char *resPath ) {
 	img = findInCache(getCacheName(&info, true));
 	if (img == NULL) {
 		img = loadImage(&info);
-		if (img == NULL)
+		if (img == NULL) {
 			return NULL;
+		}
 		mCache[getCacheName(&info, true)] = img;
 	}
 	if (! info.mHasRect) {
@@ -73,6 +75,17 @@ _end:
 }
 
 XImage * XImage::loadImage( ResPath *info) {
+	if (info->mResType == ResPath::RT_COLOR) {
+		COLORREF color = 0;
+		if (! AttrUtils::parseColor(info->mPath, &color)) {
+			return NULL;
+		}
+		bool hasAlpha = ((color >> 24) & 0xff) != 0xff;
+		XImage *img = create(info->mWidth, info->mHeight, (hasAlpha ? 32 : 24));
+		img->fillColor(color);
+		return img;
+	}
+
 	CImage cimg;
 	if (info->mResType == ResPath::RT_FILE) {
 		cimg.Load(info->mPath);
@@ -87,11 +100,12 @@ XImage * XImage::loadImage( ResPath *info) {
 		cimg.Load(pstm);
 		GlobalUnlock(m_hMem);
 		pstm->Release();
-	} else {
+	} else if (info->mResType == ResPath::RT_RES) {
 		cimg.LoadFromResource(XComponent::getInstance(), info->mPath);
 	}
-	if (cimg.GetWidth() == 0)
+	if (cimg.GetWidth() == 0) {
 		return NULL;
+	}
 
 	XImage *img = new XImage(NULL, cimg.GetWidth(), cimg.GetHeight(), cimg.GetBits(), cimg.GetBPP(), cimg.GetPitch());
 	img->mHBitmap = cimg.Detach();

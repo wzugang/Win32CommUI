@@ -860,13 +860,17 @@ bool ResPath::parse(const char *resPath) {
 	} else if (memcmp(ps, "xbin://", 7) == 0) {
 		ps += 7;
 		mResType = RT_XBIN;
+	} else if (memcmp(ps, "color://", 8) == 0) {
+		ps += 8;
+		mResType = RT_COLOR;
 	} else {
 		return false;
 	}
 	strcpy(mPath, ps);
 	if (p == NULL) {
 		mValidate = true;
-		return true;
+		goto _end;
+		// return true;
 	}
 	ps = AttrUtils::trim(p + 1);
 	if (*ps == '[') {
@@ -878,12 +882,22 @@ bool ResPath::parse(const char *resPath) {
 	}
 	if (ps > pe) {
 		mValidate = true;
-		return true;
+		goto _end;
+		// return true;
 	}
 	if (strstr(ps, "repeat-x")) mRepeatX = true;
 	if (strstr(ps, "repeat-y")) mRepeatY = true;
 	if (strstr(ps, "stretch")) mStretch = true;
 	if (strstr(ps, "9patch")) m9Patch = true;
 	mValidate = true;
+
+	_end:
+	if (mResType == RT_COLOR) {
+		if (mWidth == 0) mWidth = 1;
+		if (mHeight == 0) mHeight = 1;
+		if (!mRepeatX && !mRepeatY && !mStretch) {
+			mStretch = true;
+		}
+	}
 	return true;
 }

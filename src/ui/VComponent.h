@@ -166,6 +166,7 @@ protected:
 	Visibility mVisibility;
 	int mTranslateX, mTranslateY; // always >= 0
 	bool mEnableFocus, mHasFocus;
+	bool mEnable;
 
 	XImage *mBgImage;
 	VListener *mListener;
