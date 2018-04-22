@@ -655,7 +655,7 @@ void VTextArea::onPaint(Msg *m) {
 		SetTextColor(hdc, mAttrColor);
 	}
 	SetBkMode(hdc, TRANSPARENT);
-	int y = -getScrollY() + from * mLineHeight;
+	int y = -getScrollY() + from * mLineHeight + mAttrPadding[1];
 	for (int i = from; i < to; ++i) {
 		int bg = mLines[i].mBeginPos;
 		int ln = mLines[i].mLen;
@@ -1067,54 +1067,56 @@ void VLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 }
 
 
-#if 0
-//----------VExtScroll-----------------------------
-VExtScroll::VExtScroll( XmlNode *node ) : VExtComponent(node) {
-	mHorNode = new XmlNode("ExtHorScrollBar", mNode);
-	mVerNode = new XmlNode("ExtVerScrollBar", mNode);
-	mHorBar = new VExtScrollBar(mHorNode, true);
-	mHorBar->setThumbSize(10);
-	mVerBar = new VExtScrollBar(mVerNode, false);
-	mVerBar->setThumbSize(10);
+//----------VScroll-----------------------------
+VScroll::VScroll( XmlNode *node ) : VExtComponent(node) {
+	XmlNode *horNode = new XmlNode("HorScrollBar", mNode);
+	XmlNode *verNode = new XmlNode("VerScrollBar", mNode);
+	mHorBar = new VScrollBar(horNode, true);
+	mVerBar = new VScrollBar(verNode, false);
+	horNode->setComponentV(mHorBar);
+	verNode->setComponentV(mVerBar);
+	mNode->addChild(horNode);
+	mNode->addChild(verNode);
+	mHorBar->setListener(this);
+	mVerBar->setListener(this);
 }
-#define WND_HIDE(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) & ~WS_VISIBLE)
-#define WND_SHOW(w) SetWindowLong(w, GWL_STYLE, GetWindowLong(w, GWL_STYLE) | WS_VISIBLE)
-void VExtScroll::onMeasure( int widthSpec, int heightSpec ) {
+
+void VScroll::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
-	mesureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
+	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
 
-	int childRight = 0, childBottom = 0;
+	mHorBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0) - mAttrPadding[0] - mAttrPadding[2];
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0) - mAttrPadding[1] - mAttrPadding[3];
+	onMesureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
+
 	SIZE cs = calcDataSize();
-	childRight = cs.cx;
-	childBottom = cs.cy;
-	mHorBar->setMaxAndPage(childRight, clientWidth);
-	mVerBar->setMaxAndPage(childBottom, clientHeight);
-	if (mHorBar->isNeedShow()) 
-		WND_SHOW(mHorBar->getWnd());
-	else
-		WND_HIDE(mHorBar->getWnd());
-	if (mVerBar->isNeedShow()) 
-		WND_SHOW(mVerBar->getWnd());
-	else 
-		WND_HIDE(mVerBar->getWnd());
+	mHorBar->setMaxAndPage(cs.cx, clientWidth);
+	mVerBar->setMaxAndPage(cs.cy, clientHeight);
 
-	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
+	mVerBar->setVisibility(cs.cx > clientWidth ? VISIBLE : VISIBLE_GONE);
+	mVerBar->setVisibility(cs.cy > clientHeight ? VISIBLE : VISIBLE_GONE);
+
+	if ((cs.cx > clientWidth) != hasHorBar || (cs.cy > clientHeight) != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
+	}
 }
-SIZE VExtScroll::calcDataSize() {
+
+SIZE VScroll::calcDataSize() {
 	int childRight = 0, childBottom = 0;
+	int mw = mMesureWidth - mAttrPadding[0] - mAttrPadding[2];
+	int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
+
 	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
-		VComponent *child = mNode->getChild(i)->getComponent();
-		if ((GetWindowLong(child->getWnd(), GWL_STYLE) & WS_VISIBLE) == 0)
+		VComponent *child = mNode->getChild(i)->getComponentV();
+		if (child->getVisibility() != VISIBLE) {
 			continue;
-		int x = calcSize(child->getAttrX(), mMesureWidth | MS_ATMOST);
-		int y  = calcSize(child->getAttrY(), mMesureHeight | MS_ATMOST);
+		}
+		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), mh | MS_ATMOST);
 		childRight = x + child->getMesureWidth();
 		childBottom = y = child->getMesureHeight();
 		break;
@@ -1122,84 +1124,63 @@ SIZE VExtScroll::calcDataSize() {
 	SIZE sz = {childRight, childBottom};
 	return sz;
 }
-void VExtScroll::onLayout( int width, int height ) {
+
+void VScroll::onLayoutChildren( int width, int height ) {
+	int mw = width - mAttrPadding[0] - mAttrPadding[2];
+	int mh = height - mAttrPadding[1] - mAttrPadding[3];
+
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponent();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST) - mHorBar->getPos();
-		int y  = calcSize(child->getAttrY(), height | MS_ATMOST) - mVerBar->getPos();
-		child->layout(x, y, child->getMesureWidth(), child->getMesureHeight());
+		VComponent *child = mNode->getChild(i)->getComponentV();
+		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
+		int y  = calcSize(child->getAttrY(), mh | MS_ATMOST);
+		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
 	}
-	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mWidth, mHorBar->getThumbSize());
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mHeight);
+	mHorBar->onLayout(0, mHeight - mHorBar->getMesureHeight(), mWidth, mHorBar->getMesureHeight());
+	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), 0, mVerBar->getMesureWidth(), mHeight);
 }
-bool VExtScroll::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_HSCROLL || msg == WM_VSCROLL) {
-		moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
-		return true;
-	} else if (msg == MSG_MOUSEWHEEL_BUBBLE || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL) {
-		int d = (short)HIWORD(wParam) / WHEEL_DELTA * 100;
-		if (GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE) {
-			int old = mVerBar->getPos();
-			mVerBar->setPos(old - d);
-			if (old != mVerBar->getPos()) {
-				moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
-				InvalidateRect(mVerBar->getWnd(), NULL, TRUE);
-			}
-			return true;
-		}
-		if (GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE) {
-			int old = mHorBar->getPos();
-			mHorBar->setPos(old - d);
-			if (old != mHorBar->getPos()) {
-				moveChildrenPos(mHorBar->getPos(), mVerBar->getPos());
-				InvalidateRect(mHorBar->getWnd(), NULL, TRUE);
-			}
-			return true;
-		}
-		return true;
-	} else if (msg == WM_LBUTTONDOWN || msg == MSG_LBUTTONDOWN_BUBBLE) {
-		if (mEnableFocus) SetFocus(mWnd);
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-void VExtScroll::moveChildrenPos( int x, int y ) {
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponent();
-		SetWindowPos(child->getWnd(), 0, -x, -y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-		RECT rr = {0};
-		GetWindowRect(child->getWnd(), &rr);
-	}
-	// invalide(this);
-}
-void VExtScroll::invalide( VComponent *c ) {
-	InvalidateRect(c->getWnd(), NULL, TRUE);
-	UpdateWindow(c->getWnd());
-	for (int i = 0; i < c->getNode()->getChildCount(); ++i) {
-		if (GetWindowLong(c->getChild(i)->getWnd(), GWL_STYLE) & WS_VISIBLE)
-			invalide(c->getChild(i));
-	}
-}
-void VExtScroll::createWnd() {
-	VComponent::createWnd();
-	mHorBar->createWnd();
-	mVerBar->createWnd();
-	WND_HIDE(mHorBar->getWnd());
-	WND_HIDE(mVerBar->getWnd());
-}
-VExtScroll::~VExtScroll() {
-	delete mHorNode;
-	delete mVerNode;
-	delete mHorBar;
-	delete mVerBar;
-}
-VExtScrollBar* VExtScroll::getHorBar() {
+
+VScrollBar* VScroll::getHorBar() {
 	return mHorBar;
 }
-VExtScrollBar* VExtScroll::getVerBar() {
+
+VScrollBar* VScroll::getVerBar() {
 	return mVerBar;
 }
 
+bool VScroll::onMouseEvent(Msg *msg) {
+	if (msg->mId != Msg::MOUSE_WHEEL) {
+		return VExtComponent::onMouseEvent(msg);
+	}
+	if (mVerBar->getVisibility() == VISIBLE) {
+		int old = mVerBar->getPos();
+		mVerBar->setPos(old - msg->mouse.deta * 100);
+		if (old != mVerBar->getPos()) {
+			mTranslateY = mVerBar->getPos();
+			repaint();
+		}
+		return true;
+	}
+	if (mHorBar->getVisibility() == VISIBLE) {
+		int old = mHorBar->getPos();
+		mHorBar->setPos(old - msg->mouse.deta * 100);
+		if (old != mHorBar->getPos()) {
+			mTranslateX = mHorBar->getPos();
+			repaint();
+		}
+		return true;
+	}
+	return true;
+}
+
+bool VScroll::onEvent(VComponent *evtSource, Msg *msg) {
+	if (msg->mId == Msg::HSCROLL || msg->mId == Msg::VSCROLL) {
+		repaint();
+		return true;
+	}
+	return false;
+}
+
+#if 0
 //-------------------VExtTable-------------------------------
 VExtTable::VExtTable( XmlNode *node ) : VExtScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;

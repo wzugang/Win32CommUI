@@ -193,7 +193,6 @@ void XAreaText::buildLinesNoWrap() {
 	wchar_t *ps = mWideText, *p = mWideText;
 	SIZE clientSize = getClientSize();
 	int w = clientSize.cx;
-	SIZE sz;
 	mLinesNum = 0;
 	HDC hdc = GetDC(getBindWnd());
 	SelectObject(hdc, getTextFont());

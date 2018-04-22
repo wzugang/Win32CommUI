@@ -183,30 +183,24 @@ protected:
 	virtual void onChar(wchar_t ch);
 };
 
-#if 0
 
-
-class VExtScroll : public VExtComponent {
+class VScroll : public VExtComponent, public VListener {
 public:
-	VExtScroll(XmlNode *node);
-	virtual ~VExtScroll();
-	VExtScrollBar* getHorBar();
-	VExtScrollBar* getVerBar();
-
-	virtual void createWnd();
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onLayout(int width, int height);
+	VScroll(XmlNode *node);
+	VScrollBar* getHorBar();
+	VScrollBar* getVerBar();
 protected:
+	virtual bool onEvent(VComponent *evtSource, Msg *msg);
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayoutChildren(int width, int height);
+	virtual bool onMouseEvent(Msg *msg);
 	virtual SIZE calcDataSize();
-	virtual void moveChildrenPos( int x, int y );
-	void invalide(VComponent *c);
-	VExtScrollBar *mHorBar, *mVerBar;
-	XmlNode *mHorNode, *mVerNode;
+protected:
+	VScrollBar *mHorBar, *mVerBar;
 };
 
 
-
+#if 0
 class VExtTableModel {
 public:
 	struct ColumnWidth {
@@ -223,6 +217,7 @@ public:
 	virtual char *getCellData(int row, int col) = 0;
 	// virtual bool canSelect(int row) = 0;
 };
+
 class VExtTable : public VExtScroll {
 public:
 	class CellRender {
