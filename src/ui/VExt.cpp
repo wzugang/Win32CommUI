@@ -1067,6 +1067,249 @@ void VLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 }
 
 
+//------------------------VExtMaskEditor-----------------------------------
+VExtMaskEdit::VExtMaskEdit( XmlNode *node ) : VLineEdit(node) {
+	mCase = C_NONE;
+	mCaretBrush = CreateSolidBrush(RGB(0x48, 0x76, 0xFF));
+	char *str = mNode->getAttrValue("placeHolder");
+	if (str == NULL) mPlaceHolder = ' ';
+	else mPlaceHolder = str[0];
+	setMask(mNode->getAttrValue("mask"));
+	str = mNode->getAttrValue("case");
+	if (str != NULL && strcmp(str, "upper") == 0) mCase = C_UPPER;
+	else if (str != NULL && strcmp(str, "lower") == 0) mCase = C_LOWER;
+	mValidate = NULL;
+}
+
+bool VExtMaskEdit::dispatchMouseMessage( Msg *m ) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		if (mEnableFocus) setFocus();
+		int pos = getPosAt(m->mouse.x, m->mouse.y);
+		if (pos >= 0) {
+			mInsertPos = pos;
+			mCaretShowing = true;
+			repaint();
+			updateWindow();
+		}
+		return true;
+	} else if (m->mId == Msg::LBUTTONDOWN || m->mId == Msg::MOUSE_MOVE) {
+		return true;
+	}
+	return VLineEdit::dispatchMouseMessage(m);
+}
+
+
+void VExtMaskEdit::onChar( wchar_t ch ) {
+	if (mReadOnly) return;
+	if (ch < 32 || ch > 126) return;
+	if (mCase == C_LOWER) {
+		ch = tolower(ch);
+	} else if (mCase == C_UPPER) {
+		ch = toupper(ch);
+	}
+	if (mValidate) {
+		if (mValidate(mInsertPos, ch)) {
+			mWideText[mInsertPos] = ch;
+			onKeyDown(VK_RIGHT);
+		}
+	} else {
+		if (acceptChar(ch, mInsertPos)) {
+			mWideText[mInsertPos] = ch;
+			onKeyDown(VK_RIGHT);
+		}
+	}
+	ensureVisible(mInsertPos);
+	repaint();
+	updateWindow();
+}
+
+bool VExtMaskEdit::acceptChar( wchar_t ch, int pos ) {
+	if (mMask == NULL) return false;
+	if (pos >= strlen(mMask)) return false;
+	char m = mMask[pos];
+	if (m == '0') {
+		return ch >= '0' && ch <= '9';
+	}
+	if (m == '9') {
+		return ch >= '1' && ch <= '9';
+	}
+	if (m == 'A') {
+		return ch >= 'A' && ch <= 'Z';
+	}
+	if (m == 'a') {
+		return ch >= 'a' && ch <= 'a';
+	}
+	if (m == 'C') {
+		return (ch >= 'a' && ch <= 'a') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+	}
+	if (m == 'H') {
+		return (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') || (ch >= '0' && ch <= '9');
+	}
+	if (m == 'B') {
+		return ch == '0' || ch == '1';
+	}
+	return false;
+}
+
+void VExtMaskEdit::onPaint(Msg *m) {
+	HDC hdc = m->paint.dc;
+	HFONT font = getFont();
+	SelectObject(hdc, font);
+	SetBkMode(hdc, TRANSPARENT);
+	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
+	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
+	POINT pt = {0, 0};
+	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
+		SelectObject(hdc, mCaretPen);
+		SIZE sz;
+		GetTextExtentPoint32W(hdc, mWideText + mInsertPos, 1, &sz);
+		RECT rc = {pt.x, (mHeight-sz.cy)/2-2, pt.x + sz.cx, (mHeight+sz.cy)/2+2};
+		FillRect(hdc, &rc, mCaretBrush);
+	}
+	DrawTextW(hdc, mWideText, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
+}
+
+void VExtMaskEdit::onKeyDown( int key ) {
+	if (mWideTextLen == 0) return;
+	if (key == VK_BACK || key == VK_DELETE) {// back
+		if (mInsertPos >= 0) {
+			mWideText[mInsertPos] = mPlaceHolder;
+			onKeyDown(key == VK_BACK ? VK_LEFT : VK_RIGHT);
+		}
+		return;
+	}
+	if (key < VK_END || key > VK_DOWN) return;
+	if (key == VK_END) {
+		for (int i = mWideTextLen - 1; i >= 0; --i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_HOME) {
+		for (int i = 0; i < mWideTextLen; ++i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_LEFT) {
+		for (int i = mInsertPos - 1; i >= 0; --i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	} else if (key == VK_RIGHT) {
+		for (int i = mInsertPos + 1; i < mWideTextLen; ++i) {
+			if (isMaskChar(mMask[i])) {
+				mInsertPos = i;
+				break;
+			}
+		}
+	}
+	ensureVisible(mInsertPos);
+	repaint();
+}
+
+int VExtMaskEdit::getPosAt( int x, int y ) {
+	HWND wnd = getWnd();
+	HDC hdc = GetDC(wnd);
+	HGDIOBJ old = SelectObject(hdc, getFont());
+	int k = -1;
+	x -= getScrollX();
+	for (int i = 0; i < mWideTextLen; ++i) {
+		SIZE sz;
+		GetTextExtentPoint32W(hdc, mWideText, i + 1, &sz);
+		if (sz.cx >= x) {
+			k = i;
+			break;
+		}
+	}
+	SelectObject(hdc, old);
+	ReleaseDC(wnd, hdc);
+	if (k < 0 || ! isMaskChar(mMask[k])) return -1;
+	return k;
+}
+
+void VExtMaskEdit::setMask( const char *mask ) {
+	mMask = (char *)mask;
+	mWideTextLen = 0;
+	if (mMask == NULL) {
+		return;
+	}
+	int len = strlen(mMask);
+	wchar_t v;
+	for (int i = 0; i < len; ++i) {
+		v = mMask[i];
+		if (isMaskChar(mMask[i]))
+			insertText(i, &mPlaceHolder, 1);
+		else 
+			insertText(i, &v, 1);
+	}
+	mInsertPos = -1;
+	// find first mask char
+	for (int i = 0; i < len; ++i) {
+		if (isMaskChar(mMask[i])) {
+			mInsertPos = i;
+			break;
+		}
+	}
+}
+bool VExtMaskEdit::isMaskChar( char ch ) {
+	static char MC[] = {'0', '9', 'A', 'a', 'C', 'H', 'B'};
+	for (int i = 0; i < sizeof(MC); ++i) {
+		if (MC[i] == ch) return true;
+	}
+	return false;
+}
+
+void VExtMaskEdit::setPlaceHolder( char ch ) {
+	if (ch >= 32 && ch <= 127) mPlaceHolder = ch;
+}
+
+void VExtMaskEdit::setInputValidate( InputValidate iv ) {
+	mValidate = iv;
+}
+
+// ----------------------VExtPassword--------------------
+VExtPassword::VExtPassword( XmlNode *node ) : VLineEdit(node) {
+}
+
+void VExtPassword::onChar( wchar_t ch ) {
+	if (ch > 126) return;
+	if (ch > 31) {
+		if (mWideTextLen < 63) VLineEdit::onChar(ch);
+	} else {
+		VLineEdit::onChar(ch);
+	}
+}
+
+void VExtPassword::paste() {
+	// ignore it
+}
+
+void VExtPassword::onPaint( Msg *m ) {
+	HDC hdc = m->paint.dc;
+	// draw select range background color
+	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
+	HFONT font = getFont();
+	SelectObject(hdc, font);
+	SetBkMode(hdc, TRANSPARENT);
+	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
+	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
+	char echo[64];
+	memset(echo, '*', mWideTextLen);
+	echo[mWideTextLen] = 0;
+	DrawText(hdc, echo, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
+	POINT pt = {0, 0};
+	if (mCaretShowing && getPointAt(mInsertPos, &pt)) {
+		SelectObject(hdc, mCaretPen);
+		MoveToEx(hdc, pt.x, 2, NULL);
+		LineTo(hdc, pt.x, mHeight - 4);
+	}
+}
+
 //----------VScroll-----------------------------
 VScroll::VScroll( XmlNode *node ) : VExtComponent(node) {
 	XmlNode *horNode = new XmlNode("HorScrollBar", mNode);
@@ -1180,9 +1423,439 @@ bool VScroll::onEvent(VComponent *evtSource, Msg *msg) {
 	return false;
 }
 
-#if 0
-//-------------------VExtTable-------------------------------
-VExtTable::VExtTable( XmlNode *node ) : VExtScroll(node) {
+
+//---------------------------VExtCalender--------------
+static const int CALENDER_HEAD_HEIGHT = 30;
+VCalendar::Date::Date() {
+	mYear = mMonth = mDay = 0;
+}
+
+bool VCalendar::Date::isValid() {
+	if (mYear <= 0 || mMonth <= 0 || mDay <= 0 || mMonth > 12 || mDay > 31)
+		return false;
+	int d = VCalendar::getDaysNum(mYear, mMonth);
+	return d >= mDay;
+}
+
+bool VCalendar::Date::equals( const Date &d ) {
+	return mYear == d.mYear && mMonth == d.mMonth && mDay == d.mDay;
+}
+
+VCalendar::VCalendar( XmlNode *node ) : VExtComponent(node) {
+	mViewMode = VM_SEL_DAY;
+	memset(&mLeftArrowRect, 0, sizeof(mLeftArrowRect));
+	memset(&mRightArowRect, 0, sizeof(mRightArowRect));
+	memset(&mHeadTitleRect, 0, sizeof(mHeadTitleRect));
+	mSelectLeftArrow = false;
+	mSelectRightArrow = false;
+	mSelectHeadTitle = false;
+	mTrackSelectIdx = -1;
+	mArrowNormalBrush = CreateSolidBrush(RGB(0x5c, 0x5c, 0x6c));
+	mArrowSelBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
+	mSelectBgBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
+	mTrackBgBrush = CreateSolidBrush(RGB(0xA4, 0xD3, 0xEE));
+	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x5c, 0x5c, 0x6c));
+	time_t cur = time(NULL);
+	struct tm *st = localtime(&cur);
+	mYearInDayMode = 1900 + st->tm_year;
+	mMonthInDayMode = st->tm_mon + 1;
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = (st->tm_year + 1900) / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+	fillViewDates(mYearInDayMode, mMonthInDayMode);
+	mNormalColor = RGB(0x35, 0x35, 0x35);
+	mGreyColor = RGB(0xcc, 0xcc, 0xcc);
+	mTrackMouseLeave = false;
+}
+
+void VCalendar::onMeasure( int widthSpec, int heightSpec ) {
+	mMesureWidth = calcSize(mAttrWidth, widthSpec);
+	mMesureHeight = calcSize(mAttrHeight, heightSpec);
+	mLeftArrowRect.right = CALENDER_HEAD_HEIGHT;
+	mLeftArrowRect.bottom = CALENDER_HEAD_HEIGHT;
+	mRightArowRect.left = mMesureWidth - CALENDER_HEAD_HEIGHT;
+	mRightArowRect.right = mMesureWidth;
+	mRightArowRect.bottom = CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.left = CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.right = mMesureWidth - CALENDER_HEAD_HEIGHT;
+	mHeadTitleRect.bottom = CALENDER_HEAD_HEIGHT;
+}
+
+void VCalendar::onPaint( Msg *m ) {
+	HDC dc = m->paint.dc;
+	eraseBackground(m);
+	SelectObject(dc, getFont());
+	drawHeader(dc);
+	if (mViewMode == VM_SEL_DAY) drawSelDay(dc);
+	else if (mViewMode == VM_SEL_MONTH) drawSelMonth(dc);
+	else drawSelYear(dc);
+}
+
+bool VCalendar::onMouseEvent( Msg *m ) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		if (mEnableFocus) setFocus();
+		POINT pt = {m->paint.x, m->paint.y};
+		if (PtInRect(&mHeadTitleRect, pt)) {
+			mViewMode = ViewMode((mViewMode + 1) % VM_NUM);
+			if (mViewMode == VM_SEL_DAY) {
+				mYearInMonthMode = mYearInDayMode;
+				mBeginYearInYearMode = mYearInDayMode / 10 * 10;
+				mEndYearInYearMode = mBeginYearInYearMode + 9;
+			}
+			repaint();
+			return true;
+		}
+		switch (mViewMode) {
+		case VM_SEL_DAY:
+			onLButtonDownInDayMode(m->paint.x, m->paint.y);
+			break;
+		case VM_SEL_MONTH:
+			onLButtonDownInMonthMode(m->paint.x, m->paint.y);
+			break;
+		case VM_SEL_YEAR:
+			onLButtonDownInYearMode(m->paint.x, m->paint.y);
+			break;
+		}
+		return true;
+	} else if (m->mId == Msg::MOUSE_MOVE) {
+		POINT pt = {m->paint.x, m->paint.y};
+		resetSelect();
+		if (PtInRect(&mLeftArrowRect, pt)) {
+			mSelectLeftArrow = true;
+		}
+		if (PtInRect(&mRightArowRect, pt)) {
+			mSelectRightArrow = true;
+		}
+		if (PtInRect(&mHeadTitleRect, pt)) {
+			mSelectHeadTitle = true;
+		}
+		if (mViewMode == VM_SEL_DAY) onMouseMoveInDayMode(m->paint.x, m->paint.y);
+		else if (mViewMode == VM_SEL_MONTH) onMouseMoveInMonthMode(m->paint.x, m->paint.y);
+		else if (mViewMode == VM_SEL_YEAR) onMouseMoveInYearMode(m->paint.x, m->paint.y);
+		repaint();
+		return true;
+	} else if (m->mId == Msg::MOUSE_LEAVE) {
+		resetSelect();
+		repaint();
+		return true;
+	}
+	return true;
+}
+
+void VCalendar::drawSelDay( HDC dc ) {
+	static const char *hd[7] = {"一", "二", "三", "四", "五", "六", "日"};
+	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+	SetTextColor(dc, mNormalColor);
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 7; ++i) {
+		DrawText(dc, hd[i], 2, &r, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+		OffsetRect(&r, W, 0);
+	}
+
+	RECT rc = {0, CALENDER_HEAD_HEIGHT + H, W, CALENDER_HEAD_HEIGHT + H * 2};
+	char buf[4];
+	for (int i = 0; i < 42; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &rc, mTrackBgBrush);
+		}
+		if (mSelectDate.equals(mViewDates[i])) {
+			FillRect(dc, &rc, mSelectBgBrush);
+		}
+		sprintf(buf, "%d", mViewDates[i].mDay);
+		SetTextColor(dc, (mViewDates[i].mMonth == mMonthInDayMode ? mNormalColor : mGreyColor));
+		DrawText(dc, buf, strlen(buf), &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+		else OffsetRect(&rc, -6 * W, H);
+	}
+}
+
+void VCalendar::drawSelMonth( HDC dc ) {
+	static const char *hd[12] = {"一月", "二月", "三月", "四月", "五月", "六月", "七月", 
+		"八月", "九月", "十月", "十一月", "十二月"};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	SetTextColor(dc, mNormalColor);
+	for (int i = 0; i < 12; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &r, mTrackBgBrush);
+		}
+		DrawText(dc, hd[i], strlen(hd[i]), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
+}
+
+void VCalendar::drawSelYear( HDC dc ) {
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	SetTextColor(dc, mNormalColor);
+	char buf[8];
+	for (int i = 0; i < 10; ++i) {
+		if (mTrackSelectIdx == i) {
+			FillRect(dc, &r, mTrackBgBrush);
+		}
+		sprintf(buf, "%d", mBeginYearInYearMode + i);
+		DrawText(dc, buf, strlen(buf), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
+}
+
+void VCalendar::drawHeader( HDC dc ) {
+	// draw left arrow
+	int X = 6, H = 16, MH = CALENDER_HEAD_HEIGHT;
+	POINT pt[3] = {{X, MH/2}, {X+H/(2*0.57735), (MH-H)/2}, {X+H/(2*0.57735), (MH+H)/2}};
+	HRGN rgn = CreatePolygonRgn(pt, 3, ALTERNATE);
+	FillRgn(dc, rgn, (mSelectLeftArrow ? mArrowSelBrush : mArrowNormalBrush));
+	DeleteObject(rgn);
+	// draw right arrow
+	X = mRightArowRect.left + 10;
+	POINT pt2[3] = {{X, (MH-H)/2}, {X, (MH+H)/2}, {X+H/(2*0.57735), MH/2}};
+	rgn = CreatePolygonRgn(pt2, 3, ALTERNATE);
+	FillRgn(dc, rgn, (mSelectRightArrow ? mArrowSelBrush : mArrowNormalBrush));
+	DeleteObject(rgn);
+	// draw header title
+	SetBkMode(dc, TRANSPARENT);
+	SetTextColor(dc, (mSelectHeadTitle ? RGB(0x64, 0x95, 0xED) : mNormalColor));
+	char buf[30];
+	if (mViewMode == VM_SEL_DAY) {
+		sprintf(buf, "%d年%d月", mYearInDayMode, mMonthInDayMode);
+	} else if (mViewMode == VM_SEL_MONTH) {
+		sprintf(buf, "%d年",mYearInMonthMode);
+	} else {
+		sprintf(buf, "%d - %d",mBeginYearInYearMode, mEndYearInYearMode);
+	}
+	DrawText(dc, buf, strlen(buf), &mHeadTitleRect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+	// draw header line
+	SelectObject(dc, mLinePen);
+	MoveToEx(dc, 0, MH - 1, NULL);
+	LineTo(dc, mMesureWidth, MH - 1);
+}
+
+VCalendar::Date VCalendar::getSelectDate() {
+	return mSelectDate;
+}
+
+void VCalendar::setSelectDate( Date d ) {
+	if (! d.isValid()) {
+		time_t ct = time(NULL);
+		struct tm *cur = localtime(&ct);
+		d.mYear = cur->tm_year + 1900;
+		d.mMonth = cur->tm_mon + 1;
+		mSelectDate.mYear = mSelectDate.mMonth = mSelectDate.mDay = 0;
+	} else {
+		mSelectDate = d;
+	}
+	mYearInDayMode = d.mYear;
+	mMonthInDayMode = d.mMonth;
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = d.mYear / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+	fillViewDates(mYearInDayMode, mMonthInDayMode);
+}
+
+void VCalendar::fillViewDates( int year, int month ) {
+	int mm = month, yy = year, dd = 1;
+	if (mm == 1 || mm == 2) {
+		mm += 12;
+		yy--;
+	}
+	int week = (dd + 2 * mm + 3 * (mm + 1 ) / 5 + yy + yy / 4 - yy / 100 + yy / 400) % 7; // week = 0 ~ 6
+
+	int daysNum = getDaysNum(year, month);
+	int skipRow = 0;
+	if (daysNum + week < 42 - 14) skipRow = 1;
+
+	int lastYear = month == 1 ? year - 1 : year;
+	int lastMonth = month == 1 ? 12 : month - 1;
+	int lastMonthDaysNum = getDaysNum(lastYear, lastMonth);
+	int lastIn = skipRow * 7 + week;
+	for (int i = lastMonthDaysNum - lastIn + 1, j = 0; j < lastIn; ++j, ++i) {
+		mViewDates[j].mYear = lastYear;
+		mViewDates[j].mMonth = lastMonth;
+		mViewDates[j].mDay = i;
+	}
+	int i = lastIn;
+	for (int j = 0; j < daysNum; ++j, ++i) {
+		mViewDates[i].mYear = year;
+		mViewDates[i].mMonth = month;
+		mViewDates[i].mDay = j + 1;
+	}
+	int nextYear = month == 12 ? year + 1 : year;
+	int nextMonth = month == 12 ? 1 : month + 1;
+	for (int j = 0; i < 42; ++i, ++j) {
+		mViewDates[i].mYear = nextYear;
+		mViewDates[i].mMonth = nextMonth;
+		mViewDates[i].mDay = j + 1;
+	}
+}
+
+int VCalendar::getDaysNum( int year, int month ) {
+	static int DAYS_NUM[12] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	if (month != 2) return DAYS_NUM[month - 1];
+	if (year % 100 != 0 && year % 4 == 0)
+		return 29;
+	return 28;
+}
+
+void VCalendar::onLButtonDownInDayMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		if (mMonthInDayMode == 1) {
+			mMonthInDayMode = 12;
+			--mYearInDayMode;
+		} else {
+			--mMonthInDayMode;
+		}
+		fillViewDates(mYearInDayMode, mMonthInDayMode);
+		repaint();
+	}  else if (PtInRect(&mRightArowRect, pt)) {
+		if (mMonthInDayMode == 12) {
+			mMonthInDayMode = 1;
+			++mYearInDayMode;
+		} else {
+			++mMonthInDayMode;
+		}
+		fillViewDates(mYearInDayMode, mMonthInDayMode);
+		repaint();
+	} else {
+		int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+		pt.y -= CALENDER_HEAD_HEIGHT + H;
+		RECT rc = {0, 0, W, H};
+		for (int i = 0; i < 42; ++i) {
+			if (PtInRect(&rc, pt)) {
+				mSelectDate = mViewDates[i];
+				repaint();
+				// SendMessage(mWnd, MSG_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
+				if (mListener != NULL) {
+					// TODO:
+				}
+				break;
+			}
+			if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+			else OffsetRect(&rc, -6 * W, H);
+		}
+	}
+	mYearInMonthMode = mYearInDayMode;
+	mBeginYearInYearMode = mYearInDayMode / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+}
+
+void VCalendar::onLButtonDownInMonthMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		--mYearInMonthMode;
+		repaint();
+	} else if (PtInRect(&mRightArowRect, pt)) {
+		++mYearInMonthMode;
+		repaint();
+	} else {
+		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+		for (int i = 0; i < 12; ++i) {
+			if (PtInRect(&r, pt)) {
+				mViewMode = VM_SEL_DAY;
+				mYearInDayMode = mYearInMonthMode;
+				mMonthInDayMode = i + 1;
+				fillViewDates(mYearInDayMode, mMonthInDayMode);
+				repaint();
+				break;
+			}
+			if ((i + 1) % 4) OffsetRect(&r, W, 0);
+			else OffsetRect(&r, -3 * W, H);
+		}
+	}
+	mBeginYearInYearMode = mYearInMonthMode / 10 * 10;
+	mEndYearInYearMode = mBeginYearInYearMode + 9;
+}
+
+void VCalendar::onLButtonDownInYearMode( int x, int y ) {
+	POINT pt = {x, y};
+	if (PtInRect(&mLeftArrowRect, pt)) {
+		mBeginYearInYearMode -= 10;
+		mEndYearInYearMode -= 10;
+		repaint();
+	} else if (PtInRect(&mRightArowRect, pt)) {
+		mBeginYearInYearMode += 10;
+		mEndYearInYearMode += 10;
+		repaint();
+	} else {
+		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+		for (int i = 0; i < 10; ++i) {
+			if (PtInRect(&r, pt)) {
+				mViewMode = VM_SEL_MONTH;
+				mYearInMonthMode = mBeginYearInYearMode + i;
+				repaint();
+				break;
+			}
+			if ((i + 1) % 4) OffsetRect(&r, W, 0);
+			else OffsetRect(&r, -3 * W, H);
+		}
+	}
+}
+
+VCalendar::~VCalendar() {
+	DeleteObject(mArrowNormalBrush);
+	DeleteObject(mArrowSelBrush);
+	DeleteObject(mSelectBgBrush);
+	DeleteObject(mTrackBgBrush);
+	DeleteObject(mLinePen);
+}
+
+void VCalendar::resetSelect() {
+	mSelectLeftArrow = false;
+	mSelectRightArrow = false;
+	mSelectHeadTitle = false;
+	mTrackSelectIdx = -1;
+}
+
+void VCalendar::onMouseMoveInDayMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
+	pt.y -= CALENDER_HEAD_HEIGHT + H;
+	RECT rc = {0, 0, W, H};
+	for (int i = 0; i < 42; ++i) {
+		if (PtInRect(&rc, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
+		else OffsetRect(&rc, -6 * W, H);
+	}
+}
+
+void VCalendar::onMouseMoveInMonthMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 12; ++i) {
+		if (PtInRect(&r, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
+}
+
+void VCalendar::onMouseMoveInYearMode( int x, int y ) {
+	POINT pt = {x, y};
+	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
+	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
+	for (int i = 0; i < 10; ++i) {
+		if (PtInRect(&r, pt)) {
+			mTrackSelectIdx = i;
+			break;
+		}
+		if ((i + 1) % 4) OffsetRect(&r, W, 0);
+		else OffsetRect(&r, -3 * W, H);
+	}
+}
+
+
+//-------------------VTable-------------------------------
+VTable::VTable( XmlNode *node ) : VScroll(node) {
 	mDataSize.cx = mDataSize.cy = 0;
 	mSelectedRow = -1;
 	mModel = NULL;
@@ -1194,69 +1867,61 @@ VExtTable::VExtTable( XmlNode *node ) : VExtScroll(node) {
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
 	mLinePen = CreatePen(PS_SOLID, 1, color);
 }
-void VExtTable::setModel(VExtTableModel *model) {
+
+void VTable::setModel(VTableModel *model) {
 	mModel = model;
 }
-void VExtTable::setCellRender(CellRender *render) {
+
+void VTable::setCellRender(CellRender *render) {
 	mCellRender = render;
 }
-bool VExtTable::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		// eraseBackground((HDC)wParam);
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		HDC memDc = CreateCompatibleDC(dc);
-		SIZE sz = getClientSize();
-		if (mMemBuffer == NULL) {
-			mMemBuffer = XImage::create(mWidth, mHeight, 24);
-		}
-		SelectObject(memDc, mMemBuffer->getHBitmap());
-		if (mModel != NULL) {
-			// draw background
-			eraseBackground(memDc);
-			int hh = mModel->getHeaderHeight();
-			drawData(memDc, 0, hh, sz.cx, sz.cy);
-			drawHeader(memDc, mWidth, hh);
-			// copy header & data
-			BitBlt(dc, 0, 0, mWidth, hh, memDc, 0, 0, SRCCOPY);
-			BitBlt(dc, 0, hh, sz.cx, sz.cy, memDc, 0, hh, SRCCOPY);
-		} else {
-			eraseBackground(dc);
-		}
-		DeleteObject(memDc);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
+
+void VTable::onPaint( Msg *m ) {
+	HDC dc = m->paint.dc;
+	SIZE sz = getClientSize();
+	if (mModel != NULL) {
+		// draw background
+		eraseBackground(m);
+		int hh = mModel->getHeaderHeight();
+		drawData(dc, 0, hh, sz.cx, sz.cy);
+		drawHeader(dc, mWidth, hh);
+	} else {
+		eraseBackground(m);
+	}
+}
+
+bool VTable::dispatchMouseMessage( Msg *msg ) {
+	if (msg->mId == Msg::LBUTTONDOWN) {
+		if (mEnableFocus) setFocus();
 		int col = 0;
-		int row = findCell((short)LOWORD(lParam), (short)HIWORD(lParam), &col);
+		int row = findCell(msg->mouse.x, msg->mouse.y, &col);
 		if (mSelectedRow != row) {
 			mSelectedRow = row;
-			InvalidateRect(mWnd, NULL, TRUE);
+			repaint();
 		}
 		return true;
 	}
-	return VExtScroll::wndProc(msg, wParam, lParam, result);
+	return VScroll::dispatchMouseMessage(msg);
 }
-void VExtTable::drawHeader( HDC dc, int w, int h) {
+
+
+void VTable::drawHeader( HDC dc, int w, int h) {
 	if (mModel == NULL) return;
-	HDC memDc = CreateCompatibleDC(dc);
 	SelectObject(dc, getFont());
 	SetBkMode(dc, TRANSPARENT);
-	XImage *bg = mModel->getHeaderImage();
-	if (bg && bg->getHBitmap()) {
-		SelectObject(memDc, bg->getHBitmap());
-		StretchBlt(dc, 0, 0, w, h, memDc, 0, 0, bg->getWidth(), bg->getHeight(), SRCCOPY);
-	}
-	DeleteObject(memDc);
+	
 	int x = -mHorBar->getPos();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		char *txt = mModel->getHeaderText(i);
-		if (txt) {
-			RECT r = {x, 0, x + mColsWidth[i], h};
-			DrawText(dc, txt, strlen(txt), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
+		VTableModel::HeaderData *hd = mModel->getHeaderData(i);
+		if (hd == NULL) {
+			continue;
+		}
+		RECT r = {x, 0, x + mColsWidth[i], h};
+		if (hd->mBgImage != NULL) {
+			hd->mBgImage->draw(dc, x, 0, mColsWidth[i], h);
+		}
+		if (hd->mText != NULL) {
+			DrawText(dc, hd->mText, strlen(hd->mText), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
 		}
 		x += mColsWidth[i];
 	}
@@ -1268,14 +1933,15 @@ void VExtTable::drawHeader( HDC dc, int w, int h) {
 		MoveToEx(dc, x, 2, NULL);
 		LineTo(dc, x, h - 4);
 	}
-	if (mVerBar->isNeedShow()) {
-		x = mWidth - mVerBar->getThumbSize();
+	if (mVerBar->getMax() > mVerBar->getPage()) {
+		x = mWidth - mVerBar->getMesureWidth();
 		MoveToEx(dc, x, 2, NULL);
 		LineTo(dc, x, h - 4);
 	}
 	SelectObject(dc, old);
 }
-void VExtTable::drawData( HDC dc, int x, int y,  int w, int h ) {
+
+void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 	int from = 0, to = 0;
 	getVisibleRows(&from, &to);
 	int y2 = -mVerBar->getPos();
@@ -1291,7 +1957,8 @@ void VExtTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 	}
 	drawGridLine(dc, from, to, ry + y);
 }
-void VExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
+
+void VTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
 	int rh = mModel->getRowHeight(row);
 	if (mSelectedRow == row) {
 		RECT r = {x + 1, y + 1, x + w - 1, y + h - 1};
@@ -1306,13 +1973,19 @@ void VExtTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
 		x += mColsWidth[i];
 	}
 }
-void VExtTable::drawCell(HDC dc, int row, int col, int x, int y, int w, int h ) {
-	char *txt = mModel->getCellData(row, col);
+
+void VTable::drawCell(HDC dc, int row, int col, int x, int y, int w, int h ) {
+	VTableModel::CellData *data = mModel->getCellData(row, col);
+	if (data == NULL) {
+		return;
+	}
+	char *txt = data->mText;
 	int len = txt == NULL ? 0 : strlen(txt);
 	RECT r = {x + 5, y, x + w - 5, y + h};
 	DrawText(dc, txt, len, &r, DT_SINGLELINE | DT_VCENTER);
 }
-void VExtTable::drawGridLine( HDC dc, int from, int to, int y ) {
+
+void VTable::drawGridLine( HDC dc, int from, int to, int y ) {
 	SIZE sz = getClientSize();
 	HGDIOBJ old = SelectObject(dc, mLinePen);
 	int y2 = y;
@@ -1331,7 +2004,8 @@ void VExtTable::drawGridLine( HDC dc, int from, int to, int y ) {
 	}
 	SelectObject(dc, old);
 }
-void VExtTable::getVisibleRows( int *from, int *to ) {
+
+void VTable::getVisibleRows( int *from, int *to ) {
 	*from = *to = 0;
 	if (mModel == NULL) return;
 	int y = -mVerBar->getPos();
@@ -1352,33 +2026,32 @@ void VExtTable::getVisibleRows( int *from, int *to ) {
 	}
 	if (*to < *from) *to = *from;
 }
-void VExtTable::onMeasure( int widthSpec, int heightSpec ) {
+
+void VTable::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
 	if (mModel == NULL) return;
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
+	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
 
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
 	mesureColumn(clientWidth, clientHeight);
 
 	mDataSize = calcDataSize();
 	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
 	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight - mModel->getHeaderHeight());
-	if (mHorBar->isNeedShow())
-		WND_SHOW(mHorBar->getWnd());
-	else
-		WND_HIDE(mHorBar->getWnd());
-	if (mVerBar->isNeedShow())
-		WND_SHOW(mVerBar->getWnd());
-	else
-		WND_HIDE(mVerBar->getWnd());
 
-	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
+	mHorBar->setVisibility(mDataSize.cx > clientWidth ? VISIBLE : INVISIBLE);
+	mVerBar->setVisibility(mVerBar->getMax() > mVerBar->getPage() ? VISIBLE : INVISIBLE);
+	
+	if ((mDataSize.cx > clientWidth) != hasHorBar || (mVerBar->getMax() > mVerBar->getPage()) != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
+	}
 }
-SIZE VExtTable::calcDataSize() {
+
+SIZE VTable::calcDataSize() {
 	SIZE sz = {0};
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
 		sz.cx += mColsWidth[i];
@@ -1389,29 +2062,28 @@ SIZE VExtTable::calcDataSize() {
 	}
 	return sz;
 }
-SIZE VExtTable::getClientSize() {
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
+
+SIZE VTable::getClientSize() {
+	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
 	if (mModel != NULL) clientHeight -= mModel->getHeaderHeight();
 	SIZE sz = {clientWidth, clientHeight};
 	return sz;
 }
-void VExtTable::moveChildrenPos( int dx, int dy ) {
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-void VExtTable::mesureColumn(int width, int height) {
+
+void VTable::mesureColumn(int width, int height) {
 	int widthAll = 0, weightAll = 0;
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		VExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+		VTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
 		mColsWidth[i] = calcSize(cw.mWidthSpec, width | MS_ATMOST);
 		widthAll += mColsWidth[i];
 		weightAll += cw.mWeight;
 	}
 	int nw = 0;
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		VExtTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
+		VTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
 		if (width > widthAll && weightAll > 0) {
 			mColsWidth[i] += cw.mWeight * (width - widthAll) / weightAll;
 		}
@@ -1422,12 +2094,19 @@ void VExtTable::mesureColumn(int width, int height) {
 		mColsWidth[mModel->getColumnCount() - 1] += width - nw;
 	}
 }
-void VExtTable::onLayout( int width, int height ) {
-	if (mModel == NULL) return;
-	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), mModel->getHeaderHeight(), mVerBar->getThumbSize(), mVerBar->getPage());
+
+void VTable::onLayoutChildren( int width, int height ) {
+	if (mModel == NULL) {
+		return;
+	}
+	mHorBar->onLayout(0, mHeight - mHorBar->getMesureHeight(),
+		mHorBar->getMesureWidth(), mHorBar->getMesureHeight());
+	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), 
+		mModel->getHeaderHeight(), 
+		mVerBar->getMesureWidth(), mVerBar->getMesureHeight());
 }
-int VExtTable::findCell( int x, int y, int *col ) {
+
+int VTable::findCell( int x, int y, int *col ) {
 	if (mModel == NULL) return -1;
 	int row = -1;
 	int y2 = -mVerBar->getPos() + mModel->getHeaderHeight();
@@ -1450,11 +2129,13 @@ int VExtTable::findCell( int x, int y, int *col ) {
 	}
 	return row;
 }
-VExtTable::~VExtTable() {
+
+VTable::~VTable() {
 	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
 
 
+#if 0
 //----------------------------VExtList---------------------
 VExtList::VExtList( XmlNode *node ) : VExtScroll(node) {
 	mModel = NULL;
@@ -2894,659 +3575,7 @@ void VExtTree::setSelectNode(VExtTreeNode *node) {
 	}
 }
 
-//---------------------------VExtCalender--------------
-static const int CALENDER_HEAD_HEIGHT = 30;
-VExtCalendar::Date::Date() {
-	mYear = mMonth = mDay = 0;
-}
-bool VExtCalendar::Date::isValid() {
-	if (mYear <= 0 || mMonth <= 0 || mDay <= 0 || mMonth > 12 || mDay > 31)
-		return false;
-	int d = VExtCalendar::getDaysNum(mYear, mMonth);
-	return d >= mDay;
-}
-bool VExtCalendar::Date::equals( const Date &d ) {
-	return mYear == d.mYear && mMonth == d.mMonth && mDay == d.mDay;
-}
 
-VExtCalendar::VExtCalendar( XmlNode *node ) : VExtComponent(node) {
-	mViewMode = VM_SEL_DAY;
-	memset(&mLeftArrowRect, 0, sizeof(mLeftArrowRect));
-	memset(&mRightArowRect, 0, sizeof(mRightArowRect));
-	memset(&mHeadTitleRect, 0, sizeof(mHeadTitleRect));
-	mSelectLeftArrow = false;
-	mSelectRightArrow = false;
-	mSelectHeadTitle = false;
-	mTrackSelectIdx = -1;
-	mArrowNormalBrush = CreateSolidBrush(RGB(0x5c, 0x5c, 0x6c));
-	mArrowSelBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
-	mSelectBgBrush = CreateSolidBrush(RGB(0x64, 0x95, 0xED));
-	mTrackBgBrush = CreateSolidBrush(RGB(0xA4, 0xD3, 0xEE));
-	mLinePen = CreatePen(PS_SOLID, 1, RGB(0x5c, 0x5c, 0x6c));
-	time_t cur = time(NULL);
-	struct tm *st = localtime(&cur);
-	mYearInDayMode = 1900 + st->tm_year;
-	mMonthInDayMode = st->tm_mon + 1;
-	mYearInMonthMode = mYearInDayMode;
-	mBeginYearInYearMode = (st->tm_year + 1900) / 10 * 10;
-	mEndYearInYearMode = mBeginYearInYearMode + 9;
-	fillViewDates(mYearInDayMode, mMonthInDayMode);
-	mNormalColor = RGB(0x35, 0x35, 0x35);
-	mGreyColor = RGB(0xcc, 0xcc, 0xcc);
-	mTrackMouseLeave = false;
-}
-void VExtCalendar::onMeasure( int widthSpec, int heightSpec ) {
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	mLeftArrowRect.right = CALENDER_HEAD_HEIGHT;
-	mLeftArrowRect.bottom = CALENDER_HEAD_HEIGHT;
-	mRightArowRect.left = mMesureWidth - CALENDER_HEAD_HEIGHT;
-	mRightArowRect.right = mMesureWidth;
-	mRightArowRect.bottom = CALENDER_HEAD_HEIGHT;
-	mHeadTitleRect.left = CALENDER_HEAD_HEIGHT;
-	mHeadTitleRect.right = mMesureWidth - CALENDER_HEAD_HEIGHT;
-	mHeadTitleRect.bottom = CALENDER_HEAD_HEIGHT;
-}
-bool VExtCalendar::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		HDC memDc = CreateCompatibleDC(dc);
-		if (mMemBuffer == NULL) mMemBuffer = XImage::create(mWidth, mHeight, 24);
-		SelectObject(memDc, mMemBuffer->getHBitmap());
-		eraseBackground(memDc);
-		SelectObject(memDc, getFont());
-		drawHeader(memDc);
-		if (mViewMode == VM_SEL_DAY) drawSelDay(memDc);
-		else if (mViewMode == VM_SEL_MONTH) drawSelMonth(memDc);
-		else drawSelYear(memDc);
-		BitBlt(dc, 0, 0, mWidth, mHeight, memDc, 0, 0, SRCCOPY);
-		DeleteObject(memDc);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
-		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
-		POINT pt = {x, y};
-		if (PtInRect(&mHeadTitleRect, pt)) {
-			mViewMode = ViewMode((mViewMode + 1) % VM_NUM);
-			if (mViewMode == VM_SEL_DAY) {
-				mYearInMonthMode = mYearInDayMode;
-				mBeginYearInYearMode = mYearInDayMode / 10 * 10;
-				mEndYearInYearMode = mBeginYearInYearMode + 9;
-			}
-			InvalidateRect(mWnd, NULL, TRUE);
-			return true;
-		}
-		switch (mViewMode) {
-		case VM_SEL_DAY:
-			onLButtonDownInDayMode(x, y);
-			break;
-		case VM_SEL_MONTH:
-			onLButtonDownInMonthMode(x, y);
-			break;
-		case VM_SEL_YEAR:
-			onLButtonDownInYearMode(x, y);
-			break;
-		}
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
-		POINT pt = {x, y};
-		if (! mTrackMouseLeave) {
-			mTrackMouseLeave = true;
-			TRACKMOUSEEVENT a = {0};
-			a.cbSize = sizeof(TRACKMOUSEEVENT);
-			a.dwFlags = TME_LEAVE;
-			a.hwndTrack = mWnd;
-			TrackMouseEvent(&a);
-		}
-		resetSelect();
-		if (PtInRect(&mLeftArrowRect, pt)) {
-			mSelectLeftArrow = true;
-		}
-		if (PtInRect(&mRightArowRect, pt)) {
-			mSelectRightArrow = true;
-		}
-		if (PtInRect(&mHeadTitleRect, pt)) {
-			mSelectHeadTitle = true;
-		}
-		if (mViewMode == VM_SEL_DAY) onMouseMoveInDayMode(x, y);
-		else if (mViewMode == VM_SEL_MONTH) onMouseMoveInMonthMode(x, y);
-		else if (mViewMode == VM_SEL_YEAR) onMouseMoveInYearMode(x, y);
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	} else if (msg == WM_MOUSELEAVE) {
-		mTrackMouseLeave = false;
-		resetSelect();
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-void VExtCalendar::drawSelDay( HDC dc ) {
-	static const char *hd[7] = {"一", "二", "三", "四", "五", "六", "日"};
-	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
-	SetTextColor(dc, mNormalColor);
-	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-	for (int i = 0; i < 7; ++i) {
-		DrawText(dc, hd[i], 2, &r, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-		OffsetRect(&r, W, 0);
-	}
-
-	RECT rc = {0, CALENDER_HEAD_HEIGHT + H, W, CALENDER_HEAD_HEIGHT + H * 2};
-	char buf[4];
-	for (int i = 0; i < 42; ++i) {
-		if (mTrackSelectIdx == i) {
-			FillRect(dc, &rc, mTrackBgBrush);
-		}
-		if (mSelectDate.equals(mViewDates[i])) {
-			FillRect(dc, &rc, mSelectBgBrush);
-		}
-		sprintf(buf, "%d", mViewDates[i].mDay);
-		SetTextColor(dc, (mViewDates[i].mMonth == mMonthInDayMode ? mNormalColor : mGreyColor));
-		DrawText(dc, buf, strlen(buf), &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
-		else OffsetRect(&rc, -6 * W, H);
-	}
-}
-void VExtCalendar::drawSelMonth( HDC dc ) {
-	static const char *hd[12] = {"一月", "二月", "三月", "四月", "五月", "六月", "七月", 
-		"八月", "九月", "十月", "十一月", "十二月"};
-	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-	SetTextColor(dc, mNormalColor);
-	for (int i = 0; i < 12; ++i) {
-		if (mTrackSelectIdx == i) {
-			FillRect(dc, &r, mTrackBgBrush);
-		}
-		DrawText(dc, hd[i], strlen(hd[i]), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-		if ((i + 1) % 4) OffsetRect(&r, W, 0);
-		else OffsetRect(&r, -3 * W, H);
-	}
-}
-void VExtCalendar::drawSelYear( HDC dc ) {
-	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-	SetTextColor(dc, mNormalColor);
-	char buf[8];
-	for (int i = 0; i < 10; ++i) {
-		if (mTrackSelectIdx == i) {
-			FillRect(dc, &r, mTrackBgBrush);
-		}
-		sprintf(buf, "%d", mBeginYearInYearMode + i);
-		DrawText(dc, buf, strlen(buf), &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-		if ((i + 1) % 4) OffsetRect(&r, W, 0);
-		else OffsetRect(&r, -3 * W, H);
-	}
-}
-void VExtCalendar::drawHeader( HDC dc ) {
-	// draw left arrow
-	int X = 6, H = 16, MH = CALENDER_HEAD_HEIGHT;
-	POINT pt[3] = {{X, MH/2}, {X+H/(2*0.57735), (MH-H)/2}, {X+H/(2*0.57735), (MH+H)/2}};
-	HRGN rgn = CreatePolygonRgn(pt, 3, ALTERNATE);
-	FillRgn(dc, rgn, (mSelectLeftArrow ? mArrowSelBrush : mArrowNormalBrush));
-	DeleteObject(rgn);
-	// draw right arrow
-	X = mRightArowRect.left + 10;
-	POINT pt2[3] = {{X, (MH-H)/2}, {X, (MH+H)/2}, {X+H/(2*0.57735), MH/2}};
-	rgn = CreatePolygonRgn(pt2, 3, ALTERNATE);
-	FillRgn(dc, rgn, (mSelectRightArrow ? mArrowSelBrush : mArrowNormalBrush));
-	DeleteObject(rgn);
-	// draw header title
-	SetBkMode(dc, TRANSPARENT);
-	SetTextColor(dc, (mSelectHeadTitle ? RGB(0x64, 0x95, 0xED) : mNormalColor));
-	char buf[30];
-	if (mViewMode == VM_SEL_DAY) {
-		sprintf(buf, "%d年%d月", mYearInDayMode, mMonthInDayMode);
-	} else if (mViewMode == VM_SEL_MONTH) {
-		sprintf(buf, "%d年",mYearInMonthMode);
-	} else {
-		sprintf(buf, "%d - %d",mBeginYearInYearMode, mEndYearInYearMode);
-	}
-	DrawText(dc, buf, strlen(buf), &mHeadTitleRect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-	// draw header line
-	SelectObject(dc, mLinePen);
-	MoveToEx(dc, 0, MH - 1, NULL);
-	LineTo(dc, mMesureWidth, MH - 1);
-}
-VExtCalendar::Date VExtCalendar::getSelectDate() {
-	return mSelectDate;
-}
-void VExtCalendar::setSelectDate( Date d ) {
-	if (! d.isValid()) {
-		time_t ct = time(NULL);
-		struct tm *cur = localtime(&ct);
-		d.mYear = cur->tm_year + 1900;
-		d.mMonth = cur->tm_mon + 1;
-		mSelectDate.mYear = mSelectDate.mMonth = mSelectDate.mDay = 0;
-	} else {
-		mSelectDate = d;
-	}
-	mYearInDayMode = d.mYear;
-	mMonthInDayMode = d.mMonth;
-	mYearInMonthMode = mYearInDayMode;
-	mBeginYearInYearMode = d.mYear / 10 * 10;
-	mEndYearInYearMode = mBeginYearInYearMode + 9;
-	fillViewDates(mYearInDayMode, mMonthInDayMode);
-}
-void VExtCalendar::fillViewDates( int year, int month ) {
-	int mm = month, yy = year, dd = 1;
-	if (mm == 1 || mm == 2) {
-		mm += 12;
-		yy--;
-	}
-	int week = (dd + 2 * mm + 3 * (mm + 1 ) / 5 + yy + yy / 4 - yy / 100 + yy / 400) % 7; // week = 0 ~ 6
-	
-	int daysNum = getDaysNum(year, month);
-	int skipRow = 0;
-	if (daysNum + week < 42 - 14) skipRow = 1;
-
-	int lastYear = month == 1 ? year - 1 : year;
-	int lastMonth = month == 1 ? 12 : month - 1;
-	int lastMonthDaysNum = getDaysNum(lastYear, lastMonth);
-	int lastIn = skipRow * 7 + week;
-	for (int i = lastMonthDaysNum - lastIn + 1, j = 0; j < lastIn; ++j, ++i) {
-		mViewDates[j].mYear = lastYear;
-		mViewDates[j].mMonth = lastMonth;
-		mViewDates[j].mDay = i;
-	}
-	int i = lastIn;
-	for (int j = 0; j < daysNum; ++j, ++i) {
-		mViewDates[i].mYear = year;
-		mViewDates[i].mMonth = month;
-		mViewDates[i].mDay = j + 1;
-	}
-	int nextYear = month == 12 ? year + 1 : year;
-	int nextMonth = month == 12 ? 1 : month + 1;
-	for (int j = 0; i < 42; ++i, ++j) {
-		mViewDates[i].mYear = nextYear;
-		mViewDates[i].mMonth = nextMonth;
-		mViewDates[i].mDay = j + 1;
-	}
-}
-int VExtCalendar::getDaysNum( int year, int month ) {
-	static int DAYS_NUM[12] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	if (month != 2) return DAYS_NUM[month - 1];
-	if (year % 100 != 0 && year % 4 == 0)
-		return 29;
-	return 28;
-}
-void VExtCalendar::onLButtonDownInDayMode( int x, int y ) {
-	POINT pt = {x, y};
-	if (PtInRect(&mLeftArrowRect, pt)) {
-		if (mMonthInDayMode == 1) {
-			mMonthInDayMode = 12;
-			--mYearInDayMode;
-		} else {
-			--mMonthInDayMode;
-		}
-		fillViewDates(mYearInDayMode, mMonthInDayMode);
-		InvalidateRect(mWnd, NULL, TRUE);
-	}  else if (PtInRect(&mRightArowRect, pt)) {
-		if (mMonthInDayMode == 12) {
-			mMonthInDayMode = 1;
-			++mYearInDayMode;
-		} else {
-			++mMonthInDayMode;
-		}
-		fillViewDates(mYearInDayMode, mMonthInDayMode);
-		InvalidateRect(mWnd, NULL, TRUE);
-	} else {
-		int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
-		pt.y -= CALENDER_HEAD_HEIGHT + H;
-		RECT rc = {0, 0, W, H};
-		for (int i = 0; i < 42; ++i) {
-			if (PtInRect(&rc, pt)) {
-				mSelectDate = mViewDates[i];
-				InvalidateRect(mWnd, NULL, TRUE);
-				SendMessage(mWnd, MSG_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
-				break;
-			}
-			if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
-			else OffsetRect(&rc, -6 * W, H);
-		}
-	}
-	mYearInMonthMode = mYearInDayMode;
-	mBeginYearInYearMode = mYearInDayMode / 10 * 10;
-	mEndYearInYearMode = mBeginYearInYearMode + 9;
-}
-void VExtCalendar::onLButtonDownInMonthMode( int x, int y ) {
-	POINT pt = {x, y};
-	if (PtInRect(&mLeftArrowRect, pt)) {
-		--mYearInMonthMode;
-		InvalidateRect(mWnd, NULL, TRUE);
-	} else if (PtInRect(&mRightArowRect, pt)) {
-		++mYearInMonthMode;
-		InvalidateRect(mWnd, NULL, TRUE);
-	} else {
-		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-		for (int i = 0; i < 12; ++i) {
-			if (PtInRect(&r, pt)) {
-				mViewMode = VM_SEL_DAY;
-				mYearInDayMode = mYearInMonthMode;
-				mMonthInDayMode = i + 1;
-				fillViewDates(mYearInDayMode, mMonthInDayMode);
-				InvalidateRect(mWnd, NULL, TRUE);
-				break;
-			}
-			if ((i + 1) % 4) OffsetRect(&r, W, 0);
-			else OffsetRect(&r, -3 * W, H);
-		}
-	}
-	mBeginYearInYearMode = mYearInMonthMode / 10 * 10;
-	mEndYearInYearMode = mBeginYearInYearMode + 9;
-}
-void VExtCalendar::onLButtonDownInYearMode( int x, int y ) {
-	POINT pt = {x, y};
-	if (PtInRect(&mLeftArrowRect, pt)) {
-		mBeginYearInYearMode -= 10;
-		mEndYearInYearMode -= 10;
-		InvalidateRect(mWnd, NULL, TRUE);
-	} else if (PtInRect(&mRightArowRect, pt)) {
-		mBeginYearInYearMode += 10;
-		mEndYearInYearMode += 10;
-		InvalidateRect(mWnd, NULL, TRUE);
-	} else {
-		int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-		RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-		for (int i = 0; i < 10; ++i) {
-			if (PtInRect(&r, pt)) {
-				mViewMode = VM_SEL_MONTH;
-				mYearInMonthMode = mBeginYearInYearMode + i;
-				InvalidateRect(mWnd, NULL, TRUE);
-				break;
-			}
-			if ((i + 1) % 4) OffsetRect(&r, W, 0);
-			else OffsetRect(&r, -3 * W, H);
-		}
-	}
-}
-VExtCalendar::~VExtCalendar() {
-	DeleteObject(mArrowNormalBrush);
-	DeleteObject(mArrowSelBrush);
-	DeleteObject(mSelectBgBrush);
-	DeleteObject(mTrackBgBrush);
-	DeleteObject(mLinePen);
-}
-void VExtCalendar::resetSelect() {
-	mSelectLeftArrow = false;
-	mSelectRightArrow = false;
-	mSelectHeadTitle = false;
-	mTrackSelectIdx = -1;
-}
-void VExtCalendar::onMouseMoveInDayMode( int x, int y ) {
-	POINT pt = {x, y};
-	int W = mMesureWidth / 7, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 7;
-	pt.y -= CALENDER_HEAD_HEIGHT + H;
-	RECT rc = {0, 0, W, H};
-	for (int i = 0; i < 42; ++i) {
-		if (PtInRect(&rc, pt)) {
-			mTrackSelectIdx = i;
-			break;
-		}
-		if ((i + 1) % 7 != 0) OffsetRect(&rc, W, 0);
-		else OffsetRect(&rc, -6 * W, H);
-	}
-}
-void VExtCalendar::onMouseMoveInMonthMode( int x, int y ) {
-	POINT pt = {x, y};
-	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-	for (int i = 0; i < 12; ++i) {
-		if (PtInRect(&r, pt)) {
-			mTrackSelectIdx = i;
-			break;
-		}
-		if ((i + 1) % 4) OffsetRect(&r, W, 0);
-		else OffsetRect(&r, -3 * W, H);
-	}
-}
-void VExtCalendar::onMouseMoveInYearMode( int x, int y ) {
-	POINT pt = {x, y};
-	int W = mMesureWidth / 4, H = (mMesureHeight - CALENDER_HEAD_HEIGHT) / 3;
-	RECT r = {0, CALENDER_HEAD_HEIGHT, W, CALENDER_HEAD_HEIGHT + H};
-	for (int i = 0; i < 10; ++i) {
-		if (PtInRect(&r, pt)) {
-			mTrackSelectIdx = i;
-			break;
-		}
-		if ((i + 1) % 4) OffsetRect(&r, W, 0);
-		else OffsetRect(&r, -3 * W, H);
-	}
-}
-//------------------------VExtMaskEditor-----------------------------------
-VExtMaskEdit::VExtMaskEdit( XmlNode *node ) : VExtTextArea(node) {
-	mCase = C_NONE;
-	mCaretBrush = CreateSolidBrush(RGB(0x48, 0x76, 0xFF));
-	char *str = mNode->getAttrValue("placeHolder");
-	if (str == NULL) mPlaceHolder = ' ';
-	else mPlaceHolder = str[0];
-	setMask(mNode->getAttrValue("mask"));
-	str = mNode->getAttrValue("case");
-	if (str != NULL && strcmp(str, "upper") == 0) mCase = C_UPPER;
-	else if (str != NULL && strcmp(str, "lower") == 0) mCase = C_LOWER;
-	mValidate = NULL;
-}
-bool VExtMaskEdit::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	 if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
-		int x = (short)lParam, y = (short)(lParam >> 16);
-		int pos = getPosAt(x, y);
-		if (pos >= 0) {
-			mInsertPos = pos;
-			mCaretShowing = true;
-			InvalidateRect(mWnd, NULL, TRUE);
-			UpdateWindow(mWnd);
-		}
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		return true;
-	}
-	return VExtTextArea::wndProc(msg, wParam, lParam, result);
-}
-void VExtMaskEdit::onChar( wchar_t ch ) {
-	if (mReadOnly) return;
-	if (ch < 32 || ch > 126) return;
-	if (mCase == C_LOWER) {
-		ch = tolower(ch);
-	} else if (mCase == C_UPPER) {
-		ch = toupper(ch);
-	}
-	if (mValidate) {
-		if (mValidate(mInsertPos, ch)) {
-			mWideText[mInsertPos] = ch;
-			onKeyDown(VK_RIGHT);
-		}
-	} else {
-		if (acceptChar(ch, mInsertPos)) {
-			mWideText[mInsertPos] = ch;
-			onKeyDown(VK_RIGHT);
-		}
-	}
-	ensureVisible(mInsertPos);
-	InvalidateRect(mWnd, NULL, TRUE);
-	UpdateWindow(mWnd);
-}
-
-bool VExtMaskEdit::acceptChar( char ch, int pos ) {
-	if (mMask == NULL) return false;
-	if (pos >= strlen(mMask)) return false;
-	char m = mMask[pos];
-	if (m == '0') {
-		return ch >= '0' && ch <= '9';
-	}
-	if (m == '9') {
-		return ch >= '1' && ch <= '9';
-	}
-	if (m == 'A') {
-		return ch >= 'A' && ch <= 'Z';
-	}
-	if (m == 'a') {
-		return ch >= 'a' && ch <= 'a';
-	}
-	if (m == 'C') {
-		return (ch >= 'a' && ch <= 'a') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
-	}
-	if (m == 'H') {
-		return (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') || (ch >= '0' && ch <= '9');
-	}
-	if (m == 'B') {
-		return ch == '0' || ch == '1';
-	}
-	return false;
-}
-void VExtMaskEdit::onPaint( HDC hdc ) {
-	HFONT font = getFont();
-	SelectObject(hdc, font);
-	SetBkMode(hdc, TRANSPARENT);
-	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
-	POINT pt = {0, 0};
-	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
-		SelectObject(hdc, mCaretPen);
-		SIZE sz;
-		GetTextExtentPoint32W(hdc, mWideText + mInsertPos, 1, &sz);
-		RECT rc = {pt.x, (mHeight-sz.cy)/2-2, pt.x + sz.cx, (mHeight+sz.cy)/2+2};
-		FillRect(hdc, &rc, mCaretBrush);
-	}
-	DrawTextW(hdc, mWideText, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
-}
-void VExtMaskEdit::onKeyDown( int key ) {
-	if (mWideTextLen == 0) return;
-	if (key == VK_BACK || key == VK_DELETE) {// back
-		if (mInsertPos >= 0) {
-			mWideText[mInsertPos] = mPlaceHolder;
-			onKeyDown(key == VK_BACK ? VK_LEFT : VK_RIGHT);
-		}
-		return;
-	}
-	if (key < VK_END || key > VK_DOWN) return;
-	if (key == VK_END) {
-		for (int i = mWideTextLen - 1; i >= 0; --i) {
-			if (isMaskChar(mMask[i])) {
-				mInsertPos = i;
-				break;
-			}
-		}
-	} else if (key == VK_HOME) {
-		for (int i = 0; i < mWideTextLen; ++i) {
-			if (isMaskChar(mMask[i])) {
-				mInsertPos = i;
-				break;
-			}
-		}
-	} else if (key == VK_LEFT) {
-		for (int i = mInsertPos - 1; i >= 0; --i) {
-			if (isMaskChar(mMask[i])) {
-				mInsertPos = i;
-				break;
-			}
-		}
-	} else if (key == VK_RIGHT) {
-		for (int i = mInsertPos + 1; i < mWideTextLen; ++i) {
-			if (isMaskChar(mMask[i])) {
-				mInsertPos = i;
-				break;
-			}
-		}
-	}
-	ensureVisible(mInsertPos);
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-int VExtMaskEdit::getPosAt( int x, int y ) {
-	HDC hdc = GetDC(mWnd);
-	HGDIOBJ old = SelectObject(hdc, getFont());
-	int k = -1;
-	x -= getScrollX();
-	for (int i = 0; i < mWideTextLen; ++i) {
-		SIZE sz;
-		GetTextExtentPoint32W(hdc, mWideText, i + 1, &sz);
-		if (sz.cx >= x) {
-			k = i;
-			break;
-		}
-	}
-	SelectObject(hdc, old);
-	ReleaseDC(mWnd, hdc);
-	if (k < 0 || ! isMaskChar(mMask[k])) return -1;
-	return k;
-}
-void VExtMaskEdit::setMask( const char *mask ) {
-	mMask = (char *)mask;
-	mWideTextLen = 0;
-	if (mMask == NULL) {
-		return;
-	}
-	int len = strlen(mMask);
-	wchar_t v;
-	for (int i = 0; i < len; ++i) {
-		v = mMask[i];
-		if (isMaskChar(mMask[i]))
-			insertText(i, &mPlaceHolder, 1);
-		else 
-			insertText(i, &v, 1);
-	}
-	mInsertPos = -1;
-	// find first mask char
-	for (int i = 0; i < len; ++i) {
-		if (isMaskChar(mMask[i])) {
-			mInsertPos = i;
-			break;
-		}
-	}
-}
-bool VExtMaskEdit::isMaskChar( char ch ) {
-	static char MC[] = {'0', '9', 'A', 'a', 'C', 'H', 'B'};
-	for (int i = 0; i < sizeof(MC); ++i) {
-		if (MC[i] == ch) return true;
-	}
-	return false;
-}
-void VExtMaskEdit::setPlaceHolder( char ch ) {
-	if (ch >= 32 && ch <= 127) mPlaceHolder = ch;
-}
-void VExtMaskEdit::setInputValidate( InputValidate iv ) {
-	mValidate = iv;
-}
-// ----------------------VExtPassword--------------------
-VExtPassword::VExtPassword( XmlNode *node ) : VExtTextArea(node) {
-}
-void VExtPassword::onChar( wchar_t ch ) {
-	if (ch > 126) return;
-	if (ch > 31) {
-		if (mWideTextLen < 63) VExtTextArea::onChar(ch);
-	} else {
-		VExtTextArea::onChar(ch);
-	}
-}
-void VExtPassword::paste() {
-	// ignore it
-}
-void VExtPassword::onPaint( HDC hdc ) {
-	// draw select range background color
-	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
-	HFONT font = getFont();
-	SelectObject(hdc, font);
-	SetBkMode(hdc, TRANSPARENT);
-	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
-	char echo[64];
-	memset(echo, '*', mWideTextLen);
-	echo[mWideTextLen] = 0;
-	DrawText(hdc, echo, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
-	POINT pt = {0, 0};
-	if (mCaretShowing && getPointAt(mInsertPos, &pt)) {
-		SelectObject(hdc, mCaretPen);
-		MoveToEx(hdc, pt.x, 2, NULL);
-		LineTo(hdc, pt.x, mHeight - 4);
-	}
-}
 // --------------------VExtDatePicker-------------------
 VExtDatePicker::VExtDatePicker( XmlNode *node ) : VExtComponent(node) {
 	mEditNode = new XmlNode("ExtMaskEdit", mNode);
@@ -3554,7 +3583,7 @@ VExtDatePicker::VExtDatePicker( XmlNode *node ) : VExtComponent(node) {
 	mCalendarNode = new XmlNode("ExtCalendar", mPopupNode);
 	mEdit = new VExtMaskEdit(mEditNode);
 	mPopup = new VExtPopup(mPopupNode);
-	mCalendar = new VExtCalendar(mCalendarNode);
+	mCalendar = new VCalendar(mCalendarNode);
 	mEditNode->setComponent(mEdit);
 	mPopupNode->setComponent(mPopup);
 	mCalendarNode->setComponent(mCalendar);
@@ -3591,7 +3620,7 @@ void VExtDatePicker::createWnd() {
 }
 bool VExtDatePicker::onEvent( VComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
 	if (msg == MSG_CALENDAR_SEL_DATE) {
-		VExtCalendar::Date *val = (VExtCalendar::Date *)wParam;
+		VCalendar::Date *val = (VCalendar::Date *)wParam;
 		char buf[20];
 		sprintf(buf, "%d-%02d-%02d", val->mYear, val->mMonth, val->mDay);
 		mEdit->setText(buf);
@@ -3672,7 +3701,7 @@ void VExtDatePicker::openPopup() {
 	UpdateWindow(mWnd);
 	char str[24];
 	strcpy(str, mEdit->getText());
-	VExtCalendar::Date cur;
+	VCalendar::Date cur;
 	cur.mYear = atoi(str);
 	cur.mMonth = atoi(str + 5);
 	cur.mDay = atoi(str + 8);

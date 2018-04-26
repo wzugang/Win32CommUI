@@ -184,6 +184,47 @@ protected:
 };
 
 
+class VExtMaskEdit : public VLineEdit {
+public:
+	typedef bool (*InputValidate)(int pos, wchar_t ch);
+	enum Case { C_NONE, C_UPPER, C_LOWER };
+
+	VExtMaskEdit(XmlNode *node);
+	/*
+	*  @param mask  0: 0-9;  9:1-9;    A:A-Z;    a:a-z;
+					C: 0-9 a-z A-Z;    H:0-9 A-F a-f   B:0-1
+	**/
+	void setMask(const char *mask);
+	void setCase(Case c);
+	void setPlaceHolder(char ch);
+	void setInputValidate(InputValidate iv);
+protected:
+	virtual bool dispatchMouseMessage(Msg *m);
+	virtual void onChar( wchar_t ch );
+	virtual void onPaint(Msg *m);
+	virtual void onKeyDown(int key);
+	virtual int getPosAt(int x, int y);
+	virtual bool acceptChar(wchar_t ch, int pos);
+	bool isMaskChar(char ch);
+protected:
+	char *mMask;
+	Case mCase;
+	HBRUSH mCaretBrush;
+	wchar_t mPlaceHolder;
+	InputValidate mValidate;
+};
+
+
+class VExtPassword : public VLineEdit {
+public:
+	VExtPassword(XmlNode *node);
+protected:
+	virtual void onChar( wchar_t ch );
+	virtual void paste();
+	virtual void onPaint(Msg *m);
+};
+
+
 class VScroll : public VExtComponent, public VListener {
 public:
 	VScroll(XmlNode *node);
@@ -199,42 +240,106 @@ protected:
 	VScrollBar *mHorBar, *mVerBar;
 };
 
+class VCalendar : public VExtComponent {
+public:
+	struct Date {
+		Date();
+		bool isValid();
+		bool equals(const Date &d);
+		int mYear; int mMonth; int mDay;
+	};
+	VCalendar(XmlNode *node);
+	Date getSelectDate();
+	void setSelectDate(Date d);
+	virtual ~VCalendar();
+protected:
+	virtual void onPaint(Msg *m);
+	virtual bool onMouseEvent(Msg *m);
+	virtual void onMeasure( int widthSpec, int heightSpec );
+	void drawSelDay( HDC dc );
+	void drawSelMonth( HDC dc );
+	void drawSelYear( HDC dc );
+	void drawHeader(HDC dc);
+	void fillViewDates(int year, int month);
+	static int getDaysNum(int year, int month);
+	void onLButtonDownInDayMode(int x, int y);
+	void onLButtonDownInMonthMode(int x, int y);
+	void onLButtonDownInYearMode(int x, int y);
+	void resetSelect();
+	void onMouseMoveInDayMode( int x, int y );
+	void onMouseMoveInMonthMode( int x, int y );
+	void onMouseMoveInYearMode( int x, int y );
+protected:
+	enum ViewMode {
+		VM_SEL_DAY, VM_SEL_MONTH, VM_SEL_YEAR, VM_NUM
+	};
+	ViewMode mViewMode;
+	RECT mLeftArrowRect, mRightArowRect;
+	RECT mHeadTitleRect;
+	bool mSelectLeftArrow, mSelectRightArrow, mSelectHeadTitle;
+	int mTrackSelectIdx;
+	HBRUSH mArrowNormalBrush, mArrowSelBrush, mSelectBgBrush, mTrackBgBrush;
+	HPEN mLinePen;
+	int mYearInDayMode, mMonthInDayMode;
+	int mYearInMonthMode;
+	int mBeginYearInYearMode, mEndYearInYearMode;
+	Date mSelectDate;
+	Date mViewDates[42];
+	COLORREF mNormalColor, mGreyColor;
+	bool mTrackMouseLeave;
+};
 
-#if 0
-class VExtTableModel {
+
+class VTableModel {
 public:
 	struct ColumnWidth {
 		int mWidthSpec;
 		int mWeight;
 	};
+	struct HeaderData {
+		char *mText;
+		XImage *mBgImage;
+	};
+	struct CellData {
+		char *mText;
+	};
+
 	virtual int getColumnCount() = 0;
 	virtual int getRowCount() = 0;
 	virtual ColumnWidth getColumnWidth(int col) = 0;
 	virtual int getRowHeight(int row) = 0;
 	virtual int getHeaderHeight() = 0;
-	virtual XImage *getHeaderImage() = 0;
-	virtual char *getHeaderText(int col) = 0;
-	virtual char *getCellData(int row, int col) = 0;
+	// virtual XImage *getHeaderImage() = 0;
+	virtual HeaderData *getHeaderData(int col) = 0;
+	virtual CellData *getCellData(int row, int col) = 0;
 	// virtual bool canSelect(int row) = 0;
 };
 
-class VExtTable : public VExtScroll {
+class VTable : public VScroll {
 public:
 	class CellRender {
 	public:
 		virtual void onDrawCell(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
 	};
+
+	class ColumnRender {
+	public:
+		virtual void onDrawColumn(HDC dc, int col, int x, int y, int w, int h) = 0;
+	};
+
 	enum Attr {
 		ATTR_HAS_HEADER = 1,
 		ATTR_HAS_COL_LINE = 2,
 		ATTR_HAS_ROW_LINE = 4
 	};
-	VExtTable(XmlNode *node);
-	void setModel(VExtTableModel *model);
+
+	VTable(XmlNode *node);
+	void setModel(VTableModel *model);
 	void setCellRender(CellRender *render);
-	virtual ~VExtTable();
+	virtual ~VTable();
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
+	virtual void onPaint(Msg *m);
+	virtual bool dispatchMouseMessage(Msg *msg);
 	virtual void drawHeader(HDC dc, int w, int h);
 	void drawData( HDC dc, int x, int y, int w, int h );
 	virtual void drawRow(HDC dc, int row, int x, int y, int w, int h );
@@ -242,15 +347,14 @@ protected:
 	virtual void drawGridLine(HDC dc, int from, int to, int y);
 
 	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
+	virtual void onLayoutChildren( int width, int height );
 	void mesureColumn(int width, int height);
 	SIZE calcDataSize();
-	virtual void moveChildrenPos( int dx, int dy );
 	SIZE getClientSize();
 	void getVisibleRows(int *from, int *to);
 	int findCell(int x, int y, int *col);
 protected:
-	VExtTableModel *mModel;
+	VTableModel *mModel;
 	int mColsWidth[50];
 	SIZE mDataSize;
 	HPEN mLinePen;
@@ -259,7 +363,7 @@ protected:
 	CellRender *mCellRender;
 };
 
-
+#if 0
 
 class XListModel {
 public:
@@ -529,90 +633,8 @@ protected:
 	WhenSelect mWhenSelect;
 };
 
-class VExtCalendar : public VExtComponent {
-public:
-	struct Date {
-		Date();
-		bool isValid();
-		bool equals(const Date &d);
-		int mYear; int mMonth; int mDay;
-	};
-	VExtCalendar(XmlNode *node);
-	Date getSelectDate();
-	void setSelectDate(Date d);
-	virtual ~VExtCalendar();
-protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	void drawSelDay( HDC dc );
-	void drawSelMonth( HDC dc );
-	void drawSelYear( HDC dc );
-	void drawHeader(HDC dc);
-	void fillViewDates(int year, int month);
-	static int getDaysNum(int year, int month);
-	void onLButtonDownInDayMode(int x, int y);
-	void onLButtonDownInMonthMode(int x, int y);
-	void onLButtonDownInYearMode(int x, int y);
-	void resetSelect();
-	void onMouseMoveInDayMode( int x, int y );
-	void onMouseMoveInMonthMode( int x, int y );
-	void onMouseMoveInYearMode( int x, int y );
-protected:
-	enum ViewMode {
-		VM_SEL_DAY, VM_SEL_MONTH, VM_SEL_YEAR, VM_NUM
-	};
-	ViewMode mViewMode;
-	RECT mLeftArrowRect, mRightArowRect;
-	RECT mHeadTitleRect;
-	bool mSelectLeftArrow, mSelectRightArrow, mSelectHeadTitle;
-	int mTrackSelectIdx;
-	HBRUSH mArrowNormalBrush, mArrowSelBrush, mSelectBgBrush, mTrackBgBrush;
-	HPEN mLinePen;
-	int mYearInDayMode, mMonthInDayMode;
-	int mYearInMonthMode;
-	int mBeginYearInYearMode, mEndYearInYearMode;
-	Date mSelectDate;
-	Date mViewDates[42];
-	COLORREF mNormalColor, mGreyColor;
-	bool mTrackMouseLeave;
-};
 
-class VExtMaskEdit : public VExtTextArea {
-public:
-	typedef bool (*InputValidate)(int pos, char ch);
-	enum Case { C_NONE, C_UPPER, C_LOWER };
-	VExtMaskEdit(XmlNode *node);
-	/*
-	*  @param mask  0: 0-9;  9:1-9;    A:A-Z;    a:a-z;
-					C: 0-9 a-z A-Z;    H:0-9 A-F a-f   B:0-1
-	**/
-	void setMask(const char *mask);
-	void setCase(Case c);
-	void setPlaceHolder(char ch);
-	void setInputValidate(InputValidate iv);
-protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onChar( wchar_t ch );
-	virtual void onPaint(HDC hdc);
-	virtual void onKeyDown(int key);
-	virtual int getPosAt(int x, int y);
-	virtual bool acceptChar(char ch, int pos);
-	bool isMaskChar(char ch);
-protected:
-	char *mMask;
-	Case mCase;
-	HBRUSH mCaretBrush;
-	wchar_t mPlaceHolder;
-	InputValidate mValidate;
-};
-class VExtPassword : public VExtTextArea {
-public:
-	VExtPassword(XmlNode *node);
-protected:
-	virtual void onChar( wchar_t ch );
-	virtual void paste();
-	virtual void onPaint(HDC hdc);
-};
+
 
 class VExtDatePicker : public VExtComponent, public VListener {
 public:

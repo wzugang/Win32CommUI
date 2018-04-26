@@ -19,15 +19,16 @@ XAreaText::LineInfo *XAreaText::getLineInfo(int line) {
 	return NULL;
 }
 char * XAreaText::getText() {
-	if (mWideText == NULL) {
+	wchar_t *txt = getWideText();
+	if (txt == NULL) {
 		return NULL;
 	}
-	int len = WideCharToMultiByte(CP_ACP, 0, mWideText, mWideTextLen, NULL, 0, NULL, NULL);
+	int len = WideCharToMultiByte(CP_ACP, 0, txt, mWideTextLen, NULL, 0, NULL, NULL);
 	if (len + 1 > mGbkTextLen) {
 		mGbkTextLen = len;
 		mGbkText = (char *)realloc(mGbkText, len + 1);
 	}
-	WideCharToMultiByte(CP_ACP, 0, mWideText, -1, mGbkText, len, NULL, NULL);
+	WideCharToMultiByte(CP_ACP, 0, txt, -1, mGbkText, len, NULL, NULL);
 	mGbkText[len] = 0;
 	return mGbkText;
 }
