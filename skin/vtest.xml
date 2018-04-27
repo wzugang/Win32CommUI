@@ -10,6 +10,6 @@
 </Window>
 
 #################### my-popup ############
-<Popup rect="220, 50, 300, 200" bgcolor="#50fab85a" >
+<Popup rect="220 50 300 200" bgcolor="#50fab85a" >
 	
 </Popup>

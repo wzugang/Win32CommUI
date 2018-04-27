@@ -54,7 +54,9 @@ struct Msg {
 		SET_CURSOR, 
 		TIMER,
 
-		HSCROLL, VSCROLL
+		HSCROLL, VSCROLL,
+
+		SELECT_ITEM,
 	};
 	struct VKeys {
 		bool ctrl;

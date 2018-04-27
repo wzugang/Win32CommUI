@@ -1417,6 +1417,8 @@ bool VScroll::onMouseEvent(Msg *msg) {
 
 bool VScroll::onEvent(VComponent *evtSource, Msg *msg) {
 	if (msg->mId == Msg::HSCROLL || msg->mId == Msg::VSCROLL) {
+		mTranslateX = mHorBar->getPos();
+		mTranslateY = mVerBar->getPos();
 		repaint();
 		return true;
 	}
@@ -1726,9 +1728,11 @@ void VCalendar::onLButtonDownInDayMode( int x, int y ) {
 			if (PtInRect(&rc, pt)) {
 				mSelectDate = mViewDates[i];
 				repaint();
-				// SendMessage(mWnd, MSG_CALENDAR_SEL_DATE, (WPARAM)&mSelectDate, 0);
 				if (mListener != NULL) {
-					// TODO:
+					Msg msg;
+					msg.mId = Msg::SELECT_ITEM;
+					msg.def.wParam = (WPARAM)&mSelectDate;
+					mListener->onEvent(this, &msg);
 				}
 				break;
 			}
@@ -1852,7 +1856,6 @@ void VCalendar::onMouseMoveInYearMode( int x, int y ) {
 		else OffsetRect(&r, -3 * W, H);
 	}
 }
-
 
 //-------------------VTable-------------------------------
 VTable::VTable( XmlNode *node ) : VScroll(node) {
@@ -3575,142 +3578,6 @@ void VExtTree::setSelectNode(VExtTreeNode *node) {
 	}
 }
 
-
-// --------------------VExtDatePicker-------------------
-VExtDatePicker::VExtDatePicker( XmlNode *node ) : VExtComponent(node) {
-	mEditNode = new XmlNode("ExtMaskEdit", mNode);
-	mPopupNode = new XmlNode("ExtPopup", mNode);
-	mCalendarNode = new XmlNode("ExtCalendar", mPopupNode);
-	mEdit = new VExtMaskEdit(mEditNode);
-	mPopup = new VExtPopup(mPopupNode);
-	mCalendar = new VCalendar(mCalendarNode);
-	mEditNode->setComponent(mEdit);
-	mPopupNode->setComponent(mPopup);
-	mCalendarNode->setComponent(mCalendar);
-	mCalendar->setAttrBgColor(RGB(0xF5, 0xFF, 0xFA));
-	mPopup->setListener(this);
-	mCalendar->setListener(this);
-	mCalendar->setEnableFocus(false);
-	mEdit->setMask("0000-00-00");
-
-	mArrowRect.left = mArrowRect.top = 0;
-	mArrowRect.right = mArrowRect.bottom = 0;
-	mAttrArrowSize.cx = mAttrArrowSize.cy = 0;
-	AttrUtils::parseArraySize(mNode->getAttrValue("arrowSize"), (int *)&mAttrArrowSize, 2);
-	mAttrPopupSize.cx = mAttrPopupSize.cy = 0;
-	AttrUtils::parseArraySize(mNode->getAttrValue("popupSize"), (int *)&mAttrPopupSize, 2);
-	mEdit->setReadOnly(AttrUtils::parseBool(mNode->getAttrValue("readOnly")));
-
-	mArrowNormalImage = XImage::load(mNode->getAttrValue("arrowNormal"));
-	mArrowDownImage = XImage::load(mNode->getAttrValue("arrowDown"));
-	mPoupShow = false;
-}
-VExtDatePicker::~VExtDatePicker() {
-	delete mEditNode;
-	delete mPopupNode;
-	delete mCalendarNode;
-}
-void VExtDatePicker::createWnd() {
-	VExtComponent::createWnd();
-	VComponent *cc = mEdit;
-	cc->createWnd();
-	cc = mPopup;
-	cc->createWnd();
-	mCalendar->createWnd();
-}
-bool VExtDatePicker::onEvent( VComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
-	if (msg == MSG_CALENDAR_SEL_DATE) {
-		VCalendar::Date *val = (VCalendar::Date *)wParam;
-		char buf[20];
-		sprintf(buf, "%d-%02d-%02d", val->mYear, val->mMonth, val->mDay);
-		mEdit->setText(buf);
-		mPopup->close();
-		mPoupShow = false;
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	} else if (msg == MSG_POPUP_CLOSED) {
-		mPoupShow = false;
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	}
-	return false;
-}
-bool VExtDatePicker::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		// draw arrow
-		XImage *img = mPoupShow ? mArrowDownImage : mArrowNormalImage;
-		if (img != NULL && img->getHBitmap() != NULL) {
-			HDC memDc = CreateCompatibleDC(dc);
-			SelectObject(memDc, img->getHBitmap());
-			int mw = min(mArrowRect.right - mArrowRect.left, img->getWidth());
-			int mh = min(mArrowRect.bottom - mArrowRect.top, img->getHeight());
-			if (img->hasAlphaChannel())  {
-				BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-				AlphaBlend(dc, mArrowRect.left, mArrowRect.top, mw, 
-					mh, memDc, 0, 0, img->getWidth(), img->getHeight(), bf);
-			} else {
-				BitBlt(dc, mArrowRect.left, mArrowRect.top, mw, mh, memDc, 0, 0, SRCCOPY);
-			}
-			DeleteObject(memDc);
-		}
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
-		SetCapture(mWnd);
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		ReleaseCapture();
-		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
-		if (PtInRect(&mArrowRect, pt)) {
-			openPopup();
-		}
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-void VExtDatePicker::onMeasure( int widthSpec, int heightSpec ) {
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	int aw = calcSize(mAttrArrowSize.cx, mMesureWidth | MS_ATMOST);
-	int ah = calcSize(mAttrArrowSize.cy, mMesureHeight | MS_ATMOST);
-	mArrowRect.left = mMesureWidth - aw;
-	mArrowRect.right = mMesureWidth;
-	mArrowRect.top = (mMesureHeight - ah) / 2;
-	mArrowRect.bottom = mArrowRect.top + ah;
-	mEdit->onMeasure((mMesureWidth - aw) | MS_FIX, mMesureHeight | MS_FIX);
-	int pw = calcSize(mAttrPopupSize.cx, mMesureWidth | MS_ATMOST);
-	int ph = calcSize(mAttrPopupSize.cy, mMesureHeight | MS_ATMOST);
-	VComponent *cc = mPopup;
-	cc->onMeasure(pw | MS_FIX, ph | MS_FIX);
-	cc = mCalendar;
-	cc->onMeasure(pw | MS_FIX, ph | MS_FIX);
-}
-void VExtDatePicker::onLayout( int width, int height ) {
-	mEdit->layout(0, 0, mEdit->getMesureWidth(), mEdit->getMesureHeight());
-	mPopup->layout(0, 0, mPopup->getMesureWidth(), mPopup->getMesureHeight());
-	mCalendar->layout(0, 0, mCalendar->getMesureWidth(), mCalendar->getMesureHeight());
-}
-void VExtDatePicker::openPopup() {
-	POINT pt = {0, mHeight};
-	ClientToScreen(mWnd, &pt);
-	mPoupShow = true;
-	InvalidateRect(mWnd, NULL, TRUE);
-	UpdateWindow(mWnd);
-	char str[24];
-	strcpy(str, mEdit->getText());
-	VCalendar::Date cur;
-	cur.mYear = atoi(str);
-	cur.mMonth = atoi(str + 5);
-	cur.mDay = atoi(str + 8);
-	mCalendar->setSelectDate(cur);
-	mPopup->show(pt.x, pt.y);
-}
-char * VExtDatePicker::getText() {
-	return mEdit->getText();
-}
 
 #endif
 

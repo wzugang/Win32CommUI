@@ -289,7 +289,6 @@ protected:
 	bool mTrackMouseLeave;
 };
 
-
 class VTableModel {
 public:
 	struct ColumnWidth {
@@ -636,29 +635,7 @@ protected:
 
 
 
-class VExtDatePicker : public VExtComponent, public VListener {
-public:
-	VExtDatePicker(XmlNode *node);
-	char *getText();
-	virtual ~VExtDatePicker();
-protected:
-	virtual bool onEvent(VComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
-	virtual void createWnd();
-	void openPopup();
-protected:
-	VExtMaskEdit *mEdit;
-	VExtPopup *mPopup;
-	VExtCalendar *mCalendar;
-	XmlNode *mEditNode, *mPopupNode, *mCalendarNode;
-	RECT mArrowRect;
-	SIZE mAttrPopupSize;
-	SIZE mAttrArrowSize;
-	XImage *mArrowNormalImage, *mArrowDownImage;
-	bool mPoupShow;
-};
+
 
 #endif
 
