@@ -1,13 +1,54 @@
+	<default class="Button" ...attrs... />  每个结点都可以有多个 <default > 结点, 表示默认属性
+	<include src="file://abc.xml | res://abc " part="part-name" />  当src为null时，表示在当前文件中
+	
 	<VComponent 
-		bgcolor="AARRGGBB | RRGGBB" 
-		bgimage="color://#AARRGGBB | color://#RRGGBB" 
+		
+		id="xxx"
+		rect="x y width height"
+		font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" 
+					 font-weight = 1 ... 1000 正常字体是400,值越大就越粗 ;  strikeout: 文字中间有横线
+		padding = "left top right bottom"
+		margin = "left top right bottom"
+		color="#rrggbb"
+		bgcolor="#aarrggbb | #rrggbb" 
+		bgimage="file://xxx.bmp [x y w h] repeat-x repeat-y stretch 9patch | res://... | color://#aarrggbb | color://#rrggbb"   路径(file://xxx.bmp)中不允许出现空格; 路径之后的所有内容为可选
 		focusImage=""
+		visible = "true|false|gone"
+		weight="15"  HLineLayout VLineLayout会用到
 	/>
 	
+	<AbsLayout />
+	<HLineLayout />
+	<VLineLayout />
 	
-	<Window style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
+	<VBaseWindow style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
+	<Window text="" icon="file://xxx.ico | res://xab | xbin://abc.ico" /> 继承自VBaseWindow
+	<Dialog text=""  />  继承自VBaseWindow
+	
+	<Label text="" align="left|top|right|bottom|center|ver-center|single-line" />
+	
+	<Button text="" normalImage="" hoverImage="" pushImage="" disableImage=""/>
+	<Option  selectImage="" autoSelect="true|false" />  继承自Button
+	<IconButton iconRect="x y w h" textRect="x y w h" icon="" /> 继承自Option; iconRect和textRect都是减去padding之后的值
+	<CheckBox selectImage="" /> 继承自Button
+	<Radio  group="group-name" selectImage=""/> 继承自Button
+	                   group-name 有相同名称的分组，选中一个，其它的会自动不选;(必须在同一个父结点中)
+					   
+	<VerScrollBar track="" thumb="" />
+	<HorScrollBar track="" thumb="" />
+	
+	<Scroll />
+	<Table selRowBgColor="#rrggbb" lineColor="#rrggbb" />  继承自Scroll
+	
+	<Edit readOnly="true"  />
+	<MaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 Edit 
+	<Password  />  继承自 Edit 
+	<TextArea lineHeight="30" />  继承自 Edit
+	
+	<Calendar />
 	
 	
-	<Label align="left|top|right|bottom|center|ver-center|single-line" />
+	
+	
 	
 	
