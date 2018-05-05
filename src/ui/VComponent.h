@@ -91,17 +91,13 @@ public:
 		AF_BG_COLOR = (1 << 1),
 	};
 
-	enum Visibility {
-		VISIBLE, INVISIBLE, VISIBLE_GONE
-	};
-
 	VComponent(XmlNode *node);
 	static HINSTANCE getInstance();
 	static int getSpecSize(int sizeSpec);
 	static int calcSize(int selfSizeSpec, int parentSizeSpec);
 
 	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onMesureChildren(int widthSpec, int heighSpec);
+	virtual void onMeasureChildren(int widthSpec, int heighSpec);
 	virtual void onLayout(int x, int y, int width, int height);
 	virtual void onLayoutChildren(int width, int height);
 
@@ -139,12 +135,16 @@ public:
 	void setAttrColor(COLORREF c);
 	void parseAttrs();
 	HFONT getFont();
-	Visibility getVisibility();
-	void setVisibility(Visibility v);
+	bool isVisible();
+	void setVisible(bool visible);
+	virtual void setTranslateX(int tx);
+	virtual void setTranslateY(int ty);
 
 	virtual bool dispatchMessage(Msg *msg);
 	virtual bool dispatchMouseMessage(Msg *msg);
+	virtual VComponent* getChildForMouseMsg(int idx);
 	virtual bool dispatchPaintMessage(Msg *m);
+	virtual VComponent* getChildForPaintMsg(int idx);
 	
 	virtual bool onMouseEvent(Msg *m);
 	virtual bool onKeyEvent(Msg *m);
@@ -175,7 +175,7 @@ protected:
 	int mAttrRoundConerX, mAttrRoundConerY;
 	int mAttrWeight;
 	int mAttrFlags;
-	Visibility mVisibility;
+	bool mVisible;
 	int mTranslateX, mTranslateY; // always >= 0
 	bool mEnableFocus, mHasFocus;
 	bool mEnable;

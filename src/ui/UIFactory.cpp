@@ -914,19 +914,29 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 	char *name = n->getName();
 	if (strcmp(name, "Window") == 0) return new VWindow(n);
 	if (strcmp(name, "Dialog") == 0) return new VDialog(n);
+
+	if (strcmp(name, "AbsLayout") == 0) return new VComponent(n);
+	if (strcmp(name, "HLineLayout") == 0) return new VHLineLayout(n);
+	if (strcmp(name, "VLineLayout") == 0) return new VVLineLayout(n);
 	if (strcmp(name, "Popup") == 0) return new VPopup(n);
 	if (strcmp(name, "Label") == 0) return new VLabel(n);
 	if (strcmp(name, "Button") == 0) return new VButton(n);
 	if (strcmp(name, "Option") == 0) return new VOption(n);
 	if (strcmp(name, "CheckBox") == 0) return new VCheckBox(n);
 	if (strcmp(name, "Radio") == 0) return new VRadio(n);
-	if (strcmp(name, "ScrollBar") == 0) return new VScrollBar(n);
-	if (strcmp(name, "AbsLayout") == 0) return new VComponent(n);
-	if (strcmp(name, "HLineLayout") == 0) return new VHLineLayout(n);
-	if (strcmp(name, "VLineLayout") == 0) return new VVLineLayout(n);
+	if (strcmp(name, "Calendar") == 0) return new VCalendar(n);
+
+	if (strstr(name, "ScrollBar") != NULL) {VScrollBar *s = new VScrollBar(n);s->setOrientation(name[0] == 'H');return s;}
+	if (strcmp(name, "Scroll") == 0) return new VScroll(n);
+	if (strcmp(name, "Table") == 0) return new VTable(n);
+	if (strcmp(name, "List") == 0) return new VList(n);
+	if (strcmp(name, "Tree") == 0) return new VTree(n);
+
 	if (strcmp(name, "TextArea") == 0) return new VTextArea(n);
 	if (strcmp(name, "LineEdit") == 0) return new VLineEdit(n);
-	if (strcmp(name, "Scroll") == 0) return new VScroll(n);
+	if (strcmp(name, "MaskEdit") == 0) return new VMaskEdit(n);
+	if (strcmp(name, "Password") == 0) return new VPassword(n);
+
 	return NULL;
 }
 

@@ -44,7 +44,7 @@ public:
 	VButton(XmlNode *node);
 protected:
 	virtual void onPaint(Msg *m);
-	bool onMouseEvent(Msg *m);
+	virtual bool onMouseEvent(Msg *m);
 };
 
 
@@ -97,7 +97,8 @@ protected:
 
 class VScrollBar : public VExtComponent {
 public:
-	VScrollBar(XmlNode *node, bool horizontal = false);
+	VScrollBar(XmlNode *node);
+	void setOrientation(bool hor);
 	int getMax();
 	int getPage();
 	int getStart();
@@ -110,6 +111,7 @@ protected:
 	virtual bool onMouseEvent(Msg *m);
 	XRect getThumbRect();
 	int getPosBy(int start);
+	int getScrollRange();
 protected:
 	bool mHorizontal;
 	int mMax;
@@ -136,6 +138,9 @@ protected:
 	virtual bool onEvent(VComponent *evtSource, Msg *msg);
 	virtual void notifyChanged();
 	virtual bool dispatchMessage(Msg *msg);
+	virtual bool onMouseEvent(Msg *m);
+	virtual bool onKeyEvent(Msg *m);
+
 	virtual void onChar( wchar_t ch );
 	virtual void onLButtonDown(Msg *m);
 	virtual void onLButtonUp(Msg *m);
@@ -184,12 +189,12 @@ protected:
 };
 
 
-class VExtMaskEdit : public VLineEdit {
+class VMaskEdit : public VLineEdit {
 public:
 	typedef bool (*InputValidate)(int pos, wchar_t ch);
 	enum Case { C_NONE, C_UPPER, C_LOWER };
 
-	VExtMaskEdit(XmlNode *node);
+	VMaskEdit(XmlNode *node);
 	/*
 	*  @param mask  0: 0-9;  9:1-9;    A:A-Z;    a:a-z;
 					C: 0-9 a-z A-Z;    H:0-9 A-F a-f   B:0-1
@@ -199,7 +204,7 @@ public:
 	void setPlaceHolder(char ch);
 	void setInputValidate(InputValidate iv);
 protected:
-	virtual bool dispatchMouseMessage(Msg *m);
+	virtual bool onMouseEvent(Msg *m);
 	virtual void onChar( wchar_t ch );
 	virtual void onPaint(Msg *m);
 	virtual void onKeyDown(int key);
@@ -215,30 +220,15 @@ protected:
 };
 
 
-class VExtPassword : public VLineEdit {
+class VPassword : public VLineEdit {
 public:
-	VExtPassword(XmlNode *node);
+	VPassword(XmlNode *node);
 protected:
 	virtual void onChar( wchar_t ch );
 	virtual void paste();
 	virtual void onPaint(Msg *m);
 };
 
-
-class VScroll : public VExtComponent, public VListener {
-public:
-	VScroll(XmlNode *node);
-	VScrollBar* getHorBar();
-	VScrollBar* getVerBar();
-protected:
-	virtual bool onEvent(VComponent *evtSource, Msg *msg);
-	virtual void onMeasure(int widthSpec, int heightSpec);
-	virtual void onLayoutChildren(int width, int height);
-	virtual bool onMouseEvent(Msg *msg);
-	virtual SIZE calcDataSize();
-protected:
-	VScrollBar *mHorBar, *mVerBar;
-};
 
 class VCalendar : public VExtComponent {
 public:
@@ -289,57 +279,66 @@ protected:
 	bool mTrackMouseLeave;
 };
 
+class VScroll : public VExtComponent {
+public:
+	VScroll(XmlNode *node);
+	VScrollBar* getHorBar();
+	VScrollBar* getVerBar();
+protected:
+	virtual void onMeasure(int widthSpec, int heightSpec);
+	virtual void onLayoutChildren(int width, int height);
+	virtual void onMouseWheel(Msg *msg);
+	virtual bool onMouseEvent(Msg *msg);
+	virtual bool dispatchMouseMessage(Msg *m);
+	virtual bool dispatchPaintMessage(Msg *m);
+	virtual SIZE calcDataSize();
+	virtual SIZE getClientSize();
+protected:
+	VScrollBar *mHorBar, *mVerBar;
+	SIZE mDataSize;
+};
+
 class VTableModel {
 public:
-	struct ColumnWidth {
-		int mWidthSpec;
-		int mWeight;
-	};
 	struct HeaderData {
 		char *mText;
 		XImage *mBgImage;
 	};
+
 	struct CellData {
 		char *mText;
 	};
 
 	virtual int getColumnCount() = 0;
 	virtual int getRowCount() = 0;
-	virtual ColumnWidth getColumnWidth(int col) = 0;
+	virtual int getColumnWidth(int col, int wholeWidth) = 0;
 	virtual int getRowHeight(int row) = 0;
 	virtual int getHeaderHeight() = 0;
-	// virtual XImage *getHeaderImage() = 0;
 	virtual HeaderData *getHeaderData(int col) = 0;
 	virtual CellData *getCellData(int row, int col) = 0;
-	// virtual bool canSelect(int row) = 0;
+	virtual XImage *getHeaderBgImage() = 0;
 };
 
 class VTable : public VScroll {
 public:
-	class CellRender {
+	class Render {
 	public:
-		virtual void onDrawCell(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
-	};
-
-	class ColumnRender {
-	public:
-		virtual void onDrawColumn(HDC dc, int col, int x, int y, int w, int h) = 0;
-	};
-
-	enum Attr {
-		ATTR_HAS_HEADER = 1,
-		ATTR_HAS_COL_LINE = 2,
-		ATTR_HAS_ROW_LINE = 4
+		// return false: not define draw, use default draw
+		// return true: define draw
+		virtual bool onDrawCell(HDC dc, int row, int col, int x, int y, int w, int h) = 0;
+		virtual bool onDrawColumn(HDC dc, int col, int x, int y, int w, int h) = 0;
 	};
 
 	VTable(XmlNode *node);
 	void setModel(VTableModel *model);
-	void setCellRender(CellRender *render);
+	void setRender(Render *render);
 	virtual ~VTable();
 protected:
 	virtual void onPaint(Msg *m);
-	virtual bool dispatchMouseMessage(Msg *msg);
+	virtual bool onMouseEvent(Msg *msg);
+
 	virtual void drawHeader(HDC dc, int w, int h);
+	virtual void drawColumn(HDC dc, int col, int x, int y, int w, int h);
 	void drawData( HDC dc, int x, int y, int w, int h );
 	virtual void drawRow(HDC dc, int row, int x, int y, int w, int h );
 	virtual void drawCell(HDC dc, int row, int col, int x, int y, int w, int h );
@@ -348,237 +347,102 @@ protected:
 	virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayoutChildren( int width, int height );
 	void mesureColumn(int width, int height);
-	SIZE calcDataSize();
-	SIZE getClientSize();
+	virtual SIZE calcDataSize();
+	virtual SIZE getClientSize();
 	void getVisibleRows(int *from, int *to);
 	int findCell(int x, int y, int *col);
 protected:
 	VTableModel *mModel;
-	int mColsWidth[50];
-	SIZE mDataSize;
-	HPEN mLinePen;
+	HPEN mHorLinePen, mVerLinePen;
 	int mSelectedRow;
-	HBRUSH mSelectBgBrush;
-	CellRender *mCellRender;
+	XImage *mSelectBgImage;
+	Render *mRender;
 };
 
-#if 0
 
-class XListModel {
+class VListModel {
 public:
 	struct ItemData {
 		char *mText;
 		bool mSelectable;
-		bool mSelected;
 		void *mUsrData;
 	};
+
 	virtual int getItemCount() = 0;
 	virtual int getItemHeight(int item) = 0;
 	virtual ItemData *getItemData(int item) = 0;
-	virtual bool isMouseTrack() = 0;
 };
 
-class VExtList : public VExtScroll {
+
+class VList : public VScroll {
 public:
 	class ItemRender {
 	public:
 		virtual void onDrawItem(HDC dc, int item, int x, int y, int w, int h) = 0;
 	};
-	VExtList(XmlNode *node);
-	void setModel(XListModel *model);
-	XListModel *getModel();
+
+	VList(XmlNode *node);
+
+	void setModel(VListModel *model);
+	VListModel *getModel();
 	void setItemRender(ItemRender *render);
 	int getItemY(int item);
-	int getMouseTrackItem();
-
-	virtual ~VExtList();
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
+	int getTrackItem();
+	void setEnableTrack(bool enable);
+	void setSelectItem(int item);
+	int getSelectItem();
 	void notifyModelChanged();
+	virtual ~VList();
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
 	virtual SIZE calcDataSize();
-	SIZE getClientSize();
-	virtual void moveChildrenPos( int dx, int dy );
-	virtual void drawData( HDC memDc, int x, int y,  int w, int h );
+	virtual SIZE getClientSize();
+	virtual void drawData( HDC dc, int x, int y,  int w, int h );
 	virtual void drawItem(HDC dc, int item, int x, int y, int w, int h);
 	void getVisibleRows(int *from, int *num);
 	int findItem(int x, int y);
 	void updateTrackItem(int x, int y);
+	virtual void onPaint(Msg *m);
+	virtual bool onMouseEvent(Msg *msg);
 protected:
-	XListModel *mModel;
+	VListModel *mModel;
 	ItemRender *mItemRender;
-	SIZE mDataSize;
-	int mMouseTrackItem;
-	HBRUSH mSelectBgBrush;
+	int mTrackItem, mSelectItem;
+	XImage *mSelBgImage, *mTrackBgImage;
+	bool mEnableTrack;
 };
 
-class VExtArrowButton : public VExtButton {
-public:
-	// when click, send MSG_COMMAND, wParam is true means click at arrow
-	VExtArrowButton(XmlNode *node);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual StateImage getStateImage();
-protected:
-	bool isPointInArrow(int x, int y);
-	enum {
-		ARROW_IMG_HOVER = 5,
-		ARROW_IMG_PUSH = 6
-	};
-	bool mMouseAtArrow;
-	int mArrowWidth;
-};
 
-class VExtComboBox : public VExtComponent, public VListener {
-public:
-	class BoxRender {
-	public:
-		virtual void onDrawBox(HDC dc, int x, int y, int w, int h) = 0;
-	};
-	VExtComboBox(XmlNode *node);
-	void setEnableEditor(bool enable);
-	VExtList *getExtList();
-	void setBoxRender(BoxRender *r);
-	int getSelectItem();
-	void setSelectItem(int idx);
-	virtual ~VExtComboBox();
 
-	virtual bool onEvent(VComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret);
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
-	virtual void createWnd();
-protected:
-	virtual void drawBox(HDC dc, int x, int y, int w, int h);
-	void openPopup();
-	StateImage getStateImage();
-protected:
-	VExtLineEdit *mEdit;
-	VExtPopup *mPopup;
-	VExtList *mList;
-	XmlNode *mEditNode, *mPopupNode, *mListNode;
-	int mArrowWidth;
-	SIZE mAttrPopupSize;
-	bool mEnableEditor;
-	XImage *mStateImages[8];
-	BoxRender *mBoxRender;
-	bool mPoupShow;
-	int mSelectItem;
-	bool mIsMouseDown, mIsMouseMoving, mIsMouseLeave;
-};
-
-class VExtMenuModel;
-class VExtMenuManager;
-
-struct VExtMenuItem {
-	VExtMenuItem(const char *name, char *text);
-	char mName[40];
-	char *mText;
-	bool mActive;
-	bool mVisible;
-	bool mCheckable;
-	bool mChecked;
-	bool mSeparator;
-	VExtMenuModel *mChild;
-};
-
-class VExtMenuModel {
-public:
-	VExtMenuModel();
-	void add(VExtMenuItem *item);
-	void insert(int pos, VExtMenuItem *item);
-	int getCount();
-	VExtMenuItem *get(int idx);
-	VExtMenuItem *findByName(const char *name);
-	virtual int getItemHeight(int pos);
-	virtual int getWidth();
-	virtual int getHeight();
-	~VExtMenuModel();
-protected:
-	VExtMenuItem *mItems[50];
-	int mCount;
-	int mWidth;
-};
-
-class VExtMenu : public VExtComponent {
-public:
-	VExtMenu(XmlNode *node, VExtMenuManager *mgr);
-	void setModel(VExtMenuModel *list);
-	VExtMenuModel *getMenuList() {return mModel;}
-	virtual void show(int screenX, int screenY);
-	virtual ~VExtMenu();
-protected:
-	virtual void createWnd();
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	int getItemIndexAt(int x, int y);
-	virtual void calcSize();
-	void drawItems(HDC dc);
-	RECT getItemRect(int idx);
-protected:
-	VExtMenuModel *mModel;
-	int mSelectItem;
-	HPEN mSeparatorPen;
-	HPEN mCheckedPen;
-	HBRUSH mSelectBrush;
-	VExtMenuManager *mManager;
-};
-
-class VExtMenuManager {
-public:
-	class ItemListener {
-	public:
-		virtual void onClickItem(VExtMenuItem *item) = 0;
-	};
-
-	VExtMenuManager(VExtMenuModel *mlist, VComponent *owner, ItemListener *listener);
-	void show(int screenX, int screenY);
-	virtual ~VExtMenuManager();
-
-	void notifyItemClicked(VExtMenuItem *item);
-	void closeMenu(VExtMenuModel *mlist);
-	void openMenu(VExtMenuModel *mlist, int x, int y);
-protected:
-	void messageLoop();
-	int whereIs(int x, int y);
-	void closeMenuTo(int idx);
-protected:
-	VExtMenuModel *mMenuList;
-	VExtMenu *mMenus[10];
-	int mLevel;
-	VComponent *mOwner;
-	ItemListener *mListener;
-};
-
-class VExtTreeNode {
+class VTreeNode {
 public:
 	enum PosInfo { PI_FIRST = 1, PI_LAST = 2, PI_CENTER = 4 };
-	VExtTreeNode(const char *text);
+	VTreeNode(const char *text);
 	// pos : -1 means append
-	void insert(int pos, VExtTreeNode *child);
+	void insert(int pos, VTreeNode *child);
 	void remove(int pos);
-	void remove(VExtTreeNode *child);
-	int indexOf(VExtTreeNode *child);
+	void remove(VTreeNode *child);
+	int indexOf(VTreeNode *child);
 	int getChildCount();
 	void *getUserData();
 	void setUserData(void *userData);
 	int getContentWidth();
 	void setContentWidth(int w);
-	VExtTreeNode *getChild(int idx);
+	VTreeNode *getChild(int idx);
 	bool isExpand();
 	void setExpand(bool expand);
 	char *getText();
 	void setText(char *text);
 	PosInfo getPosInfo();
 	int getLevel();
-	VExtTreeNode *getParent();
+	VTreeNode *getParent();
 	bool isCheckable();
 	void setCheckable(bool cb);
 	bool isChecked();
 	void setChecked(bool cb);
 protected:
 	char *mText;
-	VExtTreeNode *mParent;
-	std::vector<VExtTreeNode*> *mChildren;
+	VTreeNode *mParent;
+	std::vector<VTreeNode*> *mChildren;
 	DWORD mAttrFlags;
 	bool mExpand;
 	void *mUserData;
@@ -586,58 +450,47 @@ protected:
 	bool mCheckable;
 	bool mChecked;
 };
-class VExtTree : public VExtScroll {
+
+class VTree : public VScroll {
 public:
 	class NodeRender {
 	public:
-		virtual void onDrawNode(HDC dc, VExtTreeNode *node, int x, int y, int w, int h) = 0;
+		virtual void onDrawNode(HDC dc, VTreeNode *node, int x, int y, int w, int h) = 0;
 	};
 	enum WhenSelect {
 		WHEN_CLICK, WHEN_DBCLICK, WHEN_NONE
 	};
-	VExtTree(XmlNode *node);
+	VTree(XmlNode *node);
 	//根结点为虚拟结点，不显示
-	void setModel(VExtTreeNode *root);
-	VExtTreeNode* getModel();
+	void setModel(VTreeNode *root);
+	VTreeNode* getModel();
 	WhenSelect getWhenSelect();
 	void setWhenSelect(WhenSelect when);
 	void notifyChanged();
 	void setNodeRender(NodeRender *render);
 	// @return false:表示node是被折叠的，没有大小; true:表示node是未折叠的，取得了rect
-	bool getNodeRect(VExtTreeNode *node, RECT *r);
-	VExtTreeNode *getAtPoint(int x, int y);
-	VExtTreeNode *getSelectNode();
-	void setSelectNode(VExtTreeNode *selNode);
-	virtual ~VExtTree();
+	bool getNodeRect(VTreeNode *node, RECT *r);
+	VTreeNode *getAtPoint(int x, int y);
+	VTreeNode *getSelectNode();
+	void setSelectNode(VTreeNode *selNode);
+	virtual ~VTree();
 protected:
-	virtual bool wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result);
-	virtual void onMeasure( int widthSpec, int heightSpec );
-	virtual void onLayout( int width, int height );
-	SIZE calcDataSize();
-	SIZE getClientSize();
-	virtual void moveChildrenPos( int dx, int dy );
+	virtual void onPaint(Msg *m);
+	virtual bool onMouseEvent(Msg *msg);
+	virtual SIZE calcDataSize();
 	void drawData(HDC dc, int w, int h);
-	void drawNode(HDC dc, VExtTreeNode *n, int level, int clientWidth, int clientHeight, int *y);
+	void drawNode(HDC dc, VTreeNode *n, int level, int clientWidth, int clientHeight, int *y);
 	void onLBtnDown(int x, int y);
 	void onLBtnDbClick(int x, int y);
-	VExtTreeNode *getNodeAtY(int y, int *py);
+	VTreeNode *getNodeAtY(int y, int *py);
 protected:
-	SIZE mDataSize;
-	VExtTreeNode *mModel;
+	VTreeNode *mModel;
 	HPEN mLinePen, mCheckPen;
 	HBRUSH mSelectBgBrush;
-	VExtTreeNode *mSelectNode;
-	int mWidthSpec, mHeightSpec;
+	VTreeNode *mSelectNode;
 	NodeRender *mNodeRender;
 	WhenSelect mWhenSelect;
 };
-
-
-
-
-
-
-#endif
 
 
 class VHLineLayout : public VExtComponent {

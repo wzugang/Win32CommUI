@@ -115,7 +115,7 @@ VComponent::VComponent(XmlNode *node) {
 	mListener = NULL;
 	mAttrFlags = 0;
 	mAttrColor = mAttrBgColor = 0;
-	mVisibility = VISIBLE;
+	mVisible = true;
 	mTranslateX = mTranslateY = 0;
 	mEnableFocus = false;
 	mHasFocus = false;
@@ -149,7 +149,7 @@ VComponent::~VComponent() {
 void VComponent::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	onMesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
+	onMeasureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
 		(mMesureHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 }
 
@@ -225,11 +225,7 @@ void VComponent::parseAttrs() {
 			int v1 = (int)strtod(attr->mValue, NULL);
 			if (v1 > 0) mAttrWeight = v1;
 		} else if (strcmp(attr->mName, "visible") == 0) {
-			if (strcmp(attr->mValue, "false") == 0) {
-				mVisibility = INVISIBLE;
-			} else if (strcmp(attr->mValue, "gone") == 0) {
-				mVisibility = VISIBLE_GONE;
-			}
+			mVisible = AttrUtils::parseBool(attr->mValue, false);
 		}
 	}
 }
@@ -253,7 +249,7 @@ int VComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
 	return 0;
 }
 
-void VComponent::onMesureChildren( int widthSpec, int heightSpec ) {
+void VComponent::onMeasureChildren( int widthSpec, int heightSpec ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
 		child->onMeasure(widthSpec, heightSpec);
@@ -447,12 +443,16 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	VComponent *target = NULL;
 	int oldX = msg->mouse.x, oldY = msg->mouse.y;
 	bool inChild = false;
-	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
-		VComponent *child = getChild(i);
-		if (child->mVisibility != VISIBLE || !child->mEnable) {
+	int idx = 0;
+	while (true) {
+		VComponent *child = getChildForMouseMsg(idx++);
+		if (child == NULL) {
+			break;
+		}
+		if (!child->mVisible || !child->mEnable) {
 			continue;
 		}
-		int x = msg->mouse.x - mTranslateX, y = msg->mouse.y - mTranslateY;
+		int x = oldX - mTranslateX, y = oldY - mTranslateY;
 		if (x >= child->mX && y >= child->mY && x < child->mX + child->mWidth && y < child->mY + child->mHeight) {
 			inChild = true;
 			msg->mouse.x = oldX - child->mX + mTranslateX;
@@ -463,6 +463,8 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 			break;
 		}
 	}
+	msg->mouse.x = oldX;
+	msg->mouse.y = oldY;
 
 	if (!inChild && msg->mId == Msg::MOUSE_MOVE && msg->mouse.moveAt == NULL) {
 		msg->mouse.moveAt = this;
@@ -472,6 +474,14 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	}
 	// go here, means mouse msg is not deal
 	return onMouseEvent(msg);
+}
+
+VComponent* VComponent::getChildForMouseMsg(int idx) {
+	idx = mNode->getChildCount() - 1 - idx;
+	if (idx >= 0) {
+		return getChild(idx);
+	}
+	return NULL;
 }
 
 bool VComponent::onMouseEvent(Msg *m) {
@@ -496,7 +506,7 @@ void VComponent::onPaint(Msg *m) {
 }
 
 bool VComponent::dispatchPaintMessage(Msg *m) {
-	if (mVisibility != VISIBLE) {
+	if (!mVisible) {
 		return false;
 	}
 	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
@@ -511,8 +521,16 @@ bool VComponent::dispatchPaintMessage(Msg *m) {
 	m->paint.clip = self2;
 	onPaint(m);
 	RestoreDC(m->paint.dc, sid2);
-	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *cc = getChild(i);
+
+	int idx = 0;
+	while (true) {
+		VComponent *cc = getChildForPaintMsg(idx++);
+		if (cc == NULL) {
+			break;
+		}
+		if (! cc->isVisible()) {
+			continue;
+		}
 		Msg mm = *m;
 		mm.paint.x += cc->mX - mTranslateX;
 		mm.paint.y += cc->mY - mTranslateY;
@@ -521,6 +539,13 @@ bool VComponent::dispatchPaintMessage(Msg *m) {
 	}
 	RestoreDC(m->paint.dc, sid);
 	return true;
+}
+
+VComponent* VComponent::getChildForPaintMsg(int idx) {
+	if (idx < mNode->getChildCount()) {
+		return getChild(idx);
+	}
+	return NULL;
 }
 
 void VComponent::drawCache(HDC dc) {
@@ -678,19 +703,27 @@ void VComponent::updateWindow() {
 	UpdateWindow(wnd);
 }
 
-VComponent::Visibility VComponent::getVisibility() {
-	return mVisibility;
+bool VComponent::isVisible() {
+	return mVisible;
 }
 
-void VComponent::setVisibility(Visibility v) {
-	if (v == mVisibility) {
+void VComponent::setVisible(bool v) {
+	if (v == mVisible) {
 		return;
 	}
-	mVisibility = v;
+	mVisible = v;
 	repaint();
-	if (mVisibility != VISIBLE && mHasFocus) {
+	if (!mVisible && mEnableFocus && mHasFocus) {
 		releaseFocus();
 	}
+}
+
+void VComponent::setTranslateX(int tx) {
+	mTranslateX = tx;
+}
+
+void VComponent::setTranslateY(int ty) {
+	mTranslateY = ty;
 }
 
 //----------------------------------------------------------
@@ -867,9 +900,7 @@ void VBaseWindow::onLayoutChildren(int width, int height) {
 }
 
 void VBaseWindow::applyAttrs() {
-	// HFONT font = getFont();
-	// SendMessage(mWnd, WM_SETFONT, (WPARAM)font, 0);
-	if (mVisibility != VISIBLE) {
+	if (! mVisible) {
 		DWORD st = GetWindowLong(mWnd, GWL_STYLE);
 		st = st & ~WS_VISIBLE;
 		SetWindowLong(mWnd, GWL_STYLE, st);
@@ -991,7 +1022,7 @@ RECT VBaseWindow::getClientRect() {
 void VBaseWindow::onMeasure(int widthSpec, int heightSpec) {
 	mMesureWidth = getSpecSize(widthSpec);
 	mMesureHeight = getSpecSize(heightSpec);
-	onMesureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
+	onMeasureChildren((mMesureWidth - mAttrPadding[0] - mAttrPadding[2]) | MS_ATMOST, 
 		(mMesureHeight - mAttrPadding[1] - mAttrPadding[3]) | MS_ATMOST);
 }
 

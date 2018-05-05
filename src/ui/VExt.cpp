@@ -115,7 +115,7 @@ bool VExtComponent::doStateImage(Msg *m) {
 	return false;
 }
 
-//--------------------VExtLabel-------------------------------------
+//--------------------VLabel-------------------------------------
 VLabel::VLabel( XmlNode *node ) : VExtComponent(node) {
 	mText = mNode->getAttrValue("text");
 	mTextAlign = 0;
@@ -165,7 +165,7 @@ void VLabel::setText( char *text ) {
 }
 
 
-//-------------------VExtButton-----------------------------------
+//-------------------VButton-----------------------------------
 VButton::VButton( XmlNode *node ) : VExtComponent(node) {
 	mEnableState = true;
 }
@@ -341,11 +341,15 @@ void VIconButton::onPaint(Msg *m) {
 	}
 }
 
-//-------------------VExtScrollBar-----------------------------------
-VScrollBar::VScrollBar( XmlNode *node, bool horizontal ) : VExtComponent(node) {
-	mHorizontal = horizontal;
+//-------------------VScrollBar-----------------------------------
+VScrollBar::VScrollBar( XmlNode *node) : VExtComponent(node) {
 	mTrack = XImage::load(mNode->getAttrValue("track"));
 	mThumb = XImage::load(mNode->getAttrValue("thumb"));
+	mHorizontal = false;
+	char *org = mNode->getAttrValue("orientation");
+	if (org != NULL && strcmp(org, "hor") == 0) {
+		mHorizontal = true;
+	}
 	mPos = 0;
 	mMax = 0;
 	mPage = 0;
@@ -371,7 +375,7 @@ void VScrollBar::setPos( int pos ) {
 	if (mListener != NULL) {
 		Msg m;
 		m.mId = mHorizontal ? Msg::HSCROLL : Msg::VSCROLL;
-		m.def.lParam = mPos;
+		m.def.wParam = mPos;
 		mListener->onEvent(this, &m);
 	}
 }
@@ -415,23 +419,24 @@ bool VScrollBar::onMouseEvent(Msg *m) {
 	} else if (m->mId == Msg::MOUSE_MOVE) {
 		if (! mPressed) return true;
 		XRect rect = getThumbRect();
+		int newPos = mPos;
 		if (mHorizontal) {
 			int dx = m->mouse.x - mMouseX;
 			if (dx == 0) return true;
-			int newPos = getPosBy(rect.mX + dx);
-			mMouseX = m->mouse.x;
-			mMouseY = m->mouse.y;
-			setPos(newPos);
+			newPos = getPosBy(rect.mX + dx);
 		} else {
 			int dy = m->mouse.y - mMouseY;
 			if (dy == 0) return true;
-			int newPos = getPosBy(rect.mY + dy);
+			newPos = getPosBy(rect.mY + dy);
+		}
+		if (newPos != mPos) {
 			mMouseX = m->mouse.x;
 			mMouseY = m->mouse.y;
 			setPos(newPos);
 		}
+		return true;
 	}
-	return true;
+	return VExtComponent::onMouseEvent(m);
 }
 
 void VScrollBar::onPaint(Msg *m) {
@@ -447,21 +452,16 @@ void VScrollBar::onPaint(Msg *m) {
 
 XRect VScrollBar::getThumbRect() {
 	XRect rr;
+	int range = getScrollRange();
 	if (mMax <= 0 || mPage <= 0 || mPage >= mMax) {
 		return rr;
 	}
-	int sz = (int)((float)mPage * mPage / mMax);
-	int start = (int)((float)mPos * (mPage - sz) / (mMax - mPage));
+	int sz = (int)((float)range * mPage / mMax);
+	int start = (int)((float)mPos * (range - sz) / (mMax - mPage));
 
 	if (mHorizontal) {
-		float ff = (float)mWidth / mPage;
-		sz = (int)(sz * ff);
-		start = (int)(start * ff);
 		rr.set(start, mAttrPadding[1], sz, mHeight-mAttrPadding[1]-mAttrPadding[3]);
 	} else {
-		float ff = (float)mHeight / mPage;
-		sz = (int)(sz * ff);
-		start = (int)(start * ff);
 		rr.set(mAttrPadding[0], start, mWidth-mAttrPadding[0]-mAttrPadding[2], sz);
 	}
 	return rr;
@@ -471,21 +471,16 @@ int VScrollBar::getPosBy(int start) {
 	if (start < 0 || start > mMax - mPage) {
 		return 0;
 	}
-	int sz = (int)((float)mPage * mPage / mMax);
-	float ff = 1;
-	if (mHorizontal) {
-		ff = (float)mWidth / mPage;
-	} else {
-		ff = (float)mHeight / mPage;
-	}
-	start = (int)(start * ff);
-	int pos = (int)((float)start * (mMax - mPage) / (mPage - sz));
+	int range = getScrollRange();
+	int sz = (int)((float)range * mPage / mMax);
+	int pos = (int)((float)start * (mMax - mPage) / (range - sz));
 	return pos;
 }
 
 int VScrollBar::getStart() {
-	int sz = (int)((float)mPage * mPage / mMax);
-	int start = (int)((float)mPos * (mPage - sz) / (mMax - mPage));
+	int range = getScrollRange();
+	int sz = (int)((float)range * mPage / mMax);
+	int start = (int)((float)mPos * (range - sz) / (mMax - mPage));
 	return start;
 }
 
@@ -494,34 +489,59 @@ void VScrollBar::setStart(int start) {
 	setPos(pos);
 }
 
+void VScrollBar::setOrientation(bool hor) {
+	mHorizontal = hor;
+}
+
+int VScrollBar::getScrollRange() {
+	if (mHorizontal) {
+		return mWidth;
+	}
+	return mHeight;
+}
+
 //----------------------------VExtTextArea---------------------
 VTextArea::VTextArea( XmlNode *node ) : VExtComponent(node) {
-	mEnableFocus = AttrUtils::parseBool(mNode->getAttrValue("enableFocus"), true);
+	mEnableFocus = true;
 	mInsertPos = 0;
 	mBeginSelPos = mEndSelPos = 0;
 	mReadOnly = AttrUtils::parseBool(mNode->getAttrValue("readOnly"));
 	insertText(0, mNode->getAttrValue("text"));
 	mCaretShowing = false;
 	mCaretPen = CreatePen(PS_SOLID, 1, RGB(0xff, 0x14, 0x93));
-	mEnableShowCaret = true;
+	mEnableShowCaret = AttrUtils::parseBool(mNode->getAttrValue("showCaret"), true);
 	mVerBar = NULL;
-	mEnableScrollBars = AttrUtils::parseBool(mNode->getAttrValue("enableScrollBars"), true);
-	if (mAttrPadding[0] == 0 && mAttrPadding[2] == 0) {
+	mEnableScrollBars = true;
+	/*if (mAttrPadding[0] == 0 && mAttrPadding[2] == 0) {
 		mAttrPadding[0] = mAttrPadding[2] = 2;
-	}
+	}*/
 	mAutoNewLine = true;
 	mScrollX = mScrollY = 0;
 }
 
 bool VTextArea::dispatchMessage(Msg *m) {
-	if (m->mId == Msg::KEY_DOWN) {
-		onKeyDown(m->key.code);
+	  if (m->mId == Msg::TIMER) {
+		mCaretShowing = !mCaretShowing;
+		repaint();
 		return true;
-	} else if (m->mId == Msg::CHAR) {
-		onChar(m->key.code);
+	} else if (m->mId == Msg::GAIN_FOCUS) {
+		if (mEnableShowCaret) {
+			getRoot()->startTimer(this, mID, 500);
+		}
 		return true;
-	} else if (m->mId == Msg::LBUTTONDOWN) {
-		if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+	} else if (m->mId == Msg::LOST_FOCUS) {
+		mCaretShowing = false;
+		getRoot()->killTimer(this, mID);
+		repaint();
+		return true;
+	}
+	return VExtComponent::dispatchMessage(m);
+}
+
+
+bool VTextArea::onMouseEvent(Msg *m) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		if (mVerBar != NULL && mVerBar->isVisible()) {
 			if (m->mouse.x >= mVerBar->getX()) {
 				m->mouse.x -= mVerBar->getX() + mTranslateX;
 				m->mouse.y -= mVerBar->getY() + mTranslateY;
@@ -553,22 +573,19 @@ bool VTextArea::dispatchMessage(Msg *m) {
 			repaint(NULL);
 		}
 		return true;
-	} else if (m->mId == Msg::TIMER) {
-		mCaretShowing = !mCaretShowing;
-		repaint();
+	}
+	return false;
+}
+
+bool VTextArea::onKeyEvent(Msg *m) {
+	if (m->mId == Msg::KEY_DOWN) {
+		onKeyDown(m->key.code);
 		return true;
-	} else if (m->mId == Msg::GAIN_FOCUS) {
-		if (mEnableShowCaret) {
-			getRoot()->startTimer(this, mID, 500);
-		}
-		return true;
-	} else if (m->mId == Msg::LOST_FOCUS) {
-		mCaretShowing = false;
-		getRoot()->killTimer(this, mID);
-		repaint();
+	} else if (m->mId == Msg::CHAR) {
+		onChar(m->key.code);
 		return true;
 	}
-	return VExtComponent::dispatchMessage(m);
+	return false;
 }
 
 void VTextArea::onChar( wchar_t ch ) {
@@ -866,11 +883,11 @@ void VTextArea::notifyChanged() {
 		repaint();
 		return;
 	}
-	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar->isVisible();
 	int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
 	mVerBar->setMaxAndPage(mTextHeight, mh);
 	bool needShow = mTextHeight > mh;
-	mVerBar->setVisibility(needShow ? VISIBLE : VISIBLE_GONE);
+	mVerBar->setVisible(needShow);
 
 	if (needShow != hasVerBar) {
 		notifyChanged();
@@ -881,7 +898,7 @@ void VTextArea::notifyChanged() {
 void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasVerBar = mVerBar != NULL && mVerBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar != NULL && mVerBar->isVisible();
 	
 	buildLines();
 
@@ -889,7 +906,7 @@ void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 		int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
 		mVerBar->setMaxAndPage(mTextHeight, mh);
 		bool newHas = mTextHeight > mh;
-		mVerBar->setVisibility(newHas ? VISIBLE : VISIBLE_GONE);
+		mVerBar->setVisible(newHas);
 		if (newHas != hasVerBar) onMeasure(widthSpec, heightSpec);
 	}
 }
@@ -897,9 +914,10 @@ void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 void VTextArea::onLayoutChildren( int width, int height ) {
 	if (mEnableScrollBars && mVerBar == NULL) {
 		XmlNode *node = new XmlNode("VerScrollBar", mNode);
-		mVerBar = new VScrollBar(node, false);
+		mVerBar = new VScrollBar(node);
+		mVerBar->setOrientation(false);
 		node->setComponentV(mVerBar);
-		mVerBar->setVisibility(VISIBLE_GONE);
+		mVerBar->setVisible(false);
 		mNode->addChild(node);
 		mVerBar->setListener(this);
 	}
@@ -923,10 +941,6 @@ int VTextArea::getScrollX() {
 
 int VTextArea::getScrollY() {
 	return mScrollY;
-	/*if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
-		return mVerBar->getPos();
-	}
-	return 0;*/
 }
 
 void VTextArea::setScrollX( int x ) {
@@ -939,7 +953,7 @@ void VTextArea::setScrollY( int y ) {
 		return;
 	}
 	mScrollY = min(y, mm);
-	if (mVerBar != NULL && mVerBar->getVisibility() == VISIBLE) {
+	if (mVerBar != NULL && mVerBar->isVisible()) {
 		mVerBar->setPos(y);
 	}
 }
@@ -985,7 +999,7 @@ void VTextArea::ensureVisible( int pos ) {
 }
 
 SIZE VTextArea::getClientSize() {
-	bool hasVerBar = mVerBar != NULL && mVerBar->getVisibility() == VISIBLE;
+	bool hasVerBar = mVerBar != NULL && mVerBar->isVisible();
 	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getWidth() : 0);
 	SIZE sz = {clientWidth - mAttrPadding[0] - mAttrPadding[2],
 		mMesureHeight - mAttrPadding[1] - mAttrPadding[3]};
@@ -1017,8 +1031,7 @@ bool VTextArea::onEvent(VComponent *evtSource, Msg *msg) {
 	return false;
 }
 
-
-//------------------------VExtLineEdit--------------------
+//------------------------VLineEdit--------------------
 VLineEdit::VLineEdit(XmlNode *node) : VTextArea(node) {
 	mAutoNewLine = false;
 	mEnableScrollBars = false;
@@ -1067,8 +1080,8 @@ void VLineEdit::insertText( int pos, wchar_t *txt, int len ) {
 }
 
 
-//------------------------VExtMaskEditor-----------------------------------
-VExtMaskEdit::VExtMaskEdit( XmlNode *node ) : VLineEdit(node) {
+//------------------------VMaskEditor-----------------------------------
+VMaskEdit::VMaskEdit( XmlNode *node ) : VLineEdit(node) {
 	mCase = C_NONE;
 	mCaretBrush = CreateSolidBrush(RGB(0x48, 0x76, 0xFF));
 	char *str = mNode->getAttrValue("placeHolder");
@@ -1081,7 +1094,7 @@ VExtMaskEdit::VExtMaskEdit( XmlNode *node ) : VLineEdit(node) {
 	mValidate = NULL;
 }
 
-bool VExtMaskEdit::dispatchMouseMessage( Msg *m ) {
+bool VMaskEdit::onMouseEvent( Msg *m ) {
 	if (m->mId == Msg::LBUTTONDOWN) {
 		if (mEnableFocus) setFocus();
 		int pos = getPosAt(m->mouse.x, m->mouse.y);
@@ -1092,14 +1105,14 @@ bool VExtMaskEdit::dispatchMouseMessage( Msg *m ) {
 			updateWindow();
 		}
 		return true;
-	} else if (m->mId == Msg::LBUTTONDOWN || m->mId == Msg::MOUSE_MOVE) {
+	} else if (m->mId == Msg::MOUSE_MOVE) {
 		return true;
 	}
-	return VLineEdit::dispatchMouseMessage(m);
+	return VLineEdit::onMouseEvent(m);
 }
 
 
-void VExtMaskEdit::onChar( wchar_t ch ) {
+void VMaskEdit::onChar( wchar_t ch ) {
 	if (mReadOnly) return;
 	if (ch < 32 || ch > 126) return;
 	if (mCase == C_LOWER) {
@@ -1123,7 +1136,7 @@ void VExtMaskEdit::onChar( wchar_t ch ) {
 	updateWindow();
 }
 
-bool VExtMaskEdit::acceptChar( wchar_t ch, int pos ) {
+bool VMaskEdit::acceptChar( wchar_t ch, int pos ) {
 	if (mMask == NULL) return false;
 	if (pos >= strlen(mMask)) return false;
 	char m = mMask[pos];
@@ -1151,7 +1164,7 @@ bool VExtMaskEdit::acceptChar( wchar_t ch, int pos ) {
 	return false;
 }
 
-void VExtMaskEdit::onPaint(Msg *m) {
+void VMaskEdit::onPaint(Msg *m) {
 	HDC hdc = m->paint.dc;
 	HFONT font = getFont();
 	SelectObject(hdc, font);
@@ -1169,7 +1182,7 @@ void VExtMaskEdit::onPaint(Msg *m) {
 	DrawTextW(hdc, mWideText, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
 }
 
-void VExtMaskEdit::onKeyDown( int key ) {
+void VMaskEdit::onKeyDown( int key ) {
 	if (mWideTextLen == 0) return;
 	if (key == VK_BACK || key == VK_DELETE) {// back
 		if (mInsertPos >= 0) {
@@ -1212,7 +1225,7 @@ void VExtMaskEdit::onKeyDown( int key ) {
 	repaint();
 }
 
-int VExtMaskEdit::getPosAt( int x, int y ) {
+int VMaskEdit::getPosAt( int x, int y ) {
 	HWND wnd = getWnd();
 	HDC hdc = GetDC(wnd);
 	HGDIOBJ old = SelectObject(hdc, getFont());
@@ -1232,7 +1245,7 @@ int VExtMaskEdit::getPosAt( int x, int y ) {
 	return k;
 }
 
-void VExtMaskEdit::setMask( const char *mask ) {
+void VMaskEdit::setMask( const char *mask ) {
 	mMask = (char *)mask;
 	mWideTextLen = 0;
 	if (mMask == NULL) {
@@ -1256,7 +1269,7 @@ void VExtMaskEdit::setMask( const char *mask ) {
 		}
 	}
 }
-bool VExtMaskEdit::isMaskChar( char ch ) {
+bool VMaskEdit::isMaskChar( char ch ) {
 	static char MC[] = {'0', '9', 'A', 'a', 'C', 'H', 'B'};
 	for (int i = 0; i < sizeof(MC); ++i) {
 		if (MC[i] == ch) return true;
@@ -1264,19 +1277,19 @@ bool VExtMaskEdit::isMaskChar( char ch ) {
 	return false;
 }
 
-void VExtMaskEdit::setPlaceHolder( char ch ) {
+void VMaskEdit::setPlaceHolder( char ch ) {
 	if (ch >= 32 && ch <= 127) mPlaceHolder = ch;
 }
 
-void VExtMaskEdit::setInputValidate( InputValidate iv ) {
+void VMaskEdit::setInputValidate( InputValidate iv ) {
 	mValidate = iv;
 }
 
 // ----------------------VExtPassword--------------------
-VExtPassword::VExtPassword( XmlNode *node ) : VLineEdit(node) {
+VPassword::VPassword( XmlNode *node ) : VLineEdit(node) {
 }
 
-void VExtPassword::onChar( wchar_t ch ) {
+void VPassword::onChar( wchar_t ch ) {
 	if (ch > 126) return;
 	if (ch > 31) {
 		if (mWideTextLen < 63) VLineEdit::onChar(ch);
@@ -1285,11 +1298,11 @@ void VExtPassword::onChar( wchar_t ch ) {
 	}
 }
 
-void VExtPassword::paste() {
+void VPassword::paste() {
 	// ignore it
 }
 
-void VExtPassword::onPaint( Msg *m ) {
+void VPassword::onPaint( Msg *m ) {
 	HDC hdc = m->paint.dc;
 	// draw select range background color
 	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
@@ -1311,39 +1324,67 @@ void VExtPassword::onPaint( Msg *m ) {
 }
 
 //----------VScroll-----------------------------
+class VScrollListener : public VListener {
+public:
+	VScrollListener(VScroll *s) {
+		mScroll = s;
+	}
+	bool onEvent(VComponent *evtSource, Msg *msg) {
+		if (msg->mId == Msg::HSCROLL) {
+			mScroll->setTranslateX(msg->def.wParam);
+			mScroll->repaint();
+			return true;
+		} else if (msg->mId == msg->mId == Msg::VSCROLL) {
+			mScroll->setTranslateY(msg->def.wParam);
+			mScroll->repaint();
+			return true;
+		}
+		return false;
+	}
+private:
+	VScroll *mScroll;
+};
+
+
 VScroll::VScroll( XmlNode *node ) : VExtComponent(node) {
+	mDataSize.cx = mDataSize.cy = 0;
 	XmlNode *horNode = new XmlNode("HorScrollBar", mNode);
 	XmlNode *verNode = new XmlNode("VerScrollBar", mNode);
-	mHorBar = new VScrollBar(horNode, true);
-	mVerBar = new VScrollBar(verNode, false);
+	mHorBar = new VScrollBar(horNode);
+	mVerBar = new VScrollBar(verNode);
+	mHorBar->setOrientation(true);
+	mVerBar->setOrientation(false);
 	horNode->setComponentV(mHorBar);
 	verNode->setComponentV(mVerBar);
-	mNode->addChild(horNode);
-	mNode->addChild(verNode);
-	mHorBar->setListener(this);
-	mVerBar->setListener(this);
+	mHorBar->setVisible(false);
+	mVerBar->setVisible(false);
+	/*mNode->addChild(horNode);
+	mNode->addChild(verNode);*/
+	VScrollListener *vl = new VScrollListener(this);
+	mHorBar->setListener(vl);
+	mVerBar->setListener(vl);
 }
 
 void VScroll::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
-	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
+	bool hasHorBar = mHorBar->isVisible();
+	bool hasVerBar = mVerBar->isVisible();
 
-	mHorBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
-	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0) - mAttrPadding[0] - mAttrPadding[2];
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0) - mAttrPadding[1] - mAttrPadding[3];
-	onMesureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
+	mHorBar->onMeasure((mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)) | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, (mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)) | MS_ATMOST);
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)/* - mAttrPadding[0] - mAttrPadding[2]*/;
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)/* - mAttrPadding[1] - mAttrPadding[3]*/;
+	onMeasureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
 
-	SIZE cs = calcDataSize();
+	SIZE cs = mDataSize = calcDataSize();
 	mHorBar->setMaxAndPage(cs.cx, clientWidth);
 	mVerBar->setMaxAndPage(cs.cy, clientHeight);
 
-	mVerBar->setVisibility(cs.cx > clientWidth ? VISIBLE : VISIBLE_GONE);
-	mVerBar->setVisibility(cs.cy > clientHeight ? VISIBLE : VISIBLE_GONE);
+	mHorBar->setVisible(cs.cx > clientWidth);
+	mVerBar->setVisible(cs.cy > clientHeight);
 
-	if ((cs.cx > clientWidth) != hasHorBar || (cs.cy > clientHeight) != hasVerBar) {
+	if (mHorBar->isVisible() != hasHorBar || mVerBar->isVisible() != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
 	}
 }
@@ -1352,10 +1393,9 @@ SIZE VScroll::calcDataSize() {
 	int childRight = 0, childBottom = 0;
 	int mw = mMesureWidth - mAttrPadding[0] - mAttrPadding[2];
 	int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
-
 	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
-		if (child->getVisibility() != VISIBLE) {
+		if (! child->isVisible()) {
 			continue;
 		}
 		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
@@ -1371,7 +1411,6 @@ SIZE VScroll::calcDataSize() {
 void VScroll::onLayoutChildren( int width, int height ) {
 	int mw = width - mAttrPadding[0] - mAttrPadding[2];
 	int mh = height - mAttrPadding[1] - mAttrPadding[3];
-
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
 		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
@@ -1390,43 +1429,90 @@ VScrollBar* VScroll::getVerBar() {
 	return mVerBar;
 }
 
-bool VScroll::onMouseEvent(Msg *msg) {
-	if (msg->mId != Msg::MOUSE_WHEEL) {
-		return VExtComponent::onMouseEvent(msg);
+bool VScroll::dispatchPaintMessage(Msg *m) {
+	// draw children
+	VExtComponent::dispatchPaintMessage(m);
+
+	// draw scrollbar
+	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
+	XRect self2 = self.intersect(m->paint.clip);
+	HDC dc = m->paint.dc;
+	int sid = SaveDC(dc);
+	IntersectClipRect(m->paint.dc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
+	VScrollBar *bars[] = {mHorBar, mVerBar};
+	for (int i = 0; i < 2; ++i) {
+		if (! bars[i]->isVisible()) {
+			continue;
+		}
+		Msg mm = *m;
+		mm.paint.x += bars[i]->getX();
+		mm.paint.y += bars[i]->getY();
+		mm.paint.clip = self2;
+		bars[i]->dispatchMessage(&mm);
 	}
-	if (mVerBar->getVisibility() == VISIBLE) {
+	RestoreDC(dc, sid);
+	return true;
+}
+
+bool VScroll::dispatchMouseMessage(Msg *m) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		VScrollBar *bars[2] = {mHorBar, mVerBar};
+		int oldX = m->mouse.x, oldY = m->mouse.y;
+		for (int i = 0; i < 2; ++i) {
+			if (! bars[i]->isVisible()) {
+				continue;
+			}
+			XRect r(bars[i]->getX(), bars[i]->getY(), bars[i]->getWidth(), bars[i]->getHeight());
+			if (r.contains(m->mouse.x, m->mouse.y)) {
+				m->mouse.x = oldX - r.mX;
+				m->mouse.y = oldY - r.mY;
+				bars[i]->dispatchMessage(m);
+				m->mouse.x = oldX;
+				m->mouse.y = oldY;
+				return true;
+			}
+		}
+	}
+	return VExtComponent::dispatchMouseMessage(m);
+}
+
+void VScroll::onMouseWheel(Msg *msg) {
+	if (mVerBar->isVisible()) {
 		int old = mVerBar->getPos();
 		mVerBar->setPos(old - msg->mouse.deta * 100);
 		if (old != mVerBar->getPos()) {
 			mTranslateY = mVerBar->getPos();
 			repaint();
 		}
-		return true;
-	}
-	if (mHorBar->getVisibility() == VISIBLE) {
+	} else if (mHorBar->isVisible()) {
 		int old = mHorBar->getPos();
 		mHorBar->setPos(old - msg->mouse.deta * 100);
 		if (old != mHorBar->getPos()) {
 			mTranslateX = mHorBar->getPos();
 			repaint();
 		}
-		return true;
 	}
-	return true;
 }
 
-bool VScroll::onEvent(VComponent *evtSource, Msg *msg) {
-	if (msg->mId == Msg::HSCROLL || msg->mId == Msg::VSCROLL) {
-		mTranslateX = mHorBar->getPos();
-		mTranslateY = mVerBar->getPos();
-		repaint();
+bool VScroll::onMouseEvent(Msg *msg) {
+	if (msg->mId == Msg::MOUSE_WHEEL) {
+		onMouseWheel(msg);
 		return true;
 	}
-	return false;
+	return VExtComponent::onMouseEvent(msg);
+}
+
+SIZE VScroll::getClientSize() {
+	bool hasHorBar = mHorBar->isVisible();
+	bool hasVerBar = mVerBar->isVisible();
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getWidth() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getHeight() : 0);
+	SIZE sz = {clientWidth, clientHeight};
+	return sz;
 }
 
 
-//---------------------------VExtCalender--------------
+//---------------------------VCalender--------------
 static const int CALENDER_HEAD_HEIGHT = 30;
 VCalendar::Date::Date() {
 	mYear = mMonth = mDay = 0;
@@ -1859,41 +1945,39 @@ void VCalendar::onMouseMoveInYearMode( int x, int y ) {
 
 //-------------------VTable-------------------------------
 VTable::VTable( XmlNode *node ) : VScroll(node) {
-	mDataSize.cx = mDataSize.cy = 0;
 	mSelectedRow = -1;
 	mModel = NULL;
-	mCellRender = NULL;
-	COLORREF color = 0xE6E0B0;
-	AttrUtils::parseColor(mNode->getAttrValue("selRowBgColor"), &color);
-	mSelectBgBrush = CreateSolidBrush(color);
+	mRender = NULL;
+	mSelectBgImage = XImage::load(mNode->getAttrValue("selRowBgImage"));
+	COLORREF color = RGB(110, 120, 250);
+	AttrUtils::parseColor(mNode->getAttrValue("horLineColor"), &color);
+	mHorLinePen = CreatePen(PS_SOLID, 1, color);
 	color = RGB(110, 120, 250);
-	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
-	mLinePen = CreatePen(PS_SOLID, 1, color);
+	AttrUtils::parseColor(mNode->getAttrValue("verLineColor"), &color);
+	mVerLinePen = CreatePen(PS_SOLID, 1, color);
 }
 
 void VTable::setModel(VTableModel *model) {
 	mModel = model;
 }
 
-void VTable::setCellRender(CellRender *render) {
-	mCellRender = render;
+void VTable::setRender(Render *render) {
+	mRender = render;
 }
 
 void VTable::onPaint( Msg *m ) {
 	HDC dc = m->paint.dc;
 	SIZE sz = getClientSize();
-	if (mModel != NULL) {
-		// draw background
-		eraseBackground(m);
-		int hh = mModel->getHeaderHeight();
-		drawData(dc, 0, hh, sz.cx, sz.cy);
-		drawHeader(dc, mWidth, hh);
-	} else {
-		eraseBackground(m);
+	eraseBackground(m);
+	if (mModel == NULL) {
+		return;
 	}
+	int hh = mModel->getHeaderHeight();
+	drawData(dc, 0, hh, sz.cx, sz.cy);
+	drawHeader(dc, sz.cx, hh);
 }
 
-bool VTable::dispatchMouseMessage( Msg *msg ) {
+bool VTable::onMouseEvent( Msg *msg ) {
 	if (msg->mId == Msg::LBUTTONDOWN) {
 		if (mEnableFocus) setFocus();
 		int col = 0;
@@ -1904,35 +1988,34 @@ bool VTable::dispatchMouseMessage( Msg *msg ) {
 		}
 		return true;
 	}
-	return VScroll::dispatchMouseMessage(msg);
+	return VScroll::onMouseEvent(msg);
 }
 
-
 void VTable::drawHeader( HDC dc, int w, int h) {
-	if (mModel == NULL) return;
+	if (mModel == NULL || h <= 0) {
+		return;
+	}
+	XImage *bg = mModel->getHeaderBgImage();
+	if (bg != NULL) {
+		bg->draw(dc, 0, 0, mWidth, h);
+	}
 	SelectObject(dc, getFont());
 	SetBkMode(dc, TRANSPARENT);
 	
 	int x = -mHorBar->getPos();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		VTableModel::HeaderData *hd = mModel->getHeaderData(i);
-		if (hd == NULL) {
-			continue;
+		int cw = mModel->getColumnWidth(i, w);
+		if (mRender == NULL || !mRender->onDrawColumn(dc, i, x, 0, cw, h)) {
+			drawColumn(dc, i, x, 0, cw, h);
 		}
-		RECT r = {x, 0, x + mColsWidth[i], h};
-		if (hd->mBgImage != NULL) {
-			hd->mBgImage->draw(dc, x, 0, mColsWidth[i], h);
-		}
-		if (hd->mText != NULL) {
-			DrawText(dc, hd->mText, strlen(hd->mText), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
-		}
-		x += mColsWidth[i];
+		x += cw;
 	}
 	// draw split line
-	x = x = -mHorBar->getPos();
-	HGDIOBJ old = SelectObject(dc, mLinePen);
+	x = -mHorBar->getPos();
+	HGDIOBJ old = SelectObject(dc, mVerLinePen);
 	for (int i = 0; i < mModel->getColumnCount() - 1; ++i) {
-		x += mColsWidth[i];
+		int cw = mModel->getColumnWidth(i, w);
+		x += cw;
 		MoveToEx(dc, x, 2, NULL);
 		LineTo(dc, x, h - 4);
 	}
@@ -1942,6 +2025,20 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 		LineTo(dc, x, h - 4);
 	}
 	SelectObject(dc, old);
+}
+
+void VTable::drawColumn(HDC dc, int col, int x, int y, int w, int h) {
+	VTableModel::HeaderData *hd = mModel->getHeaderData(col);
+	if (hd == NULL) {
+		return;
+	}
+	RECT r = {x, y, x + w, y + h};
+	if (hd->mBgImage != NULL) {
+		hd->mBgImage->draw(dc, x, 0, w, h);
+	}
+	if (hd->mText != NULL) {
+		DrawText(dc, hd->mText, strlen(hd->mText), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
+	}
 }
 
 void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
@@ -1962,48 +2059,49 @@ void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 }
 
 void VTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
-	int rh = mModel->getRowHeight(row);
-	if (mSelectedRow == row) {
-		RECT r = {x + 1, y + 1, x + w - 1, y + h - 1};
-		FillRect(dc, &r, mSelectBgBrush);
+	if (mSelectedRow == row && mSelectBgImage != NULL) {
+		mSelectBgImage->draw(dc, x + 1, y + 1, w - 1, h - 1);
 	}
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		if (mCellRender == NULL) {
-			drawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
-		} else {
-			mCellRender->onDrawCell(dc, row, i, x + 1, y + 1, mColsWidth[i] - 1, rh - 1);
+		if (mRender == NULL || !mRender->onDrawCell(dc, row, i, x + 1, y + 1, w - 1, h - 1)) {
+			drawCell(dc, row, i, x + 1, y + 1, w - 1, h - 1);
 		}
-		x += mColsWidth[i];
+		x += w;
 	}
 }
 
 void VTable::drawCell(HDC dc, int row, int col, int x, int y, int w, int h ) {
 	VTableModel::CellData *data = mModel->getCellData(row, col);
-	if (data == NULL) {
+	if (data == NULL || data->mText == NULL) {
 		return;
 	}
 	char *txt = data->mText;
-	int len = txt == NULL ? 0 : strlen(txt);
 	RECT r = {x + 5, y, x + w - 5, y + h};
-	DrawText(dc, txt, len, &r, DT_SINGLELINE | DT_VCENTER);
+	DrawText(dc, txt, strlen(txt), &r, DT_SINGLELINE | DT_VCENTER);
 }
 
 void VTable::drawGridLine( HDC dc, int from, int to, int y ) {
+	if (mModel == NULL) {
+		return;
+	}
 	SIZE sz = getClientSize();
-	HGDIOBJ old = SelectObject(dc, mLinePen);
+	HGDIOBJ old = SelectObject(dc, mHorLinePen);
+	// draw hor-line
 	int y2 = y;
 	for (int i = from; i <= to; ++i) {
 		y2 += mModel->getRowHeight(i);
 		MoveToEx(dc, 0, y2, NULL);
 		LineTo(dc, sz.cx, y2);
 	}
+	// draw ver-line
+	SelectObject(dc, mVerLinePen);
 	int x = -mHorBar->getPos();
 	y = mModel->getHeaderHeight();
 	for (int i = 0; i <= mModel->getColumnCount(); ++i) {
 		if (i == mModel->getColumnCount()) --x;
 		MoveToEx(dc, x, y, NULL);
 		LineTo(dc, x, sz.cy + y);
-		x += mColsWidth[i];
+		x += mModel->getColumnWidth(i, sz.cx);
 	}
 	SelectObject(dc, old);
 }
@@ -2033,31 +2131,37 @@ void VTable::getVisibleRows( int *from, int *to ) {
 void VTable::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	if (mModel == NULL) return;
-	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
-	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
 
-	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, mMesureHeight | MS_ATMOST);
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
-	mesureColumn(clientWidth, clientHeight);
-
-	mDataSize = calcDataSize();
-	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
-	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight - mModel->getHeaderHeight());
-
-	mHorBar->setVisibility(mDataSize.cx > clientWidth ? VISIBLE : INVISIBLE);
-	mVerBar->setVisibility(mVerBar->getMax() > mVerBar->getPage() ? VISIBLE : INVISIBLE);
+	bool hasHorBar = mHorBar->isVisible();
+	bool hasVerBar = mVerBar->isVisible();
+	mHorBar->onMeasure((mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)) | MS_ATMOST, mMesureHeight | MS_ATMOST);
+	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, (mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)) | MS_ATMOST);
 	
-	if ((mDataSize.cx > clientWidth) != hasHorBar || (mVerBar->getMax() > mVerBar->getPage()) != hasVerBar) {
+	/*int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
+	mesureColumn(clientWidth, clientHeight);*/
+
+	SIZE clientSize = getClientSize();
+	SIZE cs = mDataSize = calcDataSize();
+	mHorBar->setMaxAndPage(cs.cx, clientSize.cx);
+	mVerBar->setMaxAndPage(cs.cy, clientSize.cy);
+
+	mHorBar->setVisible(cs.cx > clientSize.cx);
+	mVerBar->setVisible(cs.cy > clientSize.cy);
+
+	if (mHorBar->isVisible() != hasHorBar || mVerBar->isVisible() != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
 	}
 }
 
 SIZE VTable::calcDataSize() {
 	SIZE sz = {0};
+	if (mModel == NULL) {
+		return sz;
+	}
+	SIZE client = getClientSize();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		sz.cx += mColsWidth[i];
+		sz.cx += mModel->getColumnWidth(i, client.cx);
 	}
 	int rc = mModel->getRowCount();
 	for (int i = 0; i < rc; ++i) {
@@ -2067,16 +2171,19 @@ SIZE VTable::calcDataSize() {
 }
 
 SIZE VTable::getClientSize() {
-	bool hasHorBar = mHorBar->getVisibility() == VISIBLE;
-	bool hasVerBar = mVerBar->getVisibility() == VISIBLE;
+	bool hasHorBar = mHorBar->isVisible();
+	bool hasVerBar = mVerBar->isVisible();
 	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
 	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
-	if (mModel != NULL) clientHeight -= mModel->getHeaderHeight();
+	if (mModel != NULL) {
+		clientHeight -= mModel->getHeaderHeight();
+	}
 	SIZE sz = {clientWidth, clientHeight};
 	return sz;
 }
 
 void VTable::mesureColumn(int width, int height) {
+#if 0
 	int widthAll = 0, weightAll = 0;
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
 		VTableModel::ColumnWidth cw = mModel->getColumnWidth(i);
@@ -2096,21 +2203,22 @@ void VTable::mesureColumn(int width, int height) {
 	if (nw < width && mModel->getColumnCount() > 0) {
 		mColsWidth[mModel->getColumnCount() - 1] += width - nw;
 	}
+#endif
 }
 
 void VTable::onLayoutChildren( int width, int height ) {
-	if (mModel == NULL) {
-		return;
-	}
 	mHorBar->onLayout(0, mHeight - mHorBar->getMesureHeight(),
 		mHorBar->getMesureWidth(), mHorBar->getMesureHeight());
-	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), 
-		mModel->getHeaderHeight(), 
+
+	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), mModel->getHeaderHeight(),
 		mVerBar->getMesureWidth(), mVerBar->getMesureHeight());
 }
 
 int VTable::findCell( int x, int y, int *col ) {
-	if (mModel == NULL) return -1;
+	if (mModel == NULL) {
+		return -1;
+	}
+	SIZE sz = getClientSize();
 	int row = -1;
 	int y2 = -mVerBar->getPos() + mModel->getHeaderHeight();
 	for (int i = 0; i < mModel->getRowCount(); ++i) {
@@ -2123,96 +2231,95 @@ int VTable::findCell( int x, int y, int *col ) {
 	if (row != -1 && col != NULL) {
 		int x2 = -mHorBar->getPos();
 		for (int i = 0; i < mModel->getColumnCount(); ++i) {
-			if (x2 <= x && x2 + mColsWidth[i] > x) {
+			if (x2 <= x && x2 + mModel->getColumnWidth(i, sz.cx) > x) {
 				*col = i;
 				break;
 			}
-			x2 += mColsWidth[i];
+			x2 += mModel->getColumnWidth(i, sz.cx);
 		}
 	}
 	return row;
 }
 
 VTable::~VTable() {
-	if (mSelectBgBrush) DeleteObject(mSelectBgBrush);
 }
 
 
-#if 0
-//----------------------------VExtList---------------------
-VExtList::VExtList( XmlNode *node ) : VExtScroll(node) {
+//----------------------------VList---------------------
+VList::VList( XmlNode *node ) : VScroll(node) {
 	mModel = NULL;
 	mItemRender = NULL;
-	mDataSize.cx = mDataSize.cy = 0;
-	mMouseTrackItem = -1;
-	COLORREF color = RGB(0xA2, 0xB5, 0xCD);
-	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
-	mSelectBgBrush = CreateSolidBrush(color);
+	mTrackItem = -1;
+	mSelectItem = -1;
+	mSelBgImage = XImage::load(mNode->getAttrValue("selBgImage"));
+	if (mSelBgImage == NULL) {
+		mSelBgImage = XImage::create(1, 1);
+		mSelBgImage->fillColor(RGB(0xA2, 0xB5, 0xCD));
+	}
+	mTrackBgImage = XImage::load(mNode->getAttrValue("trackBgImage"));
+	if (mTrackBgImage == NULL) {
+		mTrackBgImage = XImage::create(1, 1);
+		mTrackBgImage->fillColor(RGB(0xA2, 0xB5, 0xBD));
+	}
+	mEnableTrack = true;
 }
-VExtList::~VExtList() {
-	DeleteObject(mSelectBgBrush);
+
+VList::~VList() {
 }
-bool VExtList::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
-		// eraseBackground((HDC)wParam);
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		HDC memDc = CreateCompatibleDC(dc);
+
+
+void VList::onPaint(Msg *m) {
+	eraseBackground(m);
+	if (mModel != NULL) {
 		SIZE sz = getClientSize();
-		if (mMemBuffer == NULL) {
-			mMemBuffer = XImage::create(mWidth, mHeight, 24);
+		drawData(m->paint.dc, 0, 0, sz.cx, sz.cy);
+	}
+}
+
+bool VList::onMouseEvent(Msg *msg) {
+	if (mModel == NULL) {
+		return false;
+	}
+	if (msg->mId == Msg::LBUTTONDOWN) {
+		if (mEnableFocus) setFocus();
+		int oldSelItem = mSelectItem;
+		int idx = findItem(msg->mouse.x, msg->mouse.y);
+		if (idx >= 0) {
+			VListModel::ItemData *data = mModel->getItemData(idx);
+			if (data == NULL) {
+				return true;
+			}
+			if (data->mSelectable) {
+				mSelectItem = idx;
+			}
 		}
-		SelectObject(memDc, mMemBuffer->getHBitmap());
-		if (mModel != NULL) {
-			// draw background
-			eraseBackground(memDc);
-			drawData(memDc, 0, 0, sz.cx, sz.cy);
-			// copy data
-			RECT dst = {0};
-			RECT pr = {0, 0, sz.cx, sz.cy};
-			IntersectRect(&dst, &ps.rcPaint, &pr);
-			BitBlt(dc, dst.left, dst.top, dst.right-dst.left, dst.bottom-dst.top, memDc, dst.left, dst.top, SRCCOPY);
-		} else {
-			eraseBackground(dc);
+		if (mSelectItem != oldSelItem) {
+			repaint();
+			updateWindow();
+			if (mListener != NULL) {
+				Msg m = *msg;
+				m.mId = Msg::SELECT_ITEM;
+				m.def.wParam = msg->mouse.x;
+				m.def.lParam = msg->mouse.y;
+				mListener->onEvent(this, &m);
+			}
 		}
-		DeleteObject(memDc);
-		EndPaint(mWnd, &ps);
 		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
-		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
-		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		pt.x = pt.x + mHorBar->getPos();
-		pt.y = pt.y - getItemY(idx);
-		SendMessage(mWnd, MSG_LIST_CLICK_ITEM, idx, (LPARAM)&pt);
+	} else if (msg->mId == Msg::MOUSE_WHEEL) {
+		VScroll::dispatchMouseMessage(msg);
+		updateTrackItem(msg->mouse.x, msg->mouse.y);
 		return true;
-	} else if (msg == WM_LBUTTONDBLCLK) {
-		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
-		int idx = findItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		pt.x = pt.x + mHorBar->getPos();
-		pt.y = pt.y - getItemY(idx);
-		SendMessage(mWnd, MSG_LIST_DBCLICK_ITEM, idx, (LPARAM)&pt);
+	} else if (msg->mId == Msg::MOUSE_MOVE) {
+		updateTrackItem(msg->mouse.x, msg->mouse.y);
 		return true;
-	} 
-	else if (msg == WM_MOUSEMOVE) {
-		updateTrackItem((short)LOWORD(lParam), (short)HIWORD(lParam));
-		return VExtScroll::wndProc(msg, wParam, lParam, result);;
-	} else if (msg == WM_MOUSEHWHEEL || msg == WM_MOUSEWHEEL || msg == MSG_MOUSEWHEEL_BUBBLE) {
-		VExtScroll::wndProc(msg, wParam, lParam, result);
-		POINT pt;
-		GetCursorPos(&pt);
-		ScreenToClient(mWnd, &pt);
-		updateTrackItem(pt.x, pt.y);
-		return true;
-	} else if (msg == WM_MOUSELEAVE) {
+	} else if (msg->mId == Msg::MOUSE_LEAVE || msg->mId == Msg::MOUSE_CANCEL) {
 		updateTrackItem(-1, -1);
 		return true;
 	}
-	return VExtScroll::wndProc(msg, wParam, lParam, result);
+	return VScroll::onMouseEvent(msg);
 }
-SIZE VExtList::calcDataSize() {
+
+SIZE VList::calcDataSize() {
 	SIZE cs = getClientSize();
 	SIZE sz = {cs.cx, 0};
 	int rc = mModel ? mModel->getItemCount() : 0;
@@ -2221,64 +2328,29 @@ SIZE VExtList::calcDataSize() {
 	}
 	return sz;
 }
-void VExtList::moveChildrenPos( int dx, int dy ) {
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-SIZE VExtList::getClientSize() {
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
-	SIZE sz = {clientWidth, clientHeight};
+
+SIZE VList::getClientSize() {
+	int clientWidth = mMesureWidth - (mVerBar->isVisible() ? mVerBar->getWidth() : 0);
+	SIZE sz = {clientWidth, mMesureHeight};
 	return sz;
 }
-void VExtList::onMeasure( int widthSpec, int heightSpec ) {
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
-
-	mDataSize = calcDataSize();
-	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
-	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight);
-	if (mHorBar->isNeedShow())
-		WND_SHOW(mHorBar->getWnd());
-	else
-		WND_HIDE(mHorBar->getWnd());
-	if (mVerBar->isNeedShow())
-		WND_SHOW(mVerBar->getWnd());
-	else
-		WND_HIDE(mVerBar->getWnd());
-
-	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
-		onMeasure(widthSpec, heightSpec);
-}
-void VExtList::onLayout( int width, int height ) {
-	if (mModel == NULL) {
-		return;
-	}
-	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
-}
-
-void VExtList::notifyModelChanged() {
+void VList::notifyModelChanged() {
 	if (mMesureWidth == 0 || mMesureHeight == 0) {
 		return;
 	}
 	onMeasure(mMesureWidth | MS_FIX, mMesureHeight | MS_FIX);
-	onLayout(mWidth, mHeight);
-	InvalidateRect(mWnd, NULL, TRUE);
+	onLayout(mX, mY, mWidth, mHeight);
+	repaint();
 }
 
-void VExtList::drawData( HDC memDc, int x, int y, int w, int h ) {
-	if (mModel == NULL) return;
-	SelectObject(memDc, getFont());
-	SetBkMode(memDc, TRANSPARENT);
-	if (mAttrFlags & AF_COLOR) SetTextColor(memDc, mAttrColor);
+void VList::drawData( HDC dc, int x, int y, int w, int h ) {
+	if (mModel == NULL) {
+		return;
+	}
+	SelectObject(dc, getFont());
+	SetBkMode(dc, TRANSPARENT);
+	if (mAttrFlags & AF_COLOR) SetTextColor(dc, mAttrColor);
 
 	int from = 0, num = 0;
 	getVisibleRows(&from, &num);
@@ -2289,27 +2361,31 @@ void VExtList::drawData( HDC memDc, int x, int y, int w, int h ) {
 	x += -mHorBar->getPos();
 	for (int i = from; i < from + num && i >= 0; ++i) {
 		int rh = mModel->getItemHeight(i);
-		if (mModel->isMouseTrack() && mMouseTrackItem == i) {
+		if (mEnableTrack && mTrackItem == i) {
+			// draw track row background
+			mTrackBgImage->draw(dc, x, y, w, rh);
+		} else if (mSelectItem == i) {
 			// draw select row background
-			RECT r = {x, y, w - x, y + rh};
-			FillRect(memDc, &r, mSelectBgBrush);
+			mSelBgImage->draw(dc, x, y, w, rh);
 		}
 		if (mItemRender == NULL) {
-			drawItem(memDc, i, x, y, w - x, rh);
+			drawItem(dc, i, x, y, w, rh);
 		} else {
-			mItemRender->onDrawItem(memDc, i, x, y, w - x, rh);
+			mItemRender->onDrawItem(dc, i, x, y, w, rh);
 		}
 		y += rh;
 	}
 }
-void VExtList::drawItem( HDC dc, int item, int x, int y, int w, int h ) {
-	XListModel::ItemData *data = mModel->getItemData(item);
+
+void VList::drawItem( HDC dc, int item, int x, int y, int w, int h ) {
+	VListModel::ItemData *data = mModel->getItemData(item);
 	if (data != NULL && data->mText != NULL) {
 		RECT r = {x + 10, y, x + w - 10, y + h};
 		DrawText(dc, data->mText, strlen(data->mText), &r, DT_SINGLELINE | DT_VCENTER);
 	}
 }
-void VExtList::getVisibleRows( int *from, int *num ) {
+
+void VList::getVisibleRows( int *from, int *num ) {
 	*from = *num = 0;
 	if (mModel == NULL) {
 		return;
@@ -2330,19 +2406,22 @@ void VExtList::getVisibleRows( int *from, int *num ) {
 		}
 	}
 }
-void VExtList::setModel( XListModel *model ) {
+void VList::setModel( VListModel *model ) {
 	if (mModel != model) {
 		mModel = model;
 		notifyModelChanged();
 	}
 }
-XListModel *VExtList::getModel() {
+
+VListModel *VList::getModel() {
 	return mModel;
 }
-void VExtList::setItemRender( ItemRender *render ) {
+
+void VList::setItemRender( ItemRender *render ) {
 	mItemRender = render;
 }
-int VExtList::findItem( int x, int y ) {
+
+int VList::findItem( int x, int y ) {
 	if (mModel == NULL || x < 0 || y < 0) {
 		return -1;
 	}
@@ -2358,7 +2437,7 @@ int VExtList::findItem( int x, int y ) {
 	return row;
 }
 
-int VExtList::getItemY(int item) {
+int VList::getItemY(int item) {
 	if (mModel == NULL) {
 		return 0;
 	}
@@ -2370,714 +2449,39 @@ int VExtList::getItemY(int item) {
 	return y;
 }
 
-void VExtList::updateTrackItem( int x, int y ) {
-	if (mModel == NULL || !mModel->isMouseTrack())
-		return;
-	int old = mMouseTrackItem;
+void VList::updateTrackItem( int x, int y ) {
+	int old = mTrackItem;
+	if (mModel == NULL || !mEnableTrack) {
+		mTrackItem = -1;
+		goto _end;
+	}
+	
 	int idx = findItem(x, y);
 	if (idx < 0) {
-		mMouseTrackItem = -1;
+		mTrackItem = -1;
 	} else {
-		XListModel::ItemData *item = mModel->getItemData(idx);
+		VListModel::ItemData *item = mModel->getItemData(idx);
 		if (item != NULL && item->mSelectable) {
-			mMouseTrackItem = idx;
+			mTrackItem = idx;
 		}
 	}
-	if (old != mMouseTrackItem) {
-		int sy = getItemY(old);
-		int ey = getItemY(mMouseTrackItem);
-		int sh = old >= 0 ? mModel->getItemHeight(old) : 0;
-		int eh = mMouseTrackItem >= 0 ? mModel->getItemHeight(mMouseTrackItem) : 0;
-		RECT sr = {0, sy, mWidth, sy + sh};
-		RECT er = {0, ey, mWidth, ey + eh};
-		SIZE sz = getClientSize();
-		RECT dest = {0}, client = {0, 0, sz.cx, sz.cy}, rr = {0};
-		UnionRect(&dest, &sr, &er);
-		IntersectRect(&rr, &dest, &client);
-		InvalidateRect(mWnd, &rr, TRUE);
-		UpdateWindow(mWnd);
+
+	_end:
+	if (old != mTrackItem) {
+		repaint();
 	}
 }
 
-int VExtList::getMouseTrackItem() {
-	return mMouseTrackItem;
+int VList::getTrackItem() {
+	return mTrackItem;
 }
 
-//------------------------------XArrowButton--------------------
-VExtArrowButton::VExtArrowButton(XmlNode *node) : VExtButton(node) {
-	mMouseAtArrow = false;
-	mArrowWidth = 0;
-	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
-		XmlNode::Attr *attr = mNode->getAttr(i);
-		if (strcmp(attr->mName, "arrowPushImage") == 0) {
-			mStateImages[ARROW_IMG_PUSH] = XImage::load(attr->mValue);
-		} else if (strcmp(attr->mName, "arrowHoverImage") == 0) {
-			mStateImages[ARROW_IMG_HOVER] = XImage::load(attr->mValue);
-		} else if (strcmp(attr->mName, "arrowWidth") == 0) {
-			mArrowWidth = AttrUtils::parseInt(attr->mValue);
-		}
-	}
+void VList::setEnableTrack(bool enable) {
+	mEnableTrack = enable;
 }
 
-bool VExtArrowButton::wndProc(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result) {
-	if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		RECT r = {0, 0, mWidth, mHeight};
-
-		XImage *cur = mStateImages[getStateImage()];
-		if (cur != NULL) {
-			cur->draw(dc, 0, 0, mWidth, mHeight);
-		}
-		if (mAttrFlags & AF_COLOR) {
-			SetTextColor(dc, mAttrColor);
-		}
-		SetBkMode(dc, TRANSPARENT);
-		SelectObject(dc, getFont());
-		DrawText(dc, mNode->getAttrValue("text"), -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		mIsMouseDown = true;
-		mIsMouseMoving = false;
-		mIsMouseLeave = false;
-		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
-		InvalidateRect(mWnd, NULL, TRUE);
-		SetCapture(mWnd);
-		if (mEnableFocus) SetFocus(mWnd);
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		bool md = mIsMouseDown;
-		mIsMouseDown = false;
-		mIsMouseMoving = false;
-		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
-		ReleaseCapture();
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (md && PtInRect(&r, pt)) {
-			SendMessage(mWnd, MSG_COMMAND, mMouseAtArrow, 0);
-		}
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		if (! mIsMouseMoving) {
-			TRACKMOUSEEVENT a = {0};
-			a.cbSize = sizeof(TRACKMOUSEEVENT);
-			a.dwFlags = TME_LEAVE;
-			a.hwndTrack = mWnd;
-			TrackMouseEvent(&a);
-		}
-
-		StateImage bi = getStateImage();
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (PtInRect(&r, pt)) {
-			mIsMouseMoving = true;
-			mIsMouseLeave = false;
-		} else {
-			// mouse leave ( mouse is down now)
-			mIsMouseMoving = false;
-			mIsMouseLeave = true;
-		}
-		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
-		if (bi != getStateImage()) {
-			InvalidateRect(mWnd, NULL, TRUE);
-		}
-		return true;
-	} else if (msg == WM_MOUSELEAVE) {
-		mIsMouseMoving = false;
-		mIsMouseLeave = true;
-		mMouseAtArrow = isPointInArrow((short)LOWORD(lParam), (short)HIWORD(lParam));
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-
-bool VExtArrowButton::isPointInArrow(int x, int y) {
-	return y >= 0 && y < mHeight &&
-		x >= mWidth - mArrowWidth && x < mWidth;
-}
-
-VExtArrowButton::StateImage VExtArrowButton::getStateImage() {
-	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
-		return STATE_IMG_DISABLE;
-	if (mIsMouseDown && ! mIsMouseLeave) {
-		if (mMouseAtArrow)
-			return StateImage(ARROW_IMG_PUSH);
-		return STATE_IMG_PUSH;
-	}
-	if (!mIsMouseDown && mIsMouseMoving) {
-		if (mMouseAtArrow)
-			return StateImage(ARROW_IMG_HOVER);
-		return STATE_IMG_HOVER;
-	}
-	if (mIsMouseLeave) {
-		return STATE_IMG_NORMAL;
-	}
-
-	return STATE_IMG_NORMAL;
-}
-
-//------------------------------VExtComboBox--------------------
-VExtComboBox::VExtComboBox( XmlNode *node ) : VExtComponent(node) {
-	memset(mStateImages, 0, sizeof(mStateImages));
-	mIsMouseDown = false;
-	mIsMouseMoving = false;
-	mIsMouseLeave = false;
-	mEditNode = new XmlNode("ExtLineEdit", mNode);
-	mPopupNode = new XmlNode("ExtPopup", mNode);
-	mListNode = new XmlNode("ExtList", mPopupNode);
-	mEdit = new VExtLineEdit(mEditNode);
-	mPopup = new VExtPopup(mPopupNode);
-	// mPopup->setBgColor(RGB(0xF5, 0xFF, 0xFA));
-	mPopupNode->setComponent(mPopup);
-	mList = new VExtList(mListNode);
-	mListNode->setComponent(mList);
-	mList->setAttrBgColor(RGB(0xF5, 0xFF, 0xFA));
-	mPopup->setListener(this);
-	mList->setListener(this);
-	mList->setEnableFocus(false);
-
-	mArrowWidth = AttrUtils::parseInt(mNode->getAttrValue("arrowWidth"));
-	AttrUtils::parseArraySize(mNode->getAttrValue("popupSize"), (int *)&mAttrPopupSize, 2);
-	mEdit->setReadOnly(AttrUtils::parseBool(mNode->getAttrValue("readOnly")));
-	mEnableEditor = false;
-
-	mStateImages[STATE_IMG_NORMAL] = XImage::load(mNode->getAttrValue("normalImage"));
-	mStateImages[STATE_IMG_HOVER] = XImage::load(mNode->getAttrValue("hoverImage"));
-	mStateImages[STATE_IMG_PUSH] = XImage::load(mNode->getAttrValue("pushImage"));
-	mBoxRender = NULL;
-	mPoupShow = false;
-	mSelectItem = -1;
-}
-bool VExtComboBox::onEvent( VComponent *evtSource, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *ret ) {
-	if (msg == MSG_LIST_CLICK_ITEM) {
-		mSelectItem = wParam;
-		mPopup->close();
-		mPoupShow = false;
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
-		SendMessage(mWnd, MSG_COMBOBOX_CLICK_ITEM, wParam, lParam);
-		return true;
-	} else if (msg == MSG_POPUP_CLOSED) {
-		mPoupShow = false;
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
-		return true;
-	}
-	return false;
-}
-bool VExtComboBox::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		XImage *img = mStateImages[getStateImage()];
-		if (img != NULL) {
-			img->draw(dc, 0, 0, mWidth, mHeight);
-		}
-		if (! mEnableEditor) {
-			if (mBoxRender != NULL) {
-				mBoxRender->onDrawBox(dc, 0, 0, mWidth - mArrowWidth, mHeight);
-			} else {
-				drawBox(dc, 0, 0, mWidth - mArrowWidth, mHeight);
-			}
-		}
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		mIsMouseDown = true;
-		mIsMouseMoving = false;
-		mIsMouseLeave = false;
-		InvalidateRect(mWnd, NULL, TRUE);
-		if (mEnableFocus) SetFocus(mWnd);
-		UpdateWindow(mWnd);
-		SetCapture(mWnd);
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		mIsMouseDown = false;
-		mIsMouseMoving = false;
-		ReleaseCapture();
-		POINT pt = {(short)LOWORD(lParam), (short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (mEnableEditor) {
-			r.left = mWidth - mArrowWidth;
-		}
-		if (PtInRect(&r, pt)) {
-			openPopup();
-		}
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		if (! mIsMouseMoving) {
-			TRACKMOUSEEVENT a = {0};
-			a.cbSize = sizeof(TRACKMOUSEEVENT);
-			a.dwFlags = TME_LEAVE;
-			a.hwndTrack = mWnd;
-			TrackMouseEvent(&a);
-		}
-
-		StateImage bi = getStateImage();
-		POINT pt = {(LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam)};
-		RECT r = {0, 0, mWidth, mHeight};
-		if (mEnableEditor) {
-			r.left = mWidth - mArrowWidth;
-		}
-		if (PtInRect(&r, pt)) {
-			mIsMouseMoving = true;
-			mIsMouseLeave = false;
-		} else {
-			// mouse leave
-			mIsMouseMoving = false;
-			mIsMouseLeave = true;
-		}
-		if (bi != getStateImage()) {
-			InvalidateRect(mWnd, NULL, TRUE);
-		}
-		return true;
-	} else if (msg == WM_MOUSELEAVE) {
-		mIsMouseMoving = false;
-		mIsMouseLeave = true;
-		InvalidateRect(mWnd, NULL, TRUE);
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-void VExtComboBox::onMeasure( int widthSpec, int heightSpec ) {
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	mEdit->onMeasure((mMesureWidth - mArrowWidth) | MS_FIX, mMesureHeight | MS_FIX);
-	int pw = calcSize(mAttrPopupSize.cx, mMesureWidth | MS_ATMOST);
-	int ph = calcSize(mAttrPopupSize.cy, mMesureHeight | MS_ATMOST);
-	mPopup->onMeasure(pw | MS_FIX, ph | MS_FIX);
-	mList->onMeasure(pw | MS_FIX, ph | MS_FIX);
-}
-void VExtComboBox::onLayout( int width, int height ) {
-	mEdit->layout(0, 0, mEdit->getMesureWidth(), mEdit->getMesureHeight());
-	mPopup->layout(0, 0, mPopup->getMesureWidth(), mPopup->getMesureHeight());
-	mList->layout(0, 0, mList->getMesureWidth(), mList->getMesureHeight());
-}
-void VExtComboBox::createWnd() {
-	VExtComponent::createWnd();
-	VComponent *cc = mEdit;
-	cc->createWnd();
-	cc = mPopup;
-	cc->createWnd();
-	mList->createWnd();
-	WND_HIDE(mEdit->getWnd());
-}
-void VExtComboBox::setEnableEditor( bool enable ) {
-	mEnableEditor = enable;
-	if (enable) WND_SHOW(mEdit->getWnd());
-	else WND_HIDE(mEdit->getWnd());
-}
-VExtList * VExtComboBox::getExtList() {
-	return mList;
-}
-void VExtComboBox::setBoxRender( BoxRender *r ) {
-	mBoxRender = r;
-}
-void VExtComboBox::drawBox( HDC dc, int x, int y, int w, int h ) {
-	if (mSelectItem == -1 || mList->getModel() == NULL)
-		return;
-	XListModel::ItemData *data = mList->getModel()->getItemData(mSelectItem);
-	if (data == NULL || data->mText == NULL)
-		return;
-	SetBkMode(dc, TRANSPARENT);
-	SelectObject(dc, getFont());
-	RECT r = {x + 10, y, x + w, y + h};
-	DrawText(dc, data->mText, strlen(data->mText), &r, DT_VCENTER | DT_SINGLELINE);
-}
-void VExtComboBox::openPopup() {
-	POINT pt = {0, mHeight};
-	ClientToScreen(mWnd, &pt);
-	mPoupShow = true;
-	InvalidateRect(mWnd, NULL, TRUE);
-	UpdateWindow(mWnd);
-	mPopup->show(pt.x, pt.y);
-}
-VExtComboBox::StateImage VExtComboBox::getStateImage() {
-	if (GetWindowLong(mWnd, GWL_STYLE) & WS_DISABLED)
-		return STATE_IMG_DISABLE;
-	if (mPoupShow) {
-		return STATE_IMG_PUSH;
-	}
-	if (mIsMouseDown && ! mIsMouseLeave) {
-		return STATE_IMG_PUSH;
-	}
-	if (!mIsMouseDown && mIsMouseMoving) {
-		return STATE_IMG_HOVER;
-	}
-	if (mIsMouseLeave) {
-		return STATE_IMG_NORMAL;
-	}
-	return STATE_IMG_NORMAL;
-}
-int VExtComboBox::getSelectItem() {
-	return mSelectItem;
-}
-void VExtComboBox::setSelectItem(int idx) {
-	mSelectItem = idx;
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-VExtComboBox::~VExtComboBox() {
-	delete mEdit;
-	delete mPopup;
-	delete mList;
-	delete mEditNode;
-	delete mPopupNode;
-	delete mListNode;
-}
-//--------------------MenuItem--------------------
-VExtMenuItem::VExtMenuItem(const char *name, char *text) {
-	mName[0] = 0;
-	mText = text;
-	mActive = true;
-	mChild = NULL;
-	mSeparator = false;
-	mVisible = true;
-	mCheckable = false;
-	mChecked = false;
-	if (name) strcpy(mName, name);
-}
-VExtMenuModel::VExtMenuModel() {
-	mCount = 0;
-	memset(mItems, 0, sizeof(mItems));
-	mWidth = 150;
-}
-void VExtMenuModel::add( VExtMenuItem *item ) {
-	insert(mCount, item);
-}
-void VExtMenuModel::insert( int pos, VExtMenuItem *item ) {
-	if (pos < 0 || pos > mCount || item == NULL)
-		return;
-	for (int i = mCount - 1; i >= pos; --i) {
-		mItems[i + 1] = mItems[i];
-	}
-	mItems[pos] = item;
-	++mCount;
-}
-int VExtMenuModel::getCount() {
-	return mCount;
-}
-VExtMenuItem * VExtMenuModel::get( int idx ) {
-	if (idx >= 0 && idx < mCount)
-		return mItems[idx];
-	return NULL;
-}
-VExtMenuModel::~VExtMenuModel() {
-	for (int i = 0; i < mCount; ++i) {
-		delete mItems[i];
-	}
-	free(mItems);
-}
-
-VExtMenuItem * VExtMenuModel::findByName( const char *name ) {
-	if (name == NULL)
-		return NULL;
-	for (int i = 0; i < mCount; ++i) {
-		VExtMenuItem *item = mItems[i];
-		if (strcmp(name, item->mName) == 0) {
-			return item;
-		}
-		if (item->mChild != NULL) {
-			item = item->mChild->findByName(name);
-			if (item != NULL) return item;
-		}
-	}
-	return NULL;
-}
-
-int VExtMenuModel::getItemHeight(int pos) {
-	if (pos < 0 || pos >= mCount) {
-		return 0;
-	}
-	if (mItems[pos]->mSeparator) {
-		return 5;
-	}
-	return 25;
-}
-
-int VExtMenuModel::getWidth() {
-	return mWidth;
-}
-
-int VExtMenuModel::getHeight() {
-	int h = 0;
-	for (int i = 0; i < mCount; ++i) {
-		VExtMenuItem *item = mItems[i];
-		if (! item->mVisible) continue;
-		h += getItemHeight(i);
-	}
-	return h;
-}
-
-VExtMenu::VExtMenu( XmlNode *node, VExtMenuManager *mgr) : VExtComponent(node) {
-	strcpy(mClassName, "VExtMenu");
-	mManager = mgr;
-	mSelectItem = -1;
-	mModel = NULL;
-	mAttrFlags |= AF_BG_COLOR;
-	mAttrBgColor = RGB(0xfa, 0xfa, 0xfa);
-	mSeparatorPen = CreatePen(PS_SOLID, 1, RGB(0xcc, 0xcc, 0xcc));
-	mCheckedPen = CreatePen(PS_SOLID, 1, RGB(0x64, 0x95, 0xED));
-	mSelectBrush = CreateSolidBrush(RGB(0xB2, 0xDF, 0xEE));
-	createWnd();
-}
-void VExtMenu::createWnd() {
-	MyRegisterClassV(mInstance, mClassName);
-	// mID = generateWndId();  // has no id
-	HWND owner = mNode->getRoot()->getComponent()->getWnd();
-	mWnd = CreateWindow(mClassName, NULL, WS_POPUP, 0, 0, 0, 0, owner, NULL, mInstance, this);
-	SetWindowLong(mWnd, GWL_USERDATA, (LONG)this);
-	applyAttrs();
-}
-bool VExtMenu::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_SIZE) {
-		return true;
-	} else if (msg == WM_LBUTTONUP) {
-		int x = (short)(LOWORD(lParam)), y = (short)(HIWORD(lParam));
-		POINT pt = {x, y};
-		RECT r = {0};
-		GetClientRect(mWnd, &r);
-		if (! PtInRect(&r, pt)) {
-			return true;
-		}
-		int idx = getItemIndexAt(x, y);
-		if (idx < 0) return true;
-		VExtMenuItem *item = mModel->get(idx);
-		if (item == NULL) return true;
-		if (item->mSeparator) return true;
-		if (! item->mActive) return true;
-		if (item->mChild && item->mChild->getCount() > 0) return true;
-		if (item->mCheckable) item->mChecked = !item->mChecked;
-		// send click menu item msg
-		mManager->notifyItemClicked(item);
-		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		drawItems(dc);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_MOUSEACTIVATE) {
-		*result = MA_NOACTIVATE; // 鼠标点击时，不活动
-		return true;
-	} else if (msg == WM_MOUSEMOVE) {
-		int x = (short)(LOWORD(lParam)), y = (short)(HIWORD(lParam));
-		int old = mSelectItem;
-		mSelectItem = getItemIndexAt(x, y);
-		if (old == mSelectItem || mModel == NULL)
-			return true;
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
-		VExtMenuItem *oldItem = mModel->get(old);
-		VExtMenuItem *item = mModel->get(mSelectItem);
-		if (oldItem != NULL && oldItem->mChild != NULL && oldItem->mChild->getCount() > 0) {
-			mManager->closeMenu(oldItem->mChild);
-		}
-		if (item && item->mChild != NULL && item->mChild->getCount() > 0) {
-			// notify to open sub menu
-			RECT r = getItemRect(mSelectItem);
-			POINT pt = {r.right, r.top};
-			ClientToScreen(mWnd, &pt);
-			mManager->openMenu(item->mChild, pt.x, pt.y);
-		}
-		return true;
-	}
-	return VExtComponent::wndProc(msg, wParam, lParam, result);
-}
-void VExtMenu::setModel( VExtMenuModel *model ) {
-	mModel = model;
-}
-int VExtMenu::getItemIndexAt( int x, int y ) {
-	int h = 0;
-	for (int i = 0; i < mModel->getCount(); ++i) {
-		VExtMenuItem *item = mModel->get(i);
-		if (! item->mVisible) continue;
-		h += mModel->getItemHeight(i);
-		if (h >= y) return i;
-	}
-	return -1;
-}
-void VExtMenu::calcSize() {
-	mMesureWidth = mWidth = mModel->getWidth();
-	mMesureHeight = mHeight = mModel->getHeight();
-}
-void VExtMenu::show( int screenX, int screenY ) {
-	mSelectItem = -1;
-	calcSize();
-	MoveWindow(mWnd, 0, 0, mWidth, mHeight, TRUE);
-	SetWindowPos(mWnd, 0, screenX, screenY, 0, 0, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOSIZE);
-	UpdateWindow(mWnd);
-}
-void VExtMenu::drawItems( HDC dc ) {
-	SetBkMode(dc, TRANSPARENT);
-	SelectObject(dc, getFont());
-	for (int i = 0, h = 0; i < mModel->getCount(); ++i) {
-		VExtMenuItem *item = mModel->get(i);
-		if (! item->mVisible) continue;
-		int k = mModel->getItemHeight(i);
-		if (item->mSeparator) {
-			SelectObject(dc, mSeparatorPen);
-			MoveToEx(dc, 30, h + k / 2 - 1, NULL);
-			LineTo(dc, mWidth - 10, h + k / 2 - 1);
-		} else {
-			RECT r = {30, h, mWidth - 20, h + k};
-			int len = item->mText == NULL ? 0 : strlen(item->mText);
-			if (item->mActive)
-				SetTextColor(dc, RGB(0x20, 0x20, 0x20));
-			else 
-				SetTextColor(dc, RGB(0x8E, 0x8E, 0x8E));
-			if (mSelectItem == i) {
-				RECT br = {0, h, mWidth, h + k};
-				FillRect(dc, &br, mSelectBrush);
-			}
-			if (item->mChild != NULL && item->mChild->getCount() > 0) {
-				// draw arrow
-				static HBRUSH arrowBrush = CreateSolidBrush(RGB(0x55, 0x55, 0x55));
-				int SJ = 5, LW = 15;
-				POINT pts[3] = {{mWidth-LW, h+k/2-SJ}, {mWidth-LW, h+k/2+SJ}, {mWidth-LW+(int)(SJ/0.57735), h+k/2}};
-				HRGN rgn = CreatePolygonRgn(pts, 3, ALTERNATE);
-				FillRgn(dc, rgn, arrowBrush);
-				DeleteObject(rgn);
-			}
-			if (item->mCheckable && item->mChecked) {
-				int LH = 3, x = 5, y = h + k/2-3;
-				SelectObject(dc, mCheckedPen);
-				for (int i = 0; i < 4; ++i) {
-					MoveToEx(dc, x + i, y + i, NULL);
-					LineTo(dc, x + i, y + LH + i);
-				}
-				x += 4;
-				y += 4;
-				for (int i = 0; i < 8; ++i) {
-					MoveToEx(dc, x + i, y - i, NULL);
-					LineTo(dc, x + i, y + LH - i);
-				}
-			}
-			DrawText(dc, item->mText, len, &r, DT_SINGLELINE | DT_VCENTER);
-		}
-		h += k;
-	}
-}
-RECT VExtMenu::getItemRect( int idx ) {
-	RECT r = {0, 0, mWidth, 0};
-	for (int i = 0, h = 0; i < mModel->getCount(); ++i) {
-		VExtMenuItem *item = mModel->get(i);
-		if (! item->mVisible) continue;
-		int k = mModel->getItemHeight(i);
-		if (i == idx) {
-			r.top = h;
-			r.bottom = h + k;
-			break;
-		}
-		h += k;
-	}
-	return r;
-}
-VExtMenu::~VExtMenu() {
-	DeleteObject(mSeparatorPen);
-	DeleteObject(mSelectBrush);
-	DeleteObject(mCheckedPen);
-	DestroyWindow(mWnd);
-}
-VExtMenuManager::VExtMenuManager( VExtMenuModel *mlist, VComponent *owner, ItemListener *listener ) {
-	mMenuList = mlist;
-	mOwner = owner;
-	mLevel = -1;
-	mListener = listener;
-	memset(mMenus, 0, sizeof(mMenus));
-}
-void VExtMenuManager::show( int screenX, int screenY ) {
-	if (mMenus[++mLevel] == NULL) {
-		mMenus[mLevel] = new VExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
-	}
-	mMenus[mLevel]->setModel(mMenuList);
-	mMenus[mLevel]->show(screenX, screenY);
-	messageLoop();
-}
-void VExtMenuManager::messageLoop() {
-	MSG msg = {0};
-	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
-	while (TRUE) {
-		if (GetForegroundWindow() != ownerWnd || mLevel < 0) {
-			break;
-		}
-		GetMessage(&msg, NULL, 0, 0);
-		if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN || msg.message == WM_KEYUP || msg.message == WM_SYSKEYUP || msg.message == WM_CHAR || msg.message == WM_IME_CHAR) {
-			// transfer the message to menu window
-			POINT pt = {0};
-			GetCursorPos(&pt);
-			int idx = whereIs(pt.x, pt.y);
-			if (idx >= 0) {
-				msg.hwnd = mMenus[idx]->getWnd();
-			}
-		} else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP 
-			|| msg.message == WM_RBUTTONDOWN || msg.message == WM_RBUTTONUP 
-			|| msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCLBUTTONUP) {
-			POINT pt;
-			GetCursorPos(&pt);
-			int idx = whereIs(pt.x, pt.y);
-			if (idx < 0) { // click on other window
-				break;
-			}
-			msg.hwnd = mMenus[idx]->getWnd();
-		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
-			POINT pt = {0};
-			GetCursorPos(&pt);
-			msg.hwnd = WindowFromPoint(pt);
-		} else if (msg.message == WM_QUIT) {
-			break;
-		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-	closeMenuTo(-1);
-}
-int VExtMenuManager::whereIs( int x, int y ) {
-	POINT pt = {x, y};
-	for (int i = mLevel; i >= 0; --i) {
-		RECT r;
-		GetWindowRect(mMenus[i]->getWnd(), &r);
-		if (PtInRect(&r, pt)) return i;
-	}
-	return -1;
-}
-void VExtMenuManager::closeMenuTo( int idx ) {
-	for (; mLevel > idx; --mLevel) {
-		ShowWindow(mMenus[mLevel]->getWnd(), SW_HIDE);
-	}
-}
-void VExtMenuManager::notifyItemClicked( VExtMenuItem *item ) {
-	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
-	PostMessage(ownerWnd, WM_QUIT, 0, 0);
-	if (mListener != NULL) {
-		mListener->onClickItem(item);
-	}
-}
-void VExtMenuManager::closeMenu( VExtMenuModel *mlist ) {
-	for (int i = 0; i <= mLevel; ++i) {
-		if (mMenus[i]->getMenuList() == mlist) {
-			closeMenuTo(i - 1);
-			break;
-		}
-	}
-}
-void VExtMenuManager::openMenu( VExtMenuModel *mlist, int x, int y ) {
-	if (mMenus[++mLevel] == NULL) {
-		mMenus[mLevel] = new VExtMenu(new XmlNode("ExtMenu", mOwner->getNode()), this);
-	}
-	mMenus[mLevel]->setModel(mlist);
-	mMenus[mLevel]->show(x, y);
-}
-VExtMenuManager::~VExtMenuManager() {
-	for (int i = mLevel; i >= 0; --i) {
-		delete mMenus[i];
-	}
-}
-//-------------------------VExtTreeNode--------------------
-VExtTreeNode::VExtTreeNode( const char *text ) {
+//-------------------------VTreeNode--------------------
+VTreeNode::VTreeNode( const char *text ) {
 	mText = (char *)text;
 	mParent = NULL;
 	mChildren = NULL;
@@ -3088,23 +2492,27 @@ VExtTreeNode::VExtTreeNode( const char *text ) {
 	mCheckable = false;
 	mChecked = false;
 }
-void VExtTreeNode::insert( int pos, VExtTreeNode *child ) {
+
+void VTreeNode::insert( int pos, VTreeNode *child ) {
 	if (child == NULL || pos > getChildCount()) 
 		return;
-	if (mChildren == NULL) mChildren = new std::vector<VExtTreeNode*>();
+	if (mChildren == NULL) mChildren = new std::vector<VTreeNode*>();
 	if (pos < 0) pos = getChildCount();
 	mChildren->insert(mChildren->begin() + pos, child);
 	child->mParent = this;
 }
-void VExtTreeNode::remove( int pos ) {
+
+void VTreeNode::remove( int pos ) {
 	if (pos >= 0 && pos < getChildCount()) {
 		mChildren->erase(mChildren->begin() + pos);
 	}
 }
-void VExtTreeNode::remove(VExtTreeNode *child) {
+
+void VTreeNode::remove(VTreeNode *child) {
 	remove(indexOf(child));
 }
-int VExtTreeNode::indexOf( VExtTreeNode *child ) {
+
+int VTreeNode::indexOf( VTreeNode *child ) {
 	if (child == NULL || mChildren == NULL) 
 		return -1;
 	for (int i = 0; i < mChildren->size(); ++i) {
@@ -3113,41 +2521,52 @@ int VExtTreeNode::indexOf( VExtTreeNode *child ) {
 	}
 	return -1;
 }
-int VExtTreeNode::getChildCount() {
+
+int VTreeNode::getChildCount() {
 	if (mChildren == NULL) return 0;
 	return mChildren->size();
 }
-VExtTreeNode * VExtTreeNode::getChild( int idx ) {
+
+VTreeNode * VTreeNode::getChild( int idx ) {
 	if (idx >= 0 && idx < getChildCount())
 		return mChildren->at(idx);
 	return NULL;
 }
-void * VExtTreeNode::getUserData() {
+
+void * VTreeNode::getUserData() {
 	return mUserData;
 }
-void VExtTreeNode::setUserData( void *userData ) {
+
+void VTreeNode::setUserData( void *userData ) {
 	mUserData = userData;
 }
-int VExtTreeNode::getContentWidth() {
+
+int VTreeNode::getContentWidth() {
 	return mContentWidth;
 }
-void VExtTreeNode::setContentWidth( int w ) {
+
+void VTreeNode::setContentWidth( int w ) {
 	mContentWidth = w;
 }
-bool VExtTreeNode::isExpand() {
+
+bool VTreeNode::isExpand() {
 	return mExpand;
 }
-void VExtTreeNode::setExpand( bool expand ) {
+
+void VTreeNode::setExpand( bool expand ) {
 	mExpand = expand;
 }
-char * VExtTreeNode::getText() {
+
+char * VTreeNode::getText() {
 	return mText;
 }
-void VExtTreeNode::setText( char *text ) {
+
+void VTreeNode::setText( char *text ) {
 	mText = text;
 	mContentWidth = -1;
 }
-VExtTreeNode::PosInfo VExtTreeNode::getPosInfo() {
+
+VTreeNode::PosInfo VTreeNode::getPosInfo() {
 	if (mParent == NULL) return PI_FIRST;
 	int v = 0;
 	int idx = mParent->indexOf(this);
@@ -3156,25 +2575,30 @@ VExtTreeNode::PosInfo VExtTreeNode::getPosInfo() {
 	if (idx > 0 && idx < mParent->getChildCount() - 1) v |= PI_CENTER;
 	return PosInfo(v);
 }
-int VExtTreeNode::getLevel() {
-	VExtTreeNode *p = mParent;
+
+int VTreeNode::getLevel() {
+	VTreeNode *p = mParent;
 	int level = -1;
 	for (; p != NULL; p = p->mParent) ++level;
 	return level;
 }
-VExtTreeNode * VExtTreeNode::getParent() {
+
+VTreeNode * VTreeNode::getParent() {
 	return mParent;
 }
-bool VExtTreeNode::isCheckable() {
+
+bool VTreeNode::isCheckable() {
 	return mCheckable;
 }
-void VExtTreeNode::setCheckable( bool cb ) {
+
+void VTreeNode::setCheckable( bool cb ) {
 	mCheckable = cb;
 }
-bool VExtTreeNode::isChecked() {
+bool VTreeNode::isChecked() {
 	return mChecked;
 }
-void VExtTreeNode::setChecked( bool cb ) {
+
+void VTreeNode::setChecked( bool cb ) {
 	mChecked = cb;
 }
 
@@ -3183,8 +2607,7 @@ static const int TREE_NODE_HEADER_WIDTH = 40;
 static const int TREE_NODE_BOX = 16;
 static const int TREE_NODE_BOX_LEFT = 5;
 
-VExtTree::VExtTree( XmlNode *node ) : VExtScroll(node) {
-	mDataSize.cx = mDataSize.cy = 0;
+VTree::VTree( XmlNode *node ) : VScroll(node) {
 	mModel = NULL;
 	COLORREF color = RGB(0x3A, 0x9D, 0xF9);
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
@@ -3196,7 +2619,6 @@ VExtTree::VExtTree( XmlNode *node ) : VExtScroll(node) {
 	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
 	mSelectBgBrush = CreateSolidBrush(color);
 	mSelectNode = NULL;
-	mWidthSpec = mHeightSpec = 0;
 	mNodeRender = NULL;
 	mWhenSelect = WHEN_CLICK;
 	char *ws = mNode->getAttrValue("whenSelect");
@@ -3206,81 +2628,41 @@ VExtTree::VExtTree( XmlNode *node ) : VExtScroll(node) {
 		mWhenSelect = WHEN_DBCLICK;
 	}
 }
-void VExtTree::setModel( VExtTreeNode *root ) {
+
+void VTree::setModel( VTreeNode *root ) {
 	mModel = root;
 }
-VExtTreeNode* VExtTree::getModel() {
+
+VTreeNode* VTree::getModel() {
 	return mModel;
 }
-VExtTree::~VExtTree() {
+
+VTree::~VTree() {
 	DeleteObject(mLinePen);
 	DeleteObject(mCheckPen);
 	DeleteObject(mSelectBgBrush);
 }
-bool VExtTree::wndProc( UINT msg, WPARAM wParam, LPARAM lParam, LRESULT *result ) {
-	if (msg == WM_ERASEBKGND) {
+
+void VTree::onPaint(Msg *m) {
+	SIZE sz = getClientSize();
+	// draw background
+	eraseBackground(m);
+	drawData(m->paint.dc, sz.cx, sz.cy);
+}
+
+bool VTree::onMouseEvent(Msg *msg) {
+	if (msg->mId == Msg::LBUTTONDOWN) {
+		if (mEnableFocus) setFocus();
+		onLBtnDown(msg->mouse.x, msg->mouse.y);
 		return true;
-	} else if (msg == WM_PAINT) {
-		PAINTSTRUCT ps;
-		HDC dc = BeginPaint(mWnd, &ps);
-		HDC memDc = CreateCompatibleDC(dc);
-		SIZE sz = getClientSize();
-		if (mMemBuffer == NULL) {
-			mMemBuffer = XImage::create(mWidth, mHeight, 24);
-		}
-		SelectObject(memDc, mMemBuffer->getHBitmap());
-		// draw background
-		eraseBackground(memDc);
-		drawData(memDc, sz.cx, sz.cy);
-		BitBlt(dc, 0, 0, sz.cx, sz.cy, memDc, 0, 0, SRCCOPY);
-		DeleteObject(memDc);
-		EndPaint(mWnd, &ps);
-		return true;
-	} else if (msg == WM_LBUTTONDOWN) {
-		if (mEnableFocus) SetFocus(mWnd);
-		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
-		onLBtnDown(x, y);
-		return true;
-	} else if (msg == WM_LBUTTONDBLCLK) {
-		int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
-		onLBtnDbClick(x, y);
+	} else if (msg->mId == Msg::DBCLICK) {
+		onLBtnDbClick(msg->mouse.x, msg->mouse.y);
 		return true;
 	}
-	return VExtScroll::wndProc(msg, wParam, lParam, result);
+	return VScroll::onMouseEvent(msg);
 }
-void VExtTree::onMeasure( int widthSpec, int heightSpec ) {
-	mWidthSpec = widthSpec;
-	mHeightSpec = heightSpec;
-	mMesureWidth = calcSize(mAttrWidth, widthSpec);
-	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	if (mModel == NULL) return;
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
 
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
-
-	mDataSize = calcDataSize();
-	mHorBar->setMaxAndPage(mDataSize.cx, clientWidth);
-	mVerBar->setMaxAndPage(mDataSize.cy, clientHeight);
-	if (mHorBar->isNeedShow())
-		WND_SHOW(mHorBar->getWnd());
-	else
-		WND_HIDE(mHorBar->getWnd());
-	if (mVerBar->isNeedShow())
-		WND_SHOW(mVerBar->getWnd());
-	else
-		WND_HIDE(mVerBar->getWnd());
-
-	if (mHorBar->isNeedShow() != hasHorBar || mVerBar->isNeedShow() != hasVerBar)
-		onMeasure(widthSpec, heightSpec);
-}
-void VExtTree::onLayout( int width, int height ) {
-	if (mModel == NULL) return;
-	mHorBar->layout(0, mHeight - mHorBar->getThumbSize(), mHorBar->getPage(), mHorBar->getThumbSize());
-	mVerBar->layout(mWidth - mVerBar->getThumbSize(), 0, mVerBar->getThumbSize(), mVerBar->getPage());
-}
-static void CalcDataSize(HDC dc, VExtTreeNode *n, int *nodeNum, int *maxWidth, int level) {
+static void CalcDataSize(HDC dc, VTreeNode *n, int *nodeNum, int *maxWidth, int level) {
 	*nodeNum = *nodeNum + 1;
 	if (n->getContentWidth() < 0) {
 		SIZE sztw = {0};
@@ -3301,50 +2683,49 @@ static void CalcDataSize(HDC dc, VExtTreeNode *n, int *nodeNum, int *maxWidth, i
 		}
 	}
 }
-SIZE VExtTree::calcDataSize() {
+
+SIZE VTree::calcDataSize() {
 	SIZE sz = {0};
-	if (mModel == NULL) return sz;
+	if (mModel == NULL) {
+		return sz;
+	}
 	int nn = 0, mw = 0;
-	HDC dc = GetDC(mWnd);
+	HWND wnd = getWnd();
+	HDC dc = GetDC(wnd);
 	SelectObject(dc, getFont());
 	mModel->setExpand(true); // always expand root node
 	CalcDataSize(dc, mModel, &nn, &mw, 0);
-	ReleaseDC(mWnd, dc);
+	ReleaseDC(wnd, dc);
 	sz.cy = (nn - 1) * TREE_NODE_HEIGHT;
 	sz.cx = mw + 5;
 	return sz;
 }
-SIZE VExtTree::getClientSize() {
-	bool hasHorBar = GetWindowLong(mHorBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	bool hasVerBar = GetWindowLong(mVerBar->getWnd(), GWL_STYLE) & WS_VISIBLE;
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getThumbSize() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getThumbSize() : 0);
-	SIZE sz = {clientWidth, clientHeight};
-	return sz;
-}
-void VExtTree::moveChildrenPos( int dx, int dy ) {
-	InvalidateRect(mWnd, NULL, TRUE);
-}
-void VExtTree::drawData( HDC dc, int w, int h) {
-	if (mModel == NULL) return;
+
+void VTree::drawData( HDC dc, int w, int h) {
+	if (mModel == NULL) {
+		return;
+	}
 	int y = -mVerBar->getPos();
 	SelectObject(dc, mLinePen);
 	SetBkMode(dc, TRANSPARENT);
 	SelectObject(dc, getFont());
 
 	for (int i = 0; i < mModel->getChildCount(); ++i) {
-		VExtTreeNode *child = mModel->getChild(i);
+		VTreeNode *child = mModel->getChild(i);
 		drawNode(dc, child, 0, w, h, &y);
 	}
 }
-void VExtTree::drawNode( HDC dc, VExtTreeNode *n, int level, int clientWidth, int clientHeight, int *py ) {
-	if (*py >= clientHeight) return;
+
+void VTree::drawNode( HDC dc, VTreeNode *n, int level, int clientWidth, int clientHeight, int *py ) {
+	if (*py >= clientHeight) {
+		return;
+	}
 	if (*py + TREE_NODE_HEIGHT <= 0) goto _drawChild;
 	int y = *py;
 	// draw level ver line
-	VExtTreeNode *pa = n->getParent();
+	VTreeNode *pa = n->getParent();
 	for (int i = 0, j = level - 1; i < level; ++i, --j, pa = pa->getParent()) {
-		if (pa->getPosInfo() & VExtTreeNode::PI_LAST)
+		if (pa->getPosInfo() & VTreeNode::PI_LAST)
 			continue;
 		int lx = -mHorBar->getPos() + j * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT + TREE_NODE_BOX / 2;
 		MoveToEx(dc, lx, y, NULL);
@@ -3355,12 +2736,12 @@ void VExtTree::drawNode( HDC dc, VExtTreeNode *n, int level, int clientWidth, in
 	MoveToEx(dc, x+TREE_NODE_BOX_LEFT+TREE_NODE_BOX/2, y+TREE_NODE_HEIGHT/2, NULL);
 	LineTo(dc, x+TREE_NODE_HEADER_WIDTH-2, y+TREE_NODE_HEIGHT/2);
 	// draw ver line
-	VExtTreeNode::PosInfo pi = n->getPosInfo();
+	VTreeNode::PosInfo pi = n->getPosInfo();
 	int ly = y + TREE_NODE_HEIGHT, fy = y;
-	if (pi & VExtTreeNode::PI_LAST) {
+	if (pi & VTreeNode::PI_LAST) {
 		ly = y + TREE_NODE_HEIGHT / 2;
 	}
-	if ((pi & VExtTreeNode::PI_FIRST) && level == 0) {
+	if ((pi & VTreeNode::PI_FIRST) && level == 0) {
 		fy = y + TREE_NODE_HEIGHT / 2;
 	}
 	MoveToEx(dc, x+TREE_NODE_BOX_LEFT + TREE_NODE_BOX/2, fy, NULL);
@@ -3418,22 +2799,24 @@ void VExtTree::drawNode( HDC dc, VExtTreeNode *n, int level, int clientWidth, in
 	*py = *py + TREE_NODE_HEIGHT;
 	if (n->getChildCount() > 0 && n->isExpand()) {
 		for (int i = 0; i < n->getChildCount(); ++i) {
-			VExtTreeNode *ss = n->getChild(i);
+			VTreeNode *ss = n->getChild(i);
 			drawNode(dc, ss, level + 1, clientWidth, clientHeight, py);
 		}
 	}
 }
-void VExtTree::notifyChanged() {
-	if (mWidthSpec != 0 && mHeightSpec != 0) {
-		onMeasure(mWidthSpec, mHeightSpec);
-		InvalidateRect(mWnd, NULL, TRUE);
-		UpdateWindow(mWnd);
+
+void VTree::notifyChanged() {
+	if (mMesureWidth != 0 && mMesureHeight != 0) {
+		onMeasure(mMesureWidth | MS_FIX, mMesureHeight | MS_FIX);
+		repaint();
+		updateWindow();
 	}
 }
-void VExtTree::onLBtnDown( int x, int y ) {
+
+void VTree::onLBtnDown( int x, int y ) {
 	POINT pt = {x, y};
 	int y2 = 0;
-	VExtTreeNode * node = getNodeAtY(y, &y2);
+	VTreeNode * node = getNodeAtY(y, &y2);
 	if (node == NULL) return;
 	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
 	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
@@ -3453,23 +2836,25 @@ void VExtTree::onLBtnDown( int x, int y ) {
 		notifyChanged();
 	}
 }
-static VExtTreeNode * GetNodeAtY(VExtTreeNode *n, int y, int *py) {
+
+static VTreeNode * GetNodeAtY(VTreeNode *n, int y, int *py) {
 	if (y >= *py && y < *py + TREE_NODE_HEIGHT) {
 		return n;
 	}
 	*py = *py + TREE_NODE_HEIGHT;
 	if (n->isExpand()) {
 		for (int i = 0; i < n->getChildCount(); ++i) {
-			VExtTreeNode *cc = GetNodeAtY(n->getChild(i), y, py);
+			VTreeNode *cc = GetNodeAtY(n->getChild(i), y, py);
 			if (cc != NULL) return cc;
 		}
 	}
 	return NULL;
 }
-VExtTreeNode * VExtTree::getNodeAtY( int y, int *py ) {
+
+VTreeNode * VTree::getNodeAtY( int y, int *py ) {
 	if (mModel == NULL) return NULL;
 	int y2 = -mVerBar->getPos();
-	VExtTreeNode *n = NULL;
+	VTreeNode *n = NULL;
 	for (int i = 0; i < mModel->getChildCount(); ++i) {
 		n = GetNodeAtY(mModel->getChild(i), y, &y2);
 		if (n != NULL) break;
@@ -3477,10 +2862,11 @@ VExtTreeNode * VExtTree::getNodeAtY( int y, int *py ) {
 	*py = y2;
 	return n;
 }
-void VExtTree::onLBtnDbClick( int x, int y ) {
+
+void VTree::onLBtnDbClick( int x, int y ) {
 	POINT pt = {x, y};
 	int y2 = 0;
-	VExtTreeNode * node = getNodeAtY(y, &y2);
+	VTreeNode * node = getNodeAtY(y, &y2);
 	if (node == NULL) {
 		return;
 	}
@@ -3498,10 +2884,12 @@ void VExtTree::onLBtnDbClick( int x, int y ) {
 		setSelectNode(node);
 	}
 }
-void VExtTree::setNodeRender( NodeRender *render ) {
+
+void VTree::setNodeRender( NodeRender *render ) {
 	mNodeRender = render;
 }
-static bool GetNodeRect(VExtTreeNode *n, VExtTreeNode *target, int *py) {
+
+static bool GetNodeRect(VTreeNode *n, VTreeNode *target, int *py) {
 	if (n == target) {
 		return true;
 	}
@@ -3516,7 +2904,8 @@ static bool GetNodeRect(VExtTreeNode *n, VExtTreeNode *target, int *py) {
 	}
 	return false;
 }
-bool VExtTree::getNodeRect( VExtTreeNode *node, RECT *r ) {
+
+bool VTree::getNodeRect( VTreeNode *node, RECT *r ) {
 	if (r == NULL) return false;
 	r->left = r->right = r->top = r->bottom = 0;
 	if (mModel == NULL || node == NULL) {
@@ -3537,9 +2926,9 @@ bool VExtTree::getNodeRect( VExtTreeNode *node, RECT *r ) {
 	return finded;
 }
 
-VExtTreeNode * VExtTree::getAtPoint(int x, int y) {
+VTreeNode * VTree::getAtPoint(int x, int y) {
 	int y2 = 0;
-	VExtTreeNode * node = getNodeAtY(y, &y2);
+	VTreeNode * node = getNodeAtY(y, &y2);
 	if (node == NULL) {
 		return NULL;
 	}
@@ -3550,36 +2939,35 @@ VExtTreeNode * VExtTree::getAtPoint(int x, int y) {
 	return NULL;
 }
 
-VExtTree::WhenSelect VExtTree::getWhenSelect() {
+VTree::WhenSelect VTree::getWhenSelect() {
 	return mWhenSelect;
 }
 
-void VExtTree::setWhenSelect(WhenSelect when) {
+void VTree::setWhenSelect(WhenSelect when) {
 	mWhenSelect = when;
 }
 
-VExtTreeNode * VExtTree::getSelectNode() {
+VTreeNode * VTree::getSelectNode() {
 	return mSelectNode;
 }
 
-void VExtTree::setSelectNode(VExtTreeNode *node) {
-	VExtTreeNode *old = mSelectNode;
+void VTree::setSelectNode(VTreeNode *node) {
 	if (mSelectNode == node) {
 		return;
 	}
 	mSelectNode = node;
-	InvalidateRect(mWnd, NULL, TRUE);
-	SendMessage(mWnd, MSG_TREE_SEL_CHANGED, (WPARAM)node, (LPARAM)old);
-	
-	if (node != NULL && node->isCheckable()) {
-		node->setChecked(! node->isChecked());
-		InvalidateRect(mWnd, NULL, TRUE);
-		SendMessage(mWnd, MSG_TREE_CHECK_CHANGED, (WPARAM)node, 0);
+	if (mSelectNode != NULL && mSelectNode->isCheckable()) {
+		mSelectNode->setChecked(! mSelectNode->isChecked());
 	}
+	if (mSelectNode != NULL && mListener != NULL) {
+		Msg m;
+		m.mId = Msg::SELECT_ITEM;
+		m.def.wParam = (WPARAM)mSelectNode;
+		mListener->onEvent(this, &m);
+	}
+	repaint();
 }
 
-
-#endif
 
 //--------------------------XHLineLayout--------------------------
 VHLineLayout::VHLineLayout(XmlNode *node) : VExtComponent(node) {
