@@ -32,7 +32,9 @@
 	<Radio  group="group-name" selectImage=""/> 继承自Button， group-name 有相同名称的分组，选中一个，其它的会自动不选;(必须在同一个父结点中)
 	<Calendar />
 	
-	<ScrollBar orientation="hor | ver" track="an image" thumb="an image" />
+	<HorScrollBar track="an image" thumb="an image" />
+	<VerScrollBar  />
+	
 	<Scroll />
 	<Table selRowBgImage="" horLineColor="#rrggbb" verLineColor="#rrggbb"/>  继承自Scroll
 	<List selBgImage="" trackBgImage="" />

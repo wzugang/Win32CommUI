@@ -137,6 +137,8 @@ public:
 	HFONT getFont();
 	bool isVisible();
 	void setVisible(bool visible);
+	int getTranslateX();
+	int getTranslateY();
 	virtual void setTranslateX(int tx);
 	virtual void setTranslateY(int ty);
 
@@ -161,7 +163,7 @@ public:
 	virtual void releaseFocus();
 	virtual VBaseWindow *getRoot();
 	bool hasBackground();
-	POINT getDrawPoint();
+	virtual POINT getDrawPoint();
 	RECT getDrawRect();
 
 	virtual ~VComponent();

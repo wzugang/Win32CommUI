@@ -458,6 +458,11 @@ void VScrollBar::onPaint(Msg *m) {
 	}
 	if (mThumb != NULL) {
 		XRect &rr = mThumbRect;
+		if (mHorizontal && mPage < mMax && mWidth > 0 && rr.mWidth == 0) {
+			mThumbRect = calcThumbRect();
+		}else if (!mHorizontal && mPage < mMax && mHeight > 0 && rr.mHeight == 0) {
+			mThumbRect = calcThumbRect();
+		}
 		mThumb->draw(dc, rr.mX, rr.mY, rr.mWidth, rr.mHeight);
 	}
 }
@@ -516,6 +521,21 @@ int VScrollBar::getScrollRange() {
 		return mWidth;
 	}
 	return mHeight;
+}
+
+POINT VScrollBar::getDrawPoint() {
+	POINT pt = {mX, mY};
+	int i = 0;
+	for (VComponent *cc = getParent(); cc != NULL; cc = cc->getParent(), ++i) {
+		if (i == 0) {
+			pt.x += cc->getX();
+			pt.y += cc->getY();
+		} else {
+			pt.x += cc->getX() - cc->getTranslateX();
+			pt.y += cc->getY() - cc->getTranslateY();
+		}
+	}
+	return pt;
 }
 
 //----------------------------VTextArea---------------------
@@ -1363,7 +1383,7 @@ public:
 			mScroll->setTranslateX(msg->def.wParam);
 			mScroll->repaint();
 			return true;
-		} else if (msg->mId == msg->mId == Msg::VSCROLL) {
+		} else if (msg->mId == Msg::VSCROLL) {
 			mScroll->setTranslateY(msg->def.wParam);
 			mScroll->repaint();
 			return true;
@@ -1429,9 +1449,10 @@ SIZE VScroll::calcDataSize() {
 		}
 		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
 		int y  = calcSize(child->getAttrY(), mh | MS_ATMOST);
-		childRight = x + child->getMesureWidth();
-		childBottom = y = child->getMesureHeight();
-		break;
+		int cr = x + child->getMesureWidth();
+		int cb = y + child->getMesureHeight();
+		if (cr > childRight) childRight = cr;
+		if (cb > childBottom) childBottom = cb;
 	}
 	SIZE sz = {childRight, childBottom};
 	return sz;

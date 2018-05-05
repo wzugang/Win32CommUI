@@ -112,6 +112,7 @@ protected:
 	XRect calcThumbRect();
 	int getPosBy(int start);
 	int getScrollRange();
+	virtual POINT getDrawPoint();
 protected:
 	bool mHorizontal;
 	int mMax;

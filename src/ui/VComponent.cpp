@@ -726,6 +726,14 @@ void VComponent::setTranslateY(int ty) {
 	mTranslateY = ty;
 }
 
+int VComponent::getTranslateX() {
+	return mTranslateX;
+}
+
+int VComponent::getTranslateY() {
+	return mTranslateY;
+}
+
 //----------------------------------------------------------
 void MyRegisterClassV(HINSTANCE ins, const char *className) {
 	static std::map<std::string, bool> sCache;
