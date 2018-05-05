@@ -229,6 +229,7 @@ protected:
 	virtual void onChar( wchar_t ch );
 	virtual void paste();
 	virtual void onPaint(Msg *m);
+	virtual int getRealY(int y);
 };
 
 

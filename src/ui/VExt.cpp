@@ -681,8 +681,8 @@ void VTextArea::onChar( wchar_t ch ) {
 
 void VTextArea::onLButtonDown(Msg *m) {
 	mCaretShowing = true;
-	int x = m->mouse.x + getScrollX();
-	int y = m->mouse.y + getScrollY();
+	int x = m->mouse.x + getScrollX() - mAttrPadding[0];
+	int y = m->mouse.y + getScrollY() - mAttrPadding[1];
 	mInsertPos = getPosAt(x, y);
 	if (m->mouse.vkey.shift) {
 		mEndSelPos =  mInsertPos;
@@ -1218,7 +1218,7 @@ void VMaskEdit::onPaint(Msg *m) {
 	SetBkMode(hdc, TRANSPARENT);
 	eraseBackground(m);
 	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {getScrollX() + mAttrPadding[0], 0, mWidth - getScrollX() - mAttrPadding[2], mHeight};
+	RECT r = {getScrollX() + mAttrPadding[0], 0, mWidth + getScrollX() - mAttrPadding[2], mHeight};
 	POINT pt = {0, 0};
 	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
 		SelectObject(hdc, mCaretPen);
@@ -1318,6 +1318,7 @@ void VMaskEdit::setMask( const char *mask ) {
 		}
 	}
 }
+
 bool VMaskEdit::isMaskChar( char ch ) {
 	static char MC[] = {'0', '9', 'A', 'a', 'C', 'H', 'B'};
 	for (int i = 0; i < sizeof(MC); ++i) {
@@ -1353,23 +1354,33 @@ void VPassword::paste() {
 
 void VPassword::onPaint( Msg *m ) {
 	HDC hdc = m->paint.dc;
+	eraseBackground(m);
 	// draw select range background color
 	drawSelRange(hdc, mBeginSelPos, mEndSelPos);
 	HFONT font = getFont();
 	SelectObject(hdc, font);
 	SetBkMode(hdc, TRANSPARENT);
 	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
+
+	RECT r = {getScrollX() + mAttrPadding[0], 0, mWidth + getScrollX() - mAttrPadding[2], mHeight};
 	char echo[64];
 	memset(echo, '*', mWideTextLen);
 	echo[mWideTextLen] = 0;
 	DrawText(hdc, echo, mWideTextLen, &r, DT_SINGLELINE | DT_VCENTER);
 	POINT pt = {0, 0};
-	if (mCaretShowing && getPointAt(mInsertPos, &pt)) {
+	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
 		SelectObject(hdc, mCaretPen);
-		MoveToEx(hdc, pt.x, 2, NULL);
-		LineTo(hdc, pt.x, mHeight - 4);
+		pt.x += mAttrPadding[0];
+		int sy = (mHeight - mLineHeight) / 2;
+		int ey = (mHeight + mLineHeight) / 2;
+		MoveToEx(hdc, pt.x, sy, NULL);
+		LineTo(hdc, pt.x, ey);
 	}
+}
+
+int VPassword::getRealY(int y) {
+	int ny = VLineEdit::getRealY(y);
+	return ny + (mHeight - mLineHeight) / 2;
 }
 
 //----------VScroll-----------------------------

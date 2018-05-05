@@ -4,13 +4,7 @@
 	<default class="VerScrollBar" rect="0 0 15 100%" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	
-	<Scroll rect="100 230 300 200" bgcolor="#90fab85a" >
-		<Button id = "ext_btn_1" text = "My Button 1"  rect = "50 50 80 40" />
-		<Label id = "ext_btn_2" text = "My Button 2"   rect = "50 150 120 40" bgcolor="#50fab85a" />
-		<Button id = "ext_btn_3" text = "My Button 3"  rect = "50 250 60 40" />
-		<Button id = "ext_btn_3" text = "My Button 4"  rect = "50 350 120 40" />
-		<Button id = "ext_btn_3" text = "My Button 5"  rect = "50 450 100 40" />
-	</Scroll>
+	<Password rect="100 50 200 60" font="size:25" padding="10 0 0 0" bgcolor="#50ddccdd" />
 	
 </Window>
 
