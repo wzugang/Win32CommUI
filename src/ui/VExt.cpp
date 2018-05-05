@@ -364,10 +364,11 @@ int VScrollBar::getPos() {
 
 void VScrollBar::setPos( int pos ) {
 	int old = mPos;
+	if (pos > mMax - mPage) {
+		pos = mMax - mPage;
+	}
 	if (pos < 0) {
 		pos = 0;
-	} else if (pos > mMax - mPage) {
-		pos = mMax - mPage;
 	}
 	mPos = pos;
 	if (mPos == old) {
@@ -479,11 +480,17 @@ XRect VScrollBar::calcThumbRect() {
 }
 
 int VScrollBar::getPosBy(int start) {
-	if (start < 0 || start > mMax - mPage) {
+	if (start <= 0) {
+		return 0;
+	}
+	if (mPage >= mMax) {
 		return 0;
 	}
 	int range = getScrollRange();
 	int sz = (int)((float)range * mPage / mMax);
+	if (start >= range - sz) {
+		return mMax - mPage;
+	}
 	int pos = (int)((float)start * (mMax - mPage) / (range - sz));
 	return pos;
 }
@@ -910,7 +917,10 @@ void VTextArea::notifyChanged() {
 	mVerBar->setMaxAndPage(mTextHeight, mh);
 	bool needShow = mTextHeight > mh;
 	mVerBar->setVisible(needShow);
-
+	if (! mVerBar->isVisible()) {
+		setScrollY(0);
+		mVerBar->setPos(0);
+	}
 	if (needShow != hasVerBar) {
 		notifyChanged();
 	}
@@ -971,8 +981,8 @@ void VTextArea::setScrollX( int x ) {
 
 void VTextArea::setScrollY( int y ) {
 	int mm = mTextHeight - (mMesureHeight - mAttrPadding[1] - mAttrPadding[3]);
-	if (mm <= 0) {
-		return;
+	if (mm < 0) {
+		mm = 0;
 	}
 	int old = mScrollY;
 	mScrollY = min(y, mm);
@@ -1186,13 +1196,15 @@ void VMaskEdit::onPaint(Msg *m) {
 	HFONT font = getFont();
 	SelectObject(hdc, font);
 	SetBkMode(hdc, TRANSPARENT);
+	eraseBackground(m);
 	if (mAttrFlags & AF_COLOR) SetTextColor(hdc, mAttrColor);
-	RECT r = {getScrollX(), 0, mWidth - getScrollX(), mHeight};
+	RECT r = {getScrollX() + mAttrPadding[0], 0, mWidth - getScrollX() - mAttrPadding[2], mHeight};
 	POINT pt = {0, 0};
 	if (mInsertPos >= 0 && mCaretShowing && getPointAt(mInsertPos, &pt)) {
 		SelectObject(hdc, mCaretPen);
 		SIZE sz;
 		GetTextExtentPoint32W(hdc, mWideText + mInsertPos, 1, &sz);
+		pt.x += mAttrPadding[0];
 		RECT rc = {pt.x, (mHeight-sz.cy)/2-2, pt.x + sz.cx, (mHeight+sz.cy)/2+2};
 		FillRect(hdc, &rc, mCaretBrush);
 	}
@@ -1247,7 +1259,7 @@ int VMaskEdit::getPosAt( int x, int y ) {
 	HDC hdc = GetDC(wnd);
 	HGDIOBJ old = SelectObject(hdc, getFont());
 	int k = -1;
-	x -= getScrollX();
+	x = x - getScrollX() - mAttrPadding[0];
 	for (int i = 0; i < mWideTextLen; ++i) {
 		SIZE sz;
 		GetTextExtentPoint32W(hdc, mWideText, i + 1, &sz);

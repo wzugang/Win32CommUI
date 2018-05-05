@@ -4,7 +4,8 @@
 	<default class="VerScrollBar" rect="0 0 15 100%" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	
-	<Calendar rect="100 100 200 200" bgcolor="#50fab85a" />
+	<TextArea rect="50 50 200 40" bgcolor="#50fab85a" font="size:22;"/>
+	
 </Window>
 
 #################### my-popup ############
