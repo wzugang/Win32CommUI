@@ -1599,7 +1599,7 @@ void VCalendar::onPaint( Msg *m ) {
 bool VCalendar::onMouseEvent( Msg *m ) {
 	if (m->mId == Msg::LBUTTONDOWN) {
 		if (mEnableFocus) setFocus();
-		POINT pt = {m->paint.x, m->paint.y};
+		POINT pt = {m->mouse.x, m->mouse.y};
 		if (PtInRect(&mHeadTitleRect, pt)) {
 			mViewMode = ViewMode((mViewMode + 1) % VM_NUM);
 			if (mViewMode == VM_SEL_DAY) {
@@ -1612,18 +1612,18 @@ bool VCalendar::onMouseEvent( Msg *m ) {
 		}
 		switch (mViewMode) {
 		case VM_SEL_DAY:
-			onLButtonDownInDayMode(m->paint.x, m->paint.y);
+			onLButtonDownInDayMode(m->mouse.x, m->mouse.y);
 			break;
 		case VM_SEL_MONTH:
-			onLButtonDownInMonthMode(m->paint.x, m->paint.y);
+			onLButtonDownInMonthMode(m->mouse.x, m->mouse.y);
 			break;
 		case VM_SEL_YEAR:
-			onLButtonDownInYearMode(m->paint.x, m->paint.y);
+			onLButtonDownInYearMode(m->mouse.x, m->mouse.y);
 			break;
 		}
 		return true;
 	} else if (m->mId == Msg::MOUSE_MOVE) {
-		POINT pt = {m->paint.x, m->paint.y};
+		POINT pt = {m->mouse.x, m->mouse.y};
 		resetSelect();
 		if (PtInRect(&mLeftArrowRect, pt)) {
 			mSelectLeftArrow = true;
@@ -1634,9 +1634,9 @@ bool VCalendar::onMouseEvent( Msg *m ) {
 		if (PtInRect(&mHeadTitleRect, pt)) {
 			mSelectHeadTitle = true;
 		}
-		if (mViewMode == VM_SEL_DAY) onMouseMoveInDayMode(m->paint.x, m->paint.y);
-		else if (mViewMode == VM_SEL_MONTH) onMouseMoveInMonthMode(m->paint.x, m->paint.y);
-		else if (mViewMode == VM_SEL_YEAR) onMouseMoveInYearMode(m->paint.x, m->paint.y);
+		if (mViewMode == VM_SEL_DAY) onMouseMoveInDayMode(m->mouse.x, m->mouse.y);
+		else if (mViewMode == VM_SEL_MONTH) onMouseMoveInMonthMode(m->mouse.x, m->mouse.y);
+		else if (mViewMode == VM_SEL_YEAR) onMouseMoveInYearMode(m->mouse.x, m->mouse.y);
 		repaint();
 		return true;
 	} else if (m->mId == Msg::MOUSE_LEAVE) {
