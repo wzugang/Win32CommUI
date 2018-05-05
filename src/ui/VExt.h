@@ -109,7 +109,7 @@ public:
 protected:
 	virtual void onPaint(Msg *m);
 	virtual bool onMouseEvent(Msg *m);
-	XRect getThumbRect();
+	XRect calcThumbRect();
 	int getPosBy(int start);
 	int getScrollRange();
 protected:
@@ -118,12 +118,13 @@ protected:
 	int mPage;
 	int mPos;
 	XImage *mTrack, *mThumb;
-	bool mPressed;
+	bool mPressed, mMoving;
 	int mMouseX, mMouseY;
+	XRect mThumbRect;
 };
 
 
-class VTextArea : public VExtComponent, public XAreaText, public VListener {
+class VTextArea : public VExtComponent, public XAreaText {
 public:
 	VTextArea(XmlNode *node);
 	void setReadOnly(bool r);
@@ -135,7 +136,6 @@ public:
 	virtual void onLayoutChildren( int width, int height );
 	virtual HFONT getTextFont();
 protected:
-	virtual bool onEvent(VComponent *evtSource, Msg *msg);
 	virtual void notifyChanged();
 	virtual bool dispatchMessage(Msg *msg);
 	virtual bool onMouseEvent(Msg *m);
@@ -177,6 +177,7 @@ protected:
 	bool mEnableScrollBars;
 	VScrollBar *mVerBar;
 	int mScrollX, mScrollY;
+	friend class TextAreaLisener;
 };
 
 

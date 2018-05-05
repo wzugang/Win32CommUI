@@ -354,6 +354,7 @@ VScrollBar::VScrollBar( XmlNode *node) : VExtComponent(node) {
 	mMax = 0;
 	mPage = 0;
 	mPressed = false;
+	mMoving = false;
 	mMouseX = mMouseY = 0;
 }
 
@@ -369,8 +370,11 @@ void VScrollBar::setPos( int pos ) {
 		pos = mMax - mPage;
 	}
 	mPos = pos;
-	if (mPos != pos) {
-		repaint(NULL);
+	if (mPos == old) {
+		return;
+	}
+	if (! mMoving) {
+		mThumbRect = calcThumbRect();
 	}
 	if (mListener != NULL) {
 		Msg m;
@@ -378,6 +382,7 @@ void VScrollBar::setPos( int pos ) {
 		m.def.wParam = mPos;
 		mListener->onEvent(this, &m);
 	}
+	repaint(NULL);
 }
 
 int VScrollBar::getPage() {
@@ -398,40 +403,46 @@ void VScrollBar::setMaxAndPage( int maxn, int page ) {
 	} else if (mPos > mMax - mPage) {
 		mPos = mMax - mPage;
 	}
+	mThumbRect = calcThumbRect();
 }
 
 bool VScrollBar::onMouseEvent(Msg *m) {
 	if (m->mId == Msg::LBUTTONDOWN) {
 		setCapture();
-		XRect thumb = getThumbRect();
-		if (! thumb.contains(m->mouse.x, m->mouse.y)) {
+		if (! mThumbRect.contains(m->mouse.x, m->mouse.y)) {
+			mPressed = false;
 			return true;
 		}
 		mPressed = true;
+		mMoving = false;
 		mMouseX = m->mouse.x;
-		mMouseX = m->mouse.y;
+		mMouseY = m->mouse.y;
 		return true;
 	} else if (m->mId == Msg::LBUTTONUP) {
 		mPressed = false;
+		mMoving = false;
 		releaseCapture();
 	} else if (m->mId == Msg::MOUSE_CANCEL) {
 		mPressed = false;
+		mMoving = false;
 	} else if (m->mId == Msg::MOUSE_MOVE) {
 		if (! mPressed) return true;
-		XRect rect = getThumbRect();
 		int newPos = mPos;
+		int dx = 0, dy = 0;
 		if (mHorizontal) {
-			int dx = m->mouse.x - mMouseX;
+			dx = m->mouse.x - mMouseX;
 			if (dx == 0) return true;
-			newPos = getPosBy(rect.mX + dx);
+			newPos = getPosBy(mThumbRect.mX + dx);
 		} else {
-			int dy = m->mouse.y - mMouseY;
+			dy = m->mouse.y - mMouseY;
 			if (dy == 0) return true;
-			newPos = getPosBy(rect.mY + dy);
+			newPos = getPosBy(mThumbRect.mY + dy);
 		}
 		if (newPos != mPos) {
+			mThumbRect.offset(dx, dy);
 			mMouseX = m->mouse.x;
 			mMouseY = m->mouse.y;
+			mMoving = true;
 			setPos(newPos);
 		}
 		return true;
@@ -445,12 +456,12 @@ void VScrollBar::onPaint(Msg *m) {
 		mTrack->draw(dc, 0, 0, mWidth, mHeight);
 	}
 	if (mThumb != NULL) {
-		XRect rr = getThumbRect();
+		XRect &rr = mThumbRect;
 		mThumb->draw(dc, rr.mX, rr.mY, rr.mWidth, rr.mHeight);
 	}
 }
 
-XRect VScrollBar::getThumbRect() {
+XRect VScrollBar::calcThumbRect() {
 	XRect rr;
 	int range = getScrollRange();
 	if (mMax <= 0 || mPage <= 0 || mPage >= mMax) {
@@ -500,7 +511,25 @@ int VScrollBar::getScrollRange() {
 	return mHeight;
 }
 
-//----------------------------VExtTextArea---------------------
+//----------------------------VTextArea---------------------
+class TextAreaLisener : public VListener {
+public:
+	TextAreaLisener(VTextArea *a) {
+		mArea = a;
+	}
+	bool onEvent(VComponent *evtSource, Msg *msg) {
+		if (msg->mId == Msg::VSCROLL) {
+			mArea->setScrollY(msg->def.wParam);
+			mArea->repaint();
+			mArea->updateWindow();
+			return true;
+		}
+		return false;
+	}
+private:
+	VTextArea *mArea;
+};
+
 VTextArea::VTextArea( XmlNode *node ) : VExtComponent(node) {
 	mEnableFocus = true;
 	mInsertPos = 0;
@@ -520,7 +549,7 @@ VTextArea::VTextArea( XmlNode *node ) : VExtComponent(node) {
 }
 
 bool VTextArea::dispatchMessage(Msg *m) {
-	  if (m->mId == Msg::TIMER) {
+	if (m->mId == Msg::TIMER) {
 		mCaretShowing = !mCaretShowing;
 		repaint();
 		return true;
@@ -541,13 +570,6 @@ bool VTextArea::dispatchMessage(Msg *m) {
 
 bool VTextArea::onMouseEvent(Msg *m) {
 	if (m->mId == Msg::LBUTTONDOWN) {
-		if (mVerBar != NULL && mVerBar->isVisible()) {
-			if (m->mouse.x >= mVerBar->getX()) {
-				m->mouse.x -= mVerBar->getX() + mTranslateX;
-				m->mouse.y -= mVerBar->getY() + mTranslateY;
-				return mVerBar->dispatchMessage(m);
-			}
-		}
 		setCapture();
 		if (mEnableFocus) setFocus();
 		onLButtonDown(m);
@@ -919,7 +941,7 @@ void VTextArea::onLayoutChildren( int width, int height ) {
 		node->setComponentV(mVerBar);
 		mVerBar->setVisible(false);
 		mNode->addChild(node);
-		mVerBar->setListener(this);
+		mVerBar->setListener(new TextAreaLisener(this));
 	}
 
 	if (mVerBar != NULL) {
@@ -952,7 +974,11 @@ void VTextArea::setScrollY( int y ) {
 	if (mm <= 0) {
 		return;
 	}
+	int old = mScrollY;
 	mScrollY = min(y, mm);
+	if (old == mScrollY) {
+		return;
+	}
 	if (mVerBar != NULL && mVerBar->isVisible()) {
 		mVerBar->setPos(y);
 	}
@@ -1020,15 +1046,6 @@ int VTextArea::getRealX( int x ) {
 
 int VTextArea::getRealY( int y ) {
 	return y - getScrollY() + mAttrPadding[1];
-}
-
-bool VTextArea::onEvent(VComponent *evtSource, Msg *msg) {
-	if (evtSource == mVerBar && msg->mId == Msg::VSCROLL) {
-		repaint();
-		updateWindow();
-		return true;
-	}
-	return false;
 }
 
 //------------------------VLineEdit--------------------
