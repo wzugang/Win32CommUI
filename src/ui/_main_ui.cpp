@@ -65,6 +65,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// win->findById("ext_btn_1")->setListener(new BtnListener());
 	// VList *list = (VList *)(win->findById("list"));
 	// list->setModel(new ListModel());
+	// VTree *tree = (VTree *)(win->findById("tree"));
+	// tree->setModel(UIFactoryV::buildTreeNode(UIFactoryV::buildNode("file://skin/vtest.xml", "my-tree")));
 
 	win->createWnd();
 	win->show();

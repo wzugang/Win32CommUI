@@ -30,6 +30,8 @@ VExtComponent::VExtComponent(XmlNode *node) : VComponent(node) {
 			mStateImages[STATE_IMG_FOCUS] = XImage::load(attr->mValue);
 		} else if (strcmp(attr->mName, "disableImage") == 0) {
 			mStateImages[STATE_IMG_DISABLE] = XImage::load(attr->mValue);
+		} else if (strcmp(attr->mName, "enableState") == 0) {
+			mEnableState = AttrUtils::parseBool(attr->mValue, false);
 		}
 	}
 }
@@ -115,6 +117,26 @@ bool VExtComponent::doStateImage(Msg *m) {
 	return false;
 }
 
+bool VExtComponent::onMouseEvent(Msg *m) {
+	if (mEnableState) {
+		return doStateImage(m);
+	}
+	return false;
+}
+
+void VExtComponent::onPaint(Msg *m) {
+	eraseBackground(m);
+	if (mEnableState) {
+		StateImage si = getStateImage(NULL, NULL);
+		XImage *cur = mStateImages[si];
+		if (cur != NULL) {
+			cur->draw(m->paint.dc, mAttrPadding[0], mAttrPadding[1], 
+				mWidth - mAttrPadding[0] - mAttrPadding[2], 
+				mHeight - mAttrPadding[1] - mAttrPadding[3]);
+		}
+	}
+}
+
 //--------------------VLabel-------------------------------------
 VLabel::VLabel( XmlNode *node ) : VExtComponent(node) {
 	mText = mNode->getAttrValue("text");
@@ -171,7 +193,10 @@ VButton::VButton( XmlNode *node ) : VExtComponent(node) {
 }
 
 bool VButton::onMouseEvent(Msg *m) {
-	return doStateImage(m);
+	if (mEnableState) {
+		return doStateImage(m);
+	}
+	return false;
 }
 
 void VButton::onPaint(Msg *m) {

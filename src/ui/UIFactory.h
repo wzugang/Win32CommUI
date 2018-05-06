@@ -30,13 +30,8 @@ public:
 	bool hasAlphaChannel();
 
 	void draw(HDC dc, int destX, int destY, int destW, int destH);
-
 	void fillAlpha(BYTE alpha);
 	void fillColor(COLORREF rgba);
-	void draw(XImage *src, int dstX, int dstY, int destW, int destH, DrawAction a);
-	void drawCopy(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
-	void drawAlphaBlend(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
-	void drawStretch(XImage *src, const XRect &srcRect, const XRect &destRect, DrawAction a);
 
 	static HICON loadIcon(const char *resPath);
 	~XImage();
@@ -59,6 +54,12 @@ protected:
 	void draw9Patch(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 	void drawNormal(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
 	void drawNormal(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
+
+	void draw(XImage *src, int dstX, int dstY, int destW, int destH, DrawAction a);
+	void drawCopy(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
+	void drawAlphaBlend(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
+	void drawStretch(XImage *src, const XRect &srcRect, const XRect &destRect, DrawAction a);
+protected:
 	void *mBits;
 	HBITMAP mHBitmap;
 	int mWidth;

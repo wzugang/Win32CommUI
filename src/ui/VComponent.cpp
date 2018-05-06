@@ -226,6 +226,8 @@ void VComponent::parseAttrs() {
 			if (v1 > 0) mAttrWeight = v1;
 		} else if (strcmp(attr->mName, "visible") == 0) {
 			mVisible = AttrUtils::parseBool(attr->mValue, false);
+		} else if (strcmp(attr->mName, "enable") == 0) {
+			mEnable = AttrUtils::parseBool(attr->mValue, false);
 		}
 	}
 }

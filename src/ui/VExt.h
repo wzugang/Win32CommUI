@@ -17,6 +17,8 @@ public:
 protected:
 	virtual StateImage getStateImage(void *param1, void *param2);
 	virtual bool doStateImage(Msg *m);
+	virtual bool onMouseEvent(Msg *m);
+	virtual void onPaint(Msg *m);
 protected:
 	bool mEnableState;
 	XImage *mStateImages[8];
