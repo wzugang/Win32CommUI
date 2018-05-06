@@ -23,6 +23,24 @@ public:
 	}
 };
 
+class ListModel : public VListModel {
+public:
+	virtual int getItemCount() {
+		return 20;
+	}
+	virtual int getItemHeight(int item) {
+		return 25;
+	}
+	virtual ItemData *getItemData(int item) {
+		static ItemData it;
+		static char buf[80];
+		it.mSelectable = true;
+		it.mText = buf;
+		sprintf(buf, "This is Item %d", item);
+		return &it;
+	}
+};
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
 	AllocConsole();
@@ -45,9 +63,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
 	// win->findById("ext_btn_1")->setListener(new BtnListener());
-	VTree *tree = (VTree *)(win->findById("tree"));
-	VTreeNode *rootNode = UIFactoryV::buildTreeNode(UIFactoryV::buildNode("file://skin/vtest.xml", "my-tree"));
-	tree->setModel(rootNode);
+	// VList *list = (VList *)(win->findById("list"));
+	// list->setModel(new ListModel());
 
 	win->createWnd();
 	win->show();

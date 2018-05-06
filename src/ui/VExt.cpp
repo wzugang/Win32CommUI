@@ -950,20 +950,7 @@ void VTextArea::notifyChanged() {
 void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
-	bool hasVerBar = mVerBar != NULL && mVerBar->isVisible();
-	
-	buildLines();
 
-	if (mVerBar != NULL) {
-		int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
-		mVerBar->setMaxAndPage(mTextHeight, mh);
-		bool newHas = mTextHeight > mh;
-		mVerBar->setVisible(newHas);
-		if (newHas != hasVerBar) onMeasure(widthSpec, heightSpec);
-	}
-}
-
-void VTextArea::onLayoutChildren( int width, int height ) {
 	if (mEnableScrollBars && mVerBar == NULL) {
 		XmlNode *node = new XmlNode("VerScrollBar", mNode);
 		mVerBar = new VScrollBar(node);
@@ -973,14 +960,23 @@ void VTextArea::onLayoutChildren( int width, int height ) {
 		mNode->addChild(node);
 		mVerBar->setListener(new TextAreaLisener(this));
 	}
+	
+	buildLines();
 
 	if (mVerBar != NULL) {
-		/*if (mVerBar->mAttrWidth == 0) {
-			mVerBar->mAttrWidth = 15 | MS_FIX;
+		bool hasVerBar = mVerBar->isVisible();
+		int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
+		mVerBar->setMaxAndPage(mTextHeight, mh);
+		bool newHas = mTextHeight > mh;
+		mVerBar->setVisible(newHas);
+		if (newHas != hasVerBar) {
+			onMeasure(widthSpec, heightSpec);
 		}
-		if (mVerBar->mAttrHeight == 0) {
-			mVerBar->mAttrHeight = 100 | MS_PERCENT;
-		}*/
+	}
+}
+
+void VTextArea::onLayoutChildren( int width, int height ) {
+	if (mVerBar != NULL) {
 		mVerBar->onMeasure(mWidth | MS_ATMOST, mHeight | MS_ATMOST);
 		int w = mVerBar->getMesureWidth();
 		mVerBar->onLayout(mWidth - w, 0, w, mVerBar->getMesureHeight());
@@ -1418,8 +1414,6 @@ VScroll::VScroll( XmlNode *node ) : VExtComponent(node) {
 	verNode->setComponentV(mVerBar);
 	mHorBar->setVisible(false);
 	mVerBar->setVisible(false);
-	/*mNode->addChild(horNode);
-	mNode->addChild(verNode);*/
 	VScrollListener *vl = new VScrollListener(this);
 	mHorBar->setListener(vl);
 	mVerBar->setListener(vl);
@@ -1490,53 +1484,6 @@ VScrollBar* VScroll::getVerBar() {
 	return mVerBar;
 }
 
-bool VScroll::dispatchPaintMessage(Msg *m) {
-	// draw children
-	VExtComponent::dispatchPaintMessage(m);
-
-	// draw scrollbar
-	XRect self(m->paint.x, m->paint.y, mWidth, mHeight);
-	XRect self2 = self.intersect(m->paint.clip);
-	HDC dc = m->paint.dc;
-	int sid = SaveDC(dc);
-	IntersectClipRect(m->paint.dc, self2.mX, self2.mY, self2.mX + self2.mWidth, self2.mY + self2.mHeight);
-	VScrollBar *bars[] = {mHorBar, mVerBar};
-	for (int i = 0; i < 2; ++i) {
-		if (! bars[i]->isVisible()) {
-			continue;
-		}
-		Msg mm = *m;
-		mm.paint.x += bars[i]->getX();
-		mm.paint.y += bars[i]->getY();
-		mm.paint.clip = self2;
-		bars[i]->dispatchMessage(&mm);
-	}
-	RestoreDC(dc, sid);
-	return true;
-}
-
-bool VScroll::dispatchMouseMessage(Msg *m) {
-	if (m->mId == Msg::LBUTTONDOWN) {
-		VScrollBar *bars[2] = {mHorBar, mVerBar};
-		int oldX = m->mouse.x, oldY = m->mouse.y;
-		for (int i = 0; i < 2; ++i) {
-			if (! bars[i]->isVisible()) {
-				continue;
-			}
-			XRect r(bars[i]->getX(), bars[i]->getY(), bars[i]->getWidth(), bars[i]->getHeight());
-			if (r.contains(m->mouse.x, m->mouse.y)) {
-				m->mouse.x = oldX - r.mX;
-				m->mouse.y = oldY - r.mY;
-				bars[i]->dispatchMessage(m);
-				m->mouse.x = oldX;
-				m->mouse.y = oldY;
-				return true;
-			}
-		}
-	}
-	return VExtComponent::dispatchMouseMessage(m);
-}
-
 void VScroll::onMouseWheel(Msg *msg) {
 	if (mVerBar->isVisible()) {
 		int old = mVerBar->getPos();
@@ -1570,6 +1517,31 @@ SIZE VScroll::getClientSize() {
 	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getHeight() : 0);
 	SIZE sz = {clientWidth, clientHeight};
 	return sz;
+}
+
+int VScroll::getChildCountForDispatch(DispatchAction da) {
+	return mNode->getChildCount() + 2;
+}
+
+VComponent* VScroll::getChildForDispatch(DispatchAction da, int idx) {
+	int cc = mNode->getChildCount();
+	if (idx < cc) {
+		return getChild(idx);
+	}
+	idx -= cc;
+	if (idx == 0) {
+		return mVerBar;
+	}
+	return mHorBar;
+}
+
+POINT VScroll::getChildPointForDispatch(DispatchAction da, int idx, VComponent *child) {
+	POINT pt = {child->getX(), child->getY()};
+	if (child == mVerBar || child == mHorBar) {
+		pt.x += mTranslateX;
+		pt.y += mTranslateY;
+	}
+	return pt;
 }
 
 
@@ -2315,12 +2287,14 @@ VList::VList( XmlNode *node ) : VScroll(node) {
 	mSelBgImage = XImage::load(mNode->getAttrValue("selBgImage"));
 	if (mSelBgImage == NULL) {
 		mSelBgImage = XImage::create(1, 1);
-		mSelBgImage->fillColor(RGB(0xA2, 0xB5, 0xCD));
+		mSelBgImage->mStretch = true;
+		mSelBgImage->fillColor(0xFFA2B5CD);
 	}
 	mTrackBgImage = XImage::load(mNode->getAttrValue("trackBgImage"));
 	if (mTrackBgImage == NULL) {
 		mTrackBgImage = XImage::create(1, 1);
-		mTrackBgImage->fillColor(RGB(0xA2, 0xB5, 0xBD));
+		mTrackBgImage->mStretch = true;
+		mTrackBgImage->fillColor(0xFFA2B5BD);
 	}
 	mEnableTrack = true;
 }
@@ -2367,7 +2341,7 @@ bool VList::onMouseEvent(Msg *msg) {
 		}
 		return true;
 	} else if (msg->mId == Msg::MOUSE_WHEEL) {
-		VScroll::dispatchMouseMessage(msg);
+		VScroll::onMouseEvent(msg);
 		updateTrackItem(msg->mouse.x, msg->mouse.y);
 		return true;
 	} else if (msg->mId == Msg::MOUSE_MOVE) {
@@ -2391,7 +2365,7 @@ SIZE VList::calcDataSize() {
 }
 
 SIZE VList::getClientSize() {
-	int clientWidth = mMesureWidth - (mVerBar->isVisible() ? mVerBar->getWidth() : 0);
+	int clientWidth = mMesureWidth - (mVerBar->isVisible() ? mVerBar->getMesureWidth() : 0);
 	SIZE sz = {clientWidth, mMesureHeight};
 	return sz;
 }

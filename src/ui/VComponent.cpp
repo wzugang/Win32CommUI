@@ -443,20 +443,21 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	VComponent *target = NULL;
 	int oldX = msg->mouse.x, oldY = msg->mouse.y;
 	bool inChild = false;
-	int idx = 0;
-	while (true) {
-		VComponent *child = getChildForMouseMsg(idx++);
+	
+	for (int idx = getChildCountForDispatch(DA_MOUSE_MSG) - 1; idx >= 0; --idx) {
+		VComponent *child = getChildForDispatch(DA_MOUSE_MSG, idx);
 		if (child == NULL) {
 			break;
 		}
 		if (!child->mVisible || !child->mEnable) {
 			continue;
 		}
-		int x = oldX - mTranslateX, y = oldY - mTranslateY;
-		if (x >= child->mX && y >= child->mY && x < child->mX + child->mWidth && y < child->mY + child->mHeight) {
+		int x = oldX + mTranslateX, y = oldY + mTranslateY;
+		POINT pt = getChildPointForDispatch(DA_MOUSE_MSG, idx, child);
+		if (x >= pt.x && y >= pt.y && x < pt.x + child->mWidth && y < pt.y + child->mHeight) {
 			inChild = true;
-			msg->mouse.x = oldX - child->mX + mTranslateX;
-			msg->mouse.y = oldY - child->mY + mTranslateY;
+			msg->mouse.x = oldX + mTranslateX - pt.x;
+			msg->mouse.y = oldY + mTranslateY - pt.y;
 			if (child->dispatchMessage(msg)) {
 				return true;
 			}
@@ -476,12 +477,8 @@ bool VComponent::dispatchMouseMessage(Msg *msg) {
 	return onMouseEvent(msg);
 }
 
-VComponent* VComponent::getChildForMouseMsg(int idx) {
-	idx = mNode->getChildCount() - 1 - idx;
-	if (idx >= 0) {
-		return getChild(idx);
-	}
-	return NULL;
+VComponent* VComponent::getChildForDispatch(DispatchAction da, int idx) {
+	return getChild(idx);
 }
 
 bool VComponent::onMouseEvent(Msg *m) {
@@ -505,6 +502,12 @@ void VComponent::onPaint(Msg *m) {
 	eraseBackground(m);
 }
 
+
+int VComponent::getChildCountForDispatch(DispatchAction da) {
+	return mNode->getChildCount();
+}
+
+
 bool VComponent::dispatchPaintMessage(Msg *m) {
 	if (!mVisible) {
 		return false;
@@ -522,9 +525,9 @@ bool VComponent::dispatchPaintMessage(Msg *m) {
 	onPaint(m);
 	RestoreDC(m->paint.dc, sid2);
 
-	int idx = 0;
-	while (true) {
-		VComponent *cc = getChildForPaintMsg(idx++);
+	int count = getChildCountForDispatch(DA_PAINT_MSG);
+	for (int idx = 0; idx < count; ++idx) {
+		VComponent *cc = getChildForDispatch(DA_PAINT_MSG, idx);
 		if (cc == NULL) {
 			break;
 		}
@@ -532,20 +535,14 @@ bool VComponent::dispatchPaintMessage(Msg *m) {
 			continue;
 		}
 		Msg mm = *m;
-		mm.paint.x += cc->mX - mTranslateX;
-		mm.paint.y += cc->mY - mTranslateY;
+		POINT pt = getChildPointForDispatch(DA_PAINT_MSG, idx, cc);
+		mm.paint.x += pt.x - mTranslateX;
+		mm.paint.y += pt.y - mTranslateY;
 		mm.paint.clip = self2;
 		cc->dispatchMessage(&mm);
 	}
 	RestoreDC(m->paint.dc, sid);
 	return true;
-}
-
-VComponent* VComponent::getChildForPaintMsg(int idx) {
-	if (idx < mNode->getChildCount()) {
-		return getChild(idx);
-	}
-	return NULL;
 }
 
 void VComponent::drawCache(HDC dc) {
@@ -732,6 +729,11 @@ int VComponent::getTranslateX() {
 
 int VComponent::getTranslateY() {
 	return mTranslateY;
+}
+
+POINT VComponent::getChildPointForDispatch(DispatchAction da, int idx, VComponent *child) {
+	POINT pt = {child->mX, child->mY};
+	return pt;
 }
 
 //----------------------------------------------------------

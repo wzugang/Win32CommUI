@@ -142,11 +142,16 @@ public:
 	virtual void setTranslateX(int tx);
 	virtual void setTranslateY(int ty);
 
+	enum DispatchAction {
+		DA_MOUSE_MSG,
+		DA_PAINT_MSG
+	};
 	virtual bool dispatchMessage(Msg *msg);
 	virtual bool dispatchMouseMessage(Msg *msg);
-	virtual VComponent* getChildForMouseMsg(int idx);
 	virtual bool dispatchPaintMessage(Msg *m);
-	virtual VComponent* getChildForPaintMsg(int idx);
+	virtual int getChildCountForDispatch(DispatchAction da);
+	virtual VComponent* getChildForDispatch(DispatchAction da, int idx);
+	virtual POINT getChildPointForDispatch(DispatchAction da, int idx, VComponent *child);
 	
 	virtual bool onMouseEvent(Msg *m);
 	virtual bool onKeyEvent(Msg *m);

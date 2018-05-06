@@ -5,12 +5,8 @@
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="Radio" normalImage="file://skin/radio_normal.png" hoverImage="file://skin/radio_normal.png" pushImage="file://skin/radio_normal.png" selectImage="file://skin/radio_select.png" />
 	
-	<Password rect="100 50 200 60" font="size:25" padding="10 0 0 0" bgcolor="#50ddccdd" />
 	
-	<Radio text="It a ExtRadio B" rect="150 160 200 30" group="XX-VV" />
-	<Radio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
-	
-	<Tree id="tree" rect="100 250 100 250" bgcolor="#50ddccdd" />
+	<TextArea rect="50 50 200 100" bgcolor="#50fab85a" font="size:25;" />
 	
 </Window>
 

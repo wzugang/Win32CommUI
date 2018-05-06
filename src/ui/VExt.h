@@ -292,8 +292,9 @@ protected:
 	virtual void onLayoutChildren(int width, int height);
 	virtual void onMouseWheel(Msg *msg);
 	virtual bool onMouseEvent(Msg *msg);
-	virtual bool dispatchMouseMessage(Msg *m);
-	virtual bool dispatchPaintMessage(Msg *m);
+	virtual int getChildCountForDispatch(DispatchAction da);
+	virtual VComponent* getChildForDispatch(DispatchAction da, int idx);
+	virtual POINT getChildPointForDispatch(DispatchAction da, int idx, VComponent *child);
 	virtual SIZE calcDataSize();
 	virtual SIZE getClientSize();
 protected:
