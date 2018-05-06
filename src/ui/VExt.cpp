@@ -2878,18 +2878,32 @@ void VTree::onLBtnDown( int x, int y ) {
 	POINT pt = {x, y};
 	int y2 = 0;
 	VTreeNode * node = getNodeAtY(y, &y2);
-	if (node == NULL) return;
-	int x2 = (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
+	if (node == NULL) {
+		return;
+	}
+	int x2 = -mHorBar->getPos() + (node->getLevel() + 1) * TREE_NODE_HEADER_WIDTH;
 	RECT cntRect = {x2, y2, x2 + node->getContentWidth(), y2 + TREE_NODE_HEIGHT};
+
+	if (node->isCheckable()) {
+		int lx = x2;
+		int ly = y2 + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2;
+		RECT checkBoxRect = {lx, ly, lx + TREE_NODE_BOX, ly + TREE_NODE_BOX};
+		if (PtInRect(&checkBoxRect, pt)) { // click in check box
+			node->setChecked(! node->isChecked());
+			repaint();
+			return;
+		}
+	}
 	if (PtInRect(&cntRect, pt)) { // click in node content
 		if (mWhenSelect == WHEN_CLICK) {
 			setSelectNode(node);
 		}
 		return;
 	}
-	if (node->getChildCount() == 0) // has no child
+	if (node->getChildCount() == 0) {// has no child
 		return;
-	x2 = node->getLevel() * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT;
+	}
+	x2 = -mHorBar->getPos() + node->getLevel() * TREE_NODE_HEADER_WIDTH + TREE_NODE_BOX_LEFT;
 	int yy = y2 + (TREE_NODE_HEIGHT - TREE_NODE_BOX) / 2;
 	RECT r = {x2, yy, x2 + TREE_NODE_BOX, yy + TREE_NODE_BOX};
 	if (PtInRect(&r, pt)) { // click in expand box
@@ -3017,9 +3031,6 @@ void VTree::setSelectNode(VTreeNode *node) {
 		return;
 	}
 	mSelectNode = node;
-	if (mSelectNode != NULL && mSelectNode->isCheckable()) {
-		mSelectNode->setChecked(! mSelectNode->isChecked());
-	}
 	if (mSelectNode != NULL && mListener != NULL) {
 		Msg m;
 		m.mId = Msg::SELECT_ITEM;

@@ -45,6 +45,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
 	// win->findById("ext_btn_1")->setListener(new BtnListener());
+	VTree *tree = (VTree *)(win->findById("tree"));
+	VTreeNode *rootNode = UIFactoryV::buildTreeNode(UIFactoryV::buildNode("file://skin/vtest.xml", "my-tree"));
+	tree->setModel(rootNode);
 
 	win->createWnd();
 	win->show();

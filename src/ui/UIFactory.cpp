@@ -876,6 +876,30 @@ VComponent* UIFactoryV::fastBuild( const char *resPath, const char *partName, VC
 	return cc;
 }
 
+static void BuildTreeV(VTreeNode *tn, XmlNode *node) {
+	for (int i = 0; i < node->getChildCount(); ++i) {
+		XmlNode *child = node->getChild(i);
+		VTreeNode *sub = new VTreeNode(child->getAttrValue("text"));
+		sub->setExpand(AttrUtils::parseBool(child->getAttrValue("expand")));
+		sub->setCheckable(AttrUtils::parseBool(child->getAttrValue("checkable")));
+		sub->setChecked(AttrUtils::parseBool(child->getAttrValue("checked")));
+		sub->setUserData(node);
+		tn->insert(-1, sub);
+		if (child->getChildCount() > 0) {
+			BuildTreeV(sub, child);
+		}
+	}
+}
+VTreeNode * UIFactoryV::buildTreeNode( XmlNode *rootTree ) {
+	if (rootTree == NULL) {
+		return NULL;
+	}
+	VTreeNode *node = new VTreeNode("Root");
+	BuildTreeV(node, rootTree);
+	return node;
+}
+
+
 void UIFactoryV::registCreator(Creator c ) {
 	if (c == NULL)
 		return;

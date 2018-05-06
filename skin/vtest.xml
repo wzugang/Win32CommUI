@@ -3,8 +3,14 @@
 	<default class="Button" normalImage="file://skin/ext_button.bmp [0 48 75 24] 9patch" hoverImage="file://skin/ext_button.bmp [0 24 75 24] 9patch" pushImage="file://skin/ext_button.bmp [0 0 75 24] 9patch" />
 	<default class="VerScrollBar" rect="0 0 15 100%" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
+	<default class="Radio" normalImage="file://skin/radio_normal.png" hoverImage="file://skin/radio_normal.png" pushImage="file://skin/radio_normal.png" selectImage="file://skin/radio_select.png" />
 	
 	<Password rect="100 50 200 60" font="size:25" padding="10 0 0 0" bgcolor="#50ddccdd" />
+	
+	<Radio text="It a ExtRadio B" rect="150 160 200 30" group="XX-VV" />
+	<Radio text="It a ExtRadio CC" rect="150 190 200 30" group="XX-VV" />
+	
+	<Tree id="tree" rect="100 250 100 250" bgcolor="#50ddccdd" />
 	
 </Window>
 
@@ -12,3 +18,31 @@
 <Popup rect="220 50 300 200" bgcolor="#50fab85a" >
 	
 </Popup>
+
+
+#################### my-tree ############
+<TreeNode>
+	<TreeNode text="San tai hu" >
+		<TreeNode text="Flip"  />
+	</TreeNode>
+	<TreeNode text="Bai Du" expand="true">
+		<TreeNode text="Good" checkable="true"  />
+		<TreeNode text="Bad"  checkable="true" checked="true">
+			<TreeNode text=" A" />
+			<TreeNode text=" B" />
+		</TreeNode>
+	</TreeNode>
+	<TreeNode text="My Fav" >
+		<TreeNode text="Simple" />
+		<TreeNode text="Many" >
+			<TreeNode text="Many A" />
+			<TreeNode text="Many B" />
+			<TreeNode text="Many C" />
+		</TreeNode>
+		<TreeNode text="Love" >
+			<TreeNode text="Love Me" />
+			<TreeNode text="Love You" />
+			<TreeNode text="Love She" />
+		</TreeNode>
+	</TreeNode>
+</TreeNode>

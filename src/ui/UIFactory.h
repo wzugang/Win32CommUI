@@ -1,11 +1,13 @@
 #pragma once
 #include <windows.h>
+
 class XComponent;
 class VComponent;
 class XmlNode;
 class ResPath;
 class XExtMenuModel;
 class XExtTreeNode;
+class VTreeNode;
 struct XRect;
 
 class XImage {
@@ -98,10 +100,12 @@ public:
 
 	static VComponent* buildComponent(XmlNode *root);
 	static VComponent* buildComponentV(XmlNode *root);
+
 	
 	//@param resPath file://abc.xml  res://abc
 	static XmlNode* buildNode(const char *resPath, const char *partName);
 
+	static VTreeNode *buildTreeNode( XmlNode *rootTree );
 	static VComponent* fastBuild(const char *resPath, const char *partName, VComponent *parent);
 	
 	static void destory(XmlNode *root);
