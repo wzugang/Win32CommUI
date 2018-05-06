@@ -2,7 +2,6 @@
 	<include src="file://abc.xml | res://abc " part="part-name" />  当src为null时，表示在当前文件中
 	
 	<VComponent 
-		
 		id="xxx"
 		rect="x y width height"
 		font="name:仿宋; size:25; weight:400; [italic | underline | strikeout];" 
@@ -14,6 +13,7 @@
 		bgimage="file://xxx.bmp [x y w h] repeat-x repeat-y stretch 9patch | res://... | color://#aarrggbb | color://#rrggbb"   路径(file://xxx.bmp)中不允许出现空格; 路径之后的所有内容为可选
 		visible = "true|false|gone"
 		weight="15"  HLineLayout VLineLayout会用到
+		enable="true | false"
 		enableState = "true | false"
 		normalImage="" hoverImage="" pushImage="" disableImage="" focusImage=""
 	/>
