@@ -145,7 +145,7 @@ void XExtComponent::eraseBackground(HDC dc) {
 	}
 	if (mAttrFlags & AF_BG_COLOR) {
 		if (mBgColorBrush == NULL) {
-			mBgColorBrush = CreateSolidBrush(mAttrBgColor);
+			mBgColorBrush = CreateSolidBrush(mAttrBgColor & 0xffffff);
 		}
 		RECT rc = {0, 0, mWidth, mHeight};
 		FillRect(dc, &rc, mBgColorBrush);
@@ -878,7 +878,7 @@ XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
 	mCellRender = NULL;
 	COLORREF color = 0xE6E0B0;
 	AttrUtils::parseColor(mNode->getAttrValue("selRowBgColor"), &color);
-	mSelectBgBrush = CreateSolidBrush(color);
+	mSelectBgBrush = CreateSolidBrush(color & 0xffffff);
 	color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
 	mLinePen = CreatePen(PS_SOLID, 1, color);
@@ -1679,7 +1679,7 @@ XExtList::XExtList( XmlNode *node ) : XExtScroll(node) {
 	mMouseTrackItem = -1;
 	COLORREF color = RGB(0xA2, 0xB5, 0xCD);
 	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
-	mSelectBgBrush = CreateSolidBrush(color);
+	mSelectBgBrush = CreateSolidBrush(color & 0xffffff);
 }
 XExtList::~XExtList() {
 	DeleteObject(mSelectBgBrush);
@@ -2723,10 +2723,10 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mLinePen = CreatePen(PS_SOLID, 1, color);
 	color = RGB(0x64, 0x95, 0xED);
 	AttrUtils::parseColor(mNode->getAttrValue("checkBoxColor"), &color);
-	mCheckPen = CreatePen(PS_SOLID, 1, color);
+	mCheckPen = CreatePen(PS_SOLID, 1, color & 0xffffff);
 	color = 0xE6E0B0;
 	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
-	mSelectBgBrush = CreateSolidBrush(color);
+	mSelectBgBrush = CreateSolidBrush(color & 0xffffff);
 	mSelectNode = NULL;
 	mWidthSpec = mHeightSpec = 0;
 	mNodeRender = NULL;
