@@ -1452,16 +1452,16 @@ void VScroll::onMeasure( int widthSpec, int heightSpec ) {
 
 	mHorBar->onMeasure((mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)) | MS_ATMOST, mMesureHeight | MS_ATMOST);
 	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, (mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)) | MS_ATMOST);
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)/* - mAttrPadding[0] - mAttrPadding[2]*/;
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)/* - mAttrPadding[1] - mAttrPadding[3]*/;
-	onMeasureChildren(clientWidth | MS_ATMOST, clientHeight| MS_ATMOST);
+
+	SIZE client = getClientSize();
+	onMeasureChildren(client.cx | MS_ATMOST, client.cy| MS_ATMOST);
 
 	SIZE cs = mDataSize = calcDataSize();
-	mHorBar->setMaxAndPage(cs.cx, clientWidth);
-	mVerBar->setMaxAndPage(cs.cy, clientHeight);
+	mHorBar->setMaxAndPage(cs.cx, client.cx);
+	mVerBar->setMaxAndPage(cs.cy, client.cy);
 
-	mHorBar->setVisible(cs.cx > clientWidth);
-	mVerBar->setVisible(cs.cy > clientHeight);
+	mHorBar->setVisible(cs.cx > client.cx);
+	mVerBar->setVisible(cs.cy > client.cy);
 
 	if (mHorBar->isVisible() != hasHorBar || mVerBar->isVisible() != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
@@ -1538,8 +1538,8 @@ bool VScroll::onMouseEvent(Msg *msg) {
 SIZE VScroll::getClientSize() {
 	bool hasHorBar = mHorBar->isVisible();
 	bool hasVerBar = mVerBar->isVisible();
-	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getWidth() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getHeight() : 0);
+	int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
+	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
 	SIZE sz = {clientWidth, clientHeight};
 	return sz;
 }
@@ -2031,8 +2031,9 @@ void VTable::onPaint( Msg *m ) {
 		return;
 	}
 	int hh = mModel->getHeaderHeight();
-	drawData(dc, 0, hh, sz.cx, sz.cy);
 	drawHeader(dc, sz.cx, hh);
+	IntersectClipRect(dc, 0, hh, sz.cx, sz.cy + hh);
+	drawData(dc, 0, hh, sz.cx, sz.cy);
 }
 
 bool VTable::onMouseEvent( Msg *msg ) {
@@ -2040,7 +2041,7 @@ bool VTable::onMouseEvent( Msg *msg ) {
 		if (mEnableFocus) setFocus();
 		int col = 0;
 		int row = findCell(msg->mouse.x, msg->mouse.y, &col);
-		if (mSelectedRow != row) {
+		if (mSelectedRow != row && row >= 0) {
 			mSelectedRow = row;
 			repaint();
 		}
@@ -2053,13 +2054,17 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 	if (mModel == NULL || h <= 0) {
 		return;
 	}
+
 	XImage *bg = mModel->getHeaderBgImage();
 	if (bg != NULL) {
 		bg->draw(dc, 0, 0, mWidth, h);
 	}
+
+	int sid = SaveDC(dc);
+	IntersectClipRect(dc, 0, 0, w + 1, h);
 	SelectObject(dc, getFont());
 	SetBkMode(dc, TRANSPARENT);
-	
+
 	int x = -mHorBar->getPos();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
 		int cw = mModel->getColumnWidth(i, w);
@@ -2068,6 +2073,7 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 		}
 		x += cw;
 	}
+
 	// draw split line
 	x = -mHorBar->getPos();
 	HGDIOBJ old = SelectObject(dc, mVerLinePen);
@@ -2083,6 +2089,7 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 		LineTo(dc, x, h - 4);
 	}
 	SelectObject(dc, old);
+	RestoreDC(dc, sid);
 }
 
 void VTable::drawColumn(HDC dc, int col, int x, int y, int w, int h) {
@@ -2092,7 +2099,7 @@ void VTable::drawColumn(HDC dc, int col, int x, int y, int w, int h) {
 	}
 	RECT r = {x, y, x + w, y + h};
 	if (hd->mBgImage != NULL) {
-		hd->mBgImage->draw(dc, x, 0, w, h);
+		hd->mBgImage->draw(dc, x, y, w, h);
 	}
 	if (hd->mText != NULL) {
 		DrawText(dc, hd->mText, strlen(hd->mText), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
@@ -2117,14 +2124,17 @@ void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 }
 
 void VTable::drawRow(HDC dc, int row, int x, int y, int w, int h ) {
+	SIZE client = getClientSize();
+	int cheight = mModel->getRowHeight(row);
 	if (mSelectedRow == row && mSelectBgImage != NULL) {
 		mSelectBgImage->draw(dc, x + 1, y + 1, w - 1, h - 1);
 	}
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		if (mRender == NULL || !mRender->onDrawCell(dc, row, i, x + 1, y + 1, w - 1, h - 1)) {
-			drawCell(dc, row, i, x + 1, y + 1, w - 1, h - 1);
+		int cwidth = mModel->getColumnWidth(i, client.cx);
+		if (mRender == NULL || !mRender->onDrawCell(dc, row, i, x + 1, y + 1, cwidth - 1, cheight - 1)) {
+			drawCell(dc, row, i, x + 1, y + 1, cwidth - 1, cheight - 1);
 		}
-		x += w;
+		x += cwidth;
 	}
 }
 
@@ -2186,6 +2196,7 @@ void VTable::getVisibleRows( int *from, int *to ) {
 	if (*to < *from) *to = *from;
 }
 
+/*
 void VTable::onMeasure( int widthSpec, int heightSpec ) {
 	mMesureWidth = calcSize(mAttrWidth, widthSpec);
 	mMesureHeight = calcSize(mAttrHeight, heightSpec);
@@ -2195,10 +2206,6 @@ void VTable::onMeasure( int widthSpec, int heightSpec ) {
 	mHorBar->onMeasure((mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0)) | MS_ATMOST, mMesureHeight | MS_ATMOST);
 	mVerBar->onMeasure(mMesureWidth | MS_ATMOST, (mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0)) | MS_ATMOST);
 	
-	/*int clientWidth = mMesureWidth - (hasVerBar ? mVerBar->getMesureWidth() : 0);
-	int clientHeight = mMesureHeight - (hasHorBar ? mHorBar->getMesureHeight() : 0);
-	mesureColumn(clientWidth, clientHeight);*/
-
 	SIZE clientSize = getClientSize();
 	SIZE cs = mDataSize = calcDataSize();
 	mHorBar->setMaxAndPage(cs.cx, clientSize.cx);
@@ -2210,7 +2217,7 @@ void VTable::onMeasure( int widthSpec, int heightSpec ) {
 	if (mHorBar->isVisible() != hasHorBar || mVerBar->isVisible() != hasVerBar) {
 		onMeasure(widthSpec, heightSpec);
 	}
-}
+}*/
 
 SIZE VTable::calcDataSize() {
 	SIZE sz = {0};
@@ -2265,10 +2272,15 @@ void VTable::mesureColumn(int width, int height) {
 }
 
 void VTable::onLayoutChildren( int width, int height ) {
+	if (mModel == NULL) {
+		return;
+	}
 	mHorBar->onLayout(0, mHeight - mHorBar->getMesureHeight(),
 		mHorBar->getMesureWidth(), mHorBar->getMesureHeight());
 
-	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), mModel->getHeaderHeight(),
+	int hd = mModel->getHeaderHeight();
+	mVerBar->onMeasure(mVerBar->getMesureWidth() | MS_FIX, (mVerBar->getMesureHeight() - hd) | MS_FIX);
+	mVerBar->onLayout(mWidth - mVerBar->getMesureWidth(), hd,
 		mVerBar->getMesureWidth(), mVerBar->getMesureHeight());
 }
 

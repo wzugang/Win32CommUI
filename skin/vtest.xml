@@ -5,18 +5,8 @@
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="Radio" normalImage="file://skin/radio_normal.png" hoverImage="file://skin/radio_normal.png" pushImage="file://skin/radio_normal.png" selectImage="file://skin/radio_select.png" />
 	
+	<Table id="table" rect="100 150 300 250" bgcolor="#50ddccdd" selRowBgImage="color://#50fab85a" />
 	
-	<HLineLayout  rect="50 50 200 50"  enableState="true" normalImage="color://#50fab85a" hoverImage="color://#40da98ad" pushImage="color://#50fab85a" >
-		<Label text="Hello World" rect="0 0 100% 100%" />
-	</HLineLayout>
-	<HLineLayout  rect="50 150 200 50" enableState="true" normalImage="color://#50fab85a" hoverImage="color://#40da98ad" pushImage="color://#50fab85a" >
-		<Label text="This Is OK" rect="5 5 100% 100%" />
-	</HLineLayout>
-	<HLineLayout  rect="50 250 200 50" enableState="true" normalImage="color://#50fab85a" hoverImage="color://#40da98ad" pushImage="color://#a0fa585a" >
-		<Label text="TreeNode Is OK" rect="0 0 100% 100%" enable="false" />
-	</HLineLayout>
-	
-	<Button rect="50 350 100 25" text="Sure" />
 </Window>
 
 #################### my-popup ############

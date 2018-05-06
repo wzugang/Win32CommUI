@@ -41,6 +41,50 @@ public:
 	}
 };
 
+class TableModel : public VTableModel {
+public:
+	virtual int getColumnCount() {
+		return 5;
+	}
+	virtual int getRowCount() {
+		return 30;
+	}
+	virtual int getColumnWidth(int col, int wholeWidth) {
+		return col % 2 == 0 ? 100 : 120;
+	}
+	virtual int getRowHeight(int row) {
+		return 20;
+	}
+	virtual int getHeaderHeight() {
+		return 30;
+	}
+	virtual HeaderData *getHeaderData(int col) {
+		static HeaderData hd;
+		static char buf[80];
+		if (hd.mBgImage == NULL) {
+			hd.mBgImage = XImage::create(1, 1);
+			hd.mBgImage->mStretch = true;
+			hd.mBgImage->fillColor(0xffaabbcc);
+		}
+		sprintf(buf, "Head %d", col);
+		hd.mText = buf;
+		return &hd;
+	}
+	virtual CellData *getCellData(int row, int col) {
+		static CellData cd;
+		static char txt[80];
+		cd.mText = txt;
+		sprintf(txt, "Cell(%02d, %02d)", row, col);
+		return &cd;
+	}
+	virtual XImage *getHeaderBgImage() {
+		static XImage *img = XImage::create(1, 1);
+		img->mStretch = true;
+		img->fillColor(0xffaabbcc);
+		return img;
+	}
+};
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
 	AllocConsole();
@@ -67,6 +111,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// list->setModel(new ListModel());
 	// VTree *tree = (VTree *)(win->findById("tree"));
 	// tree->setModel(UIFactoryV::buildTreeNode(UIFactoryV::buildNode("file://skin/vtest.xml", "my-tree")));
+	VTable *table = (VTable *)(win->findById("table"));
+	table->setModel(new TableModel());
 
 	win->createWnd();
 	win->show();

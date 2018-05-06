@@ -350,7 +350,7 @@ protected:
 	virtual void drawCell(HDC dc, int row, int col, int x, int y, int w, int h );
 	virtual void drawGridLine(HDC dc, int from, int to, int y);
 
-	virtual void onMeasure( int widthSpec, int heightSpec );
+	// virtual void onMeasure( int widthSpec, int heightSpec );
 	virtual void onLayoutChildren( int width, int height );
 	void mesureColumn(int width, int height);
 	virtual SIZE calcDataSize();
