@@ -881,7 +881,7 @@ XExtTable::XExtTable( XmlNode *node ) : XExtScroll(node) {
 	mSelectBgBrush = CreateSolidBrush(color & 0xffffff);
 	color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
-	mLinePen = CreatePen(PS_SOLID, 1, color);
+	mLinePen = CreatePen(PS_SOLID, 1, color & 0xffffff);
 }
 void XExtTable::setModel(XExtTableModel *model) {
 	mModel = model;
@@ -2720,7 +2720,7 @@ XExtTree::XExtTree( XmlNode *node ) : XExtScroll(node) {
 	mModel = NULL;
 	COLORREF color = RGB(0x3A, 0x9D, 0xF9);
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
-	mLinePen = CreatePen(PS_SOLID, 1, color);
+	mLinePen = CreatePen(PS_SOLID, 1, color & 0xffffff);
 	color = RGB(0x64, 0x95, 0xED);
 	AttrUtils::parseColor(mNode->getAttrValue("checkBoxColor"), &color);
 	mCheckPen = CreatePen(PS_SOLID, 1, color & 0xffffff);
