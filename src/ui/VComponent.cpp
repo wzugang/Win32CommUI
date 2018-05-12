@@ -425,11 +425,6 @@ bool VComponent::dispatchMessage(Msg *msg) {
 		return dispatchPaintMessage(msg);
 	}
 
-	/*if (msg->mId == Msg::SET_CURSOR) {
-		SetCursor(LoadCursor(NULL, IDC_ARROW));
-		return true;
-	}*/
-
 	/*if (mListener != NULL) {
 		return mListener->onEvent(this, msg);
 	}*/
@@ -493,6 +488,11 @@ bool VComponent::onMouseEvent(Msg *m) {
 }
 
 bool VComponent::onKeyEvent(Msg *m) {
+	if (mListener != NULL) {
+		if (mListener->onEvent(this, m)) {
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -868,14 +868,19 @@ static LRESULT CALLBACK __WndProc(HWND wnd, UINT msgId, WPARAM wParam, LPARAM lP
 		cc->dispatchMessage(&msg);
 		EndPaint(wnd, &ps);
 		return 0;}
-	case WM_SETCURSOR:
+	case WM_SETCURSOR: {
 		msg.mId = Msg::SET_CURSOR;
+		POINT pt = {0};
+		GetCursorPos(&pt);
+		ScreenToClient(wnd, &pt);
+		msg.mouse.x = pt.x;
+		msg.mouse.y = pt.y;
 		// every time mouse move will go here
 		// SetCursor(LoadCursor(NULL, IDC_ARROW));
 		if (cc->dispatchMessage(&msg)) {
 			return FALSE;
 		}
-		goto _end;
+		goto _end;}
 	case WM_ERASEBKGND:
 		return 0;
 	case WM_TIMER:
@@ -928,6 +933,10 @@ void VBaseWindow::applyIcon() {
 }
 
 bool VBaseWindow::dispatchMessage(Msg *msg) {
+	if (mListener != NULL && mListener->onEvent(this, msg)) {
+		return true;
+	}
+
 	if (msg->mId == WM_ACTIVATE) {
 		if (WA_INACTIVE == LOWORD(msg->def.wParam)) {
 			if (mCapture != NULL) {
@@ -950,7 +959,7 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 			return mCapture->dispatchMessage(&m);
 		}
 		VComponent *lastFocus = mFocus;
-		VComponent::dispatchMessage(msg);
+		bool dis = VComponent::dispatchMessage(msg);
 		if (msg->mId == Msg::MOUSE_MOVE) {
 			if (mLastMouseAt != NULL && mLastMouseAt != msg->mouse.moveAt) {
 				Msg n;
@@ -963,7 +972,7 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 				mFocus->releaseFocus();
 			}
 		}
-		return true;
+		return dis;
 	}
 
 	if (msg->mId > Msg::KEY_MSG_BEGIN && msg->mId < Msg::KEY_MSG_END) {
@@ -993,7 +1002,7 @@ bool VBaseWindow::dispatchMessage(Msg *msg) {
 		PostQuitMessage(msg->def.wParam);
 		return true;
 	}
-
+	
 	return VComponent::dispatchMessage(msg);
 }
 

@@ -43,6 +43,7 @@ struct Msg {
 		LBUTTONDOWN, LBUTTONUP, RBUTTONDOWN, RBUTTONUP,
 		DBCLICK, MOUSE_MOVE, MOUSE_WHEEL,
 		MOUSE_LEAVE, MOUSE_CANCEL, CLICK,
+		SET_CURSOR,
 		MOUSE_MSG_END,
 
 		KEY_MSG_BEGIN,
@@ -51,7 +52,6 @@ struct Msg {
 
 		LOST_FOCUS, GAIN_FOCUS,
 		PAINT,
-		SET_CURSOR, 
 		TIMER,
 
 		HSCROLL, VSCROLL,
@@ -71,7 +71,7 @@ struct Msg {
 	// vkeys is one bit of MK_CONTROL | MK_LBUTTON | MK_MBUTTON | MK_MBUTTON | MK_SHIFT
 	// if has MK_CONTROL bit, means ctrl is press down
 	struct {int x; int y; VKeys vkey; int deta; VComponent *moveAt; VComponent *pressAt;} mouse;
-	struct {VKeys vkey; wchar_t code;} key;
+	struct {wchar_t code;} key;
 	struct {HDC dc; XRect clip; int x; int y;} paint;
 	struct {WPARAM wParam; LPARAM lParam;} def;
 	

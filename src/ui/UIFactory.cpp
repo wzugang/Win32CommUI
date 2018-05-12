@@ -213,7 +213,7 @@ void XImage::draw( HDC dc, int destX, int destY, int destW, int destH ) {
 	}
 	DeleteObject(memDc);
 }
-
+#if 0
 void XImage::draw(XImage *src, int destX, int destY, int destW, int destH, DrawAction a) {
 	if (src == NULL || destX < 0 || destY < 0 || destW <= 0 || destH <= 0) {
 		return;
@@ -245,7 +245,7 @@ void XImage::draw(XImage *src, int destX, int destY, int destW, int destH, DrawA
 		drawAlphaBlend(src, dstX, dstY, dstW, dstH, srcX, srcY);
 	}*/
 }
-
+#endif
 void XImage::drawRepeatX( HDC dc, int destX, int destY, int destW, int destH, HDC memDc ) {
 	for (int w = 0, lw = destW; w < destW; w += mWidth, lw -= mWidth) {
 		if (hasAlphaChannel()) {

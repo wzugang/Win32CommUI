@@ -55,7 +55,7 @@ protected:
 	void drawNormal(HDC dc, int destX, int destY, int destW, int destH, HDC memDc);
 	void drawNormal(XImage *src, int destX, int destY, int destW, int destH, DrawAction a);
 
-	void draw(XImage *src, int dstX, int dstY, int destW, int destH, DrawAction a);
+	// void draw(XImage *src, int dstX, int dstY, int destW, int destH, DrawAction a);
 	void drawCopy(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
 	void drawAlphaBlend(XImage *src, int dstX, int dstY, int destW, int destH, int srcX, int srcY);
 	void drawStretch(XImage *src, const XRect &srcRect, const XRect &destRect, DrawAction a);

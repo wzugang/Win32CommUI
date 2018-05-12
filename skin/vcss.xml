@@ -14,6 +14,9 @@
 		visible = "true|false|gone"
 		weight="15"  HLineLayout VLineLayout会用到
 		enable="true | false"
+	/>
+	
+	<VExtComponent
 		enableState = "true | false"
 		normalImage="" hoverImage="" pushImage="" disableImage="" focusImage=""
 	/>
