@@ -124,6 +124,8 @@ public:
 	int getAttrY();
 	void setAttrX(int attrX);
 	void setAttrY(int attrY);
+	int getAttrWidth();
+	int getAttrHeight();
 	void setAttrWidth(int attrWidth);
 	void setAttrHeight(int attrHeight);
 	int getAttrWeight();
@@ -270,6 +272,7 @@ public:
 		MA_TO_NEXT,   // 下发到下一层
 		MA_CLOSE      // 关闭自己
 	};
+	// node must be VBaseWindow
 	VPopup(XmlNode *node);
 	// w & h is 0 means measure&layout is relative to Root Window
 	virtual void show(int x, int y, int w = 0, int h = 0);
@@ -278,6 +281,7 @@ public:
 	bool isShowing();
 protected:
 	virtual bool onMouseActionWhenOut(Msg *m);
+protected:
 	bool mShowing;
 	MouseAction mMouseAction;
 	friend class VBaseWindow;

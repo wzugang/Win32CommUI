@@ -61,6 +61,31 @@ char * XmlNode::getAttrValue( const char *name ) {
 	return NULL;
 }
 
+char *XmlNode::getAttrPathByName(const char *name) {
+	char *v = getAttrValue(name);
+	return getAttrPathByVal(v);
+}
+
+char * XmlNode::getAttrPathByVal(char *val) {
+	static char path[256];
+	if (val == NULL) {
+		return NULL;
+	}
+	if (strstr(val, "://") != NULL) {
+		return val;
+	}
+	if (mParser == NULL) {
+		XmlNode *root = getRoot();
+		if (root != NULL) {
+			mParser = root->mParser;
+		}
+	}
+	strcpy(path, mParser->mResBasePath);
+	strcat(path, val);
+	return path;
+}
+
+
 void XmlNode::addChild( XmlNode *n ) {
 	mChildren.push_back(n);
 }
@@ -75,8 +100,8 @@ void XmlNode::addAttr( char *name, char *val ) {
 
 XmlNode::~XmlNode() {
 	// do not delete children
-	if (mParser != NULL)
-		delete mParser;
+	// if (mParser != NULL)
+	//	delete mParser;
 	mParser = NULL;
 	for (int i = mSelfAttrNum; i < mAttrs.size(); ++i) {
 		free(mAttrs[i].mValue);
@@ -170,6 +195,7 @@ void XmlNode::copyDefault() {
 XmlParser::XmlParser() {
 	mError = new char[256];
 	mResPath[0] = 0;
+	mResBasePath[0] = 0;
 	reset();
 }
 
@@ -185,6 +211,16 @@ void XmlParser::reset() {
 XmlParser *XmlParser::create(const char *resPath) {
 	XmlParser *p = new XmlParser();
 	strcpy(p->mResPath, resPath);
+	const char *s = strstr(resPath, "://");
+	if (s != NULL) {
+		s += 3;
+		const char *sp = strrchr(s, '/');
+		if (sp != NULL) {
+			memcpy(p->mResBasePath, resPath, sp-resPath);
+			p->mResBasePath[sp-resPath] = 0;
+			strcat(p->mResBasePath, "/");
+		}
+	}
 	return p;
 }
 

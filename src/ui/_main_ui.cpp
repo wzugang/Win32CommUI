@@ -26,10 +26,10 @@ public:
 class ListModel : public VListModel {
 public:
 	virtual int getItemCount() {
-		return 20;
+		return 30;
 	}
 	virtual int getItemHeight(int item) {
-		return 25;
+		return 20;
 	}
 	virtual ItemData *getItemData(int item) {
 		static ItemData it;
@@ -111,8 +111,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// list->setModel(new ListModel());
 	// VTree *tree = (VTree *)(win->findById("tree"));
 	// tree->setModel(UIFactoryV::buildTreeNode(UIFactoryV::buildNode("file://skin/vtest.xml", "my-tree")));
-	VTable *table = (VTable *)(win->findById("table"));
-	table->setModel(new TableModel());
+	VComboBox *combo = (VComboBox *)(win->findById("combo"));
+	combo->getList()->setModel(new ListModel());
 
 	win->createWnd();
 	win->show();

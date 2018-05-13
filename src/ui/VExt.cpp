@@ -21,15 +21,15 @@ VExtComponent::VExtComponent(XmlNode *node) : VComponent(node) {
 	for (int i = 0; i < mNode->getAttrsCount(); ++i) {
 		XmlNode::Attr *attr = mNode->getAttr(i);
 		if (strcmp(attr->mName, "normalImage") == 0) {
-			mStateImages[STATE_IMG_NORMAL] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_NORMAL] = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "hoverImage") == 0) {
-			mStateImages[STATE_IMG_HOVER] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_HOVER] = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "pushImage") == 0) {
-			mStateImages[STATE_IMG_PUSH] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_PUSH] = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "focusImage") == 0) {
-			mStateImages[STATE_IMG_FOCUS] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_FOCUS] = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "disableImage") == 0) {
-			mStateImages[STATE_IMG_DISABLE] = XImage::load(attr->mValue);
+			mStateImages[STATE_IMG_DISABLE] = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "enableState") == 0) {
 			mEnableState = AttrUtils::parseBool(attr->mValue, false);
 		}
@@ -224,10 +224,8 @@ void VButton::onPaint(Msg *m) {
 VOption::VOption( XmlNode *node ) : VButton(node) {
 	mAutoSelect = true;
 	mSelected = false;
-	char *s = mNode->getAttrValue("selectImage");
-	if (s != NULL) {
-		mStateImages[BTN_IMG_SELECT] = XImage::load(s);
-	}
+	char *s = mNode->getAttrPathByName("selectImage");
+	mStateImages[BTN_IMG_SELECT] = XImage::load(s);
 	s = mNode->getAttrValue("autoSelect");
 	if (s != NULL) mAutoSelect = AttrUtils::parseBool(s);
 }
@@ -326,7 +324,7 @@ VIconButton::VIconButton(XmlNode *node) : VOption(node) {
 	memset(mAttrTextRect, 0, sizeof(mAttrTextRect));
 	AttrUtils::parseArraySize(mNode->getAttrValue("iconRect"), mAttrIconRect, 4);
 	AttrUtils::parseArraySize(mNode->getAttrValue("textRect"), mAttrTextRect, 4);
-	mIcon = XImage::load(mNode->getAttrValue("icon"));
+	mIcon = XImage::load(mNode->getAttrPathByName("icon"));
 }
 
 RECT VIconButton::getRectBy(int *attr) {
@@ -368,8 +366,8 @@ void VIconButton::onPaint(Msg *m) {
 
 //-------------------VScrollBar-----------------------------------
 VScrollBar::VScrollBar( XmlNode *node) : VExtComponent(node) {
-	mTrack = XImage::load(mNode->getAttrValue("track"));
-	mThumb = XImage::load(mNode->getAttrValue("thumb"));
+	mTrack = XImage::load(mNode->getAttrPathByName("track"));
+	mThumb = XImage::load(mNode->getAttrPathByName("thumb"));
 	mHorizontal = false;
 	char *org = mNode->getAttrValue("orientation");
 	if (org != NULL && strcmp(org, "hor") == 0) {
@@ -2006,7 +2004,7 @@ VTable::VTable( XmlNode *node ) : VScroll(node) {
 	mSelectedRow = -1;
 	mModel = NULL;
 	mRender = NULL;
-	mSelectBgImage = XImage::load(mNode->getAttrValue("selRowBgImage"));
+	mSelectBgImage = XImage::load(mNode->getAttrPathByName("selRowBgImage"));
 	COLORREF color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("horLineColor"), &color);
 	mHorLinePen = CreatePen(PS_SOLID, 1, color);
@@ -2321,13 +2319,13 @@ VList::VList( XmlNode *node ) : VScroll(node) {
 	mItemRender = NULL;
 	mTrackItem = -1;
 	mSelectItem = -1;
-	mSelBgImage = XImage::load(mNode->getAttrValue("selBgImage"));
+	mSelBgImage = XImage::load(mNode->getAttrPathByName("selBgImage"));
 	if (mSelBgImage == NULL) {
 		mSelBgImage = XImage::create(1, 1);
 		mSelBgImage->mStretch = true;
 		mSelBgImage->fillColor(0xFFA2B5CD);
 	}
-	mTrackBgImage = XImage::load(mNode->getAttrValue("trackBgImage"));
+	mTrackBgImage = XImage::load(mNode->getAttrPathByName("trackBgImage"));
 	if (mTrackBgImage == NULL) {
 		mTrackBgImage = XImage::create(1, 1);
 		mTrackBgImage->mStretch = true;
@@ -3130,18 +3128,37 @@ void VVLineLayout::onLayoutChildren( int width, int height ) {
 }
 
 //--------------------------VBaseCombobox--------------------------
-VBaseCombobox::VBaseCombobox(XmlNode *node) : VExtComponent(node) {
-	mArrowImg[0] = XImage::load(node->getAttrValue("arrowNormal"));
-	mArrowImg[1] = XImage::load(node->getAttrValue("arrowPush"));
-	mPopup = new VPopup(new XmlNode("Popup", node));
+class VBaseComboBox::PopupListener : public VListener {
+public:
+	PopupListener(VBaseComboBox *combo) {
+		mCombo = combo;
+	}
+	virtual bool onEvent(VComponent *evtSource, Msg *msg) {
+		if (msg->mId == Msg::CLOSED) {
+			mCombo->onPopupClosed(msg);
+			return true;
+		}
+		return false;
+	}
+protected:
+	VBaseComboBox *mCombo;
+};
+
+VBaseComboBox::VBaseComboBox(XmlNode *node) : VExtComponent(node) {
+	mArrowImg[0] = XImage::load(node->getAttrPathByName("arrowNormal"));
+	mArrowImg[1] = XImage::load(node->getAttrPathByName("arrowPush"));
+	VBaseWindow *root = getRoot();
+	XmlNode *rn = root == NULL ? NULL : root->getNode();
+	mPopup = new VPopup(new XmlNode("Popup", rn));
 	mPopup->setMouseAction(VPopup::MA_CLOSE);
+	mPopup->setListener(new PopupListener(this));
 	mArrowWidth = AttrUtils::parseInt(node->getAttrValue("arrowWidth"));
 	if (mArrowWidth <= 0) {
 		mArrowWidth = 20;
 	}
 }
 
-void VBaseCombobox::openPopup() {
+void VBaseComboBox::openPopup() {
 	/*POINT pt = getDrawPoint();
 	SIZE sz = getPopupSize();
 	p->show(pt.x, pt.y + mHeight, sz.cx, sz.cy);
@@ -3149,12 +3166,12 @@ void VBaseCombobox::openPopup() {
 	*/
 }
 
-void VBaseCombobox::closePopup() {
+void VBaseComboBox::closePopup() {
 	mPopup->close();
 	repaint();
 }
 
-bool VBaseCombobox::onMouseEvent(Msg *m) {
+bool VBaseComboBox::onMouseEvent(Msg *m) {
 	if (m->mId == Msg::LBUTTONDOWN) {
 		if (m->mouse.x >= mWidth - mArrowWidth) {
 			// press in arrow
@@ -3163,6 +3180,28 @@ bool VBaseCombobox::onMouseEvent(Msg *m) {
 		}
 	}
 	return VExtComponent::onMouseEvent(m);
+}
+
+VPopup * VBaseComboBox::getPopup() {
+	checkPopup();
+	return mPopup;
+}
+
+bool VBaseComboBox::checkPopup() {
+	XmlNode *n = mPopup->getNode();
+	if (n->getParent() != NULL) {
+		return true;
+	}
+	VBaseWindow *root = getRoot();
+	if (root == NULL) {
+		return false;
+	}
+	n->setParent(root->getNode());
+	return true;
+}
+
+void VBaseComboBox::onPopupClosed(Msg *m) {
+	repaint();
 }
 
 //-----------VComboBox------------------------------------
@@ -3185,17 +3224,40 @@ public:
 	VList *mList;
 };
 
-VComboBox::VComboBox(XmlNode *node) : VBaseCombobox(node) {
-	mList = new VList(new XmlNode("List", mPopup->getNode()));
-	mList->setAttrWidth(100 | MS_PERCENT);
-	mList->setAttrHeight(100 | MS_PERCENT);
-	mList->setItemRender(new VBoxRender(mList));
-	mPopup->getNode()->addChild(mList->getNode());
+class VComboBox::ListListener : public VListener {
+public:
+	ListListener(VComboBox *combo) {
+		mCombo = combo;
+	}
+	virtual bool onEvent(VComponent *evtSource, Msg *msg) {
+		if (msg->mId == Msg::SELECT_ITEM) {
+			mCombo->closePopup();
+			mCombo->onPopupClosed(msg);
+			return true;
+		}
+		return false;
+	}
+protected:
+	VComboBox *mCombo;
+};
 
+VComboBox::VComboBox(XmlNode *node) : VBaseComboBox(node) {
+	mList = new VList(new XmlNode("List", mPopup->getNode()));
+	if (mList->getAttrWidth() == 0 || mList->getAttrHeight() == 0) {
+		mList->setAttrWidth(100 | MS_PERCENT);
+		mList->setAttrHeight(100 | MS_PERCENT);
+	}
+	mList->setItemRender(new VBoxRender(mList));
+	mList->setListener(new ListListener(this));
+	mPopup->getNode()->addChild(mList->getNode());
 }
 
 void VComboBox::openPopup() {
 	int cy = 0;
+	if (! checkPopup()) {
+		return;
+	}
+
 	POINT pt = getDrawPoint();
 	VListModel *model = mList->getModel();
 	if (model == NULL || model->getItemCount() == 0) {
@@ -3203,7 +3265,7 @@ void VComboBox::openPopup() {
 	} else {
 		int c = model->getItemCount();
 		int h = model->getItemHeight(0);
-		cy = h * (c > 15 ? 15 : c); // max show item is 15
+		cy = h * (c > 10 ? 10 : c); // max show item is 15
 	}
 	mPopup->show(pt.x, pt.y + mHeight, mWidth, cy);
 	repaint();
@@ -3216,6 +3278,10 @@ VList* VComboBox::getList() {
 void VComboBox::onPaint(Msg *m) {
 	eraseBackground(m);
 	VList::ItemRender *rr = mList->getItemRender();
+
+	SetBkMode(m->paint.dc, TRANSPARENT);
+	SelectObject(m->paint.dc, getFont());
+
 	if (rr != NULL) {
 		int si = mList->getSelectItem();
 		rr->onDrawItem(m->paint.dc, si, 0, 0, mWidth - mArrowWidth, mHeight);

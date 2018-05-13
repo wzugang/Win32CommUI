@@ -961,6 +961,7 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 	if (strcmp(name, "MaskEdit") == 0) return new VMaskEdit(n);
 	if (strcmp(name, "Password") == 0) return new VPassword(n);
 
+	if (strcmp(name, "ComboBox") == 0) return new VComboBox(n);
 	return NULL;
 }
 

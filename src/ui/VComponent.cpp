@@ -212,7 +212,7 @@ void VComponent::parseAttrs() {
 				mAttrFlags |= AF_BG_COLOR;
 			}
 		} else if (strcmp(attr->mName, "bgimage") == 0) {
-			mBgImage = XImage::load(attr->mValue);
+			mBgImage = XImage::load(mNode->getAttrPathByVal(attr->mValue));
 		} else if (strcmp(attr->mName, "roundConer") == 0) {
 			char *p = NULL;
 			int v1 = (int)strtod(attr->mValue, &p);
@@ -362,6 +362,14 @@ void VComponent::setAttrX(int attrX) {
 
 void VComponent::setAttrY(int attrY) {
 	mAttrY = attrY;
+}
+
+int VComponent::getAttrWidth() {
+	return mAttrWidth;
+}
+
+int VComponent::getAttrHeight() {
+	return mAttrHeight;
 }
 
 void VComponent::setAttrWidth(int a) {
@@ -934,7 +942,7 @@ void VBaseWindow::applyAttrs() {
 }
 
 void VBaseWindow::applyIcon() {
-	HICON ico = XImage::loadIcon(mNode->getAttrValue("icon"));
+	HICON ico = XImage::loadIcon(mNode->getAttrPathByName("icon"));
 	if (ico != NULL) {
 		SendMessage(mWnd, WM_SETICON, ICON_BIG, (LPARAM)ico);
 		SendMessage(mWnd, WM_SETICON, ICON_SMALL, (LPARAM)ico);
@@ -1116,15 +1124,16 @@ bool VBaseWindow::dispatchPaintMessage(Msg *m) {
 	HDC mdc = CreateCompatibleDC(old);
 	SelectObject(mdc, mCache->getHBitmap());
 	m->paint.dc = mdc;
-
-	VComponent::dispatchPaintMessage(m);
+	Msg m2 = *m;
+	VComponent::dispatchPaintMessage(&m2);
+	
 	for (int i = 0; i < MAX_POPUP_NUM; ++i) {
 		if (mPopups[i] == NULL) {
 			continue;
 		}
 		Msg mm = *m;
-		mm.paint.x += mTranslateX + mPopups[i]->getX(); 
-		mm.paint.y += mTranslateY + mPopups[i]->getY(); 
+		mm.paint.x += mTranslateX + mPopups[i]->getX();
+		mm.paint.y += mTranslateY + mPopups[i]->getY();
 		mPopups[i]->dispatchPaintMessage(&mm);
 	}
 
@@ -1352,6 +1361,12 @@ void VPopup::close() {
 		}
 	}
 	mShowing = false;
+
+	if (mListener != NULL) {
+		Msg m;
+		m.mId = Msg::CLOSED;
+		mListener->onEvent(this, &m);
+	}
 }
 
 void VPopup::setMouseAction(MouseAction ma) {
@@ -1375,5 +1390,6 @@ bool VPopup::onMouseActionWhenOut(Msg *m) {
 bool VPopup::isShowing() {
 	return mShowing;
 }
+
 
 

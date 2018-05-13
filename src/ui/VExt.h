@@ -512,20 +512,24 @@ public:
 	virtual void onLayoutChildren(int width, int height);
 };
 
-class VBaseCombobox : public VExtComponent {
+class VBaseComboBox : public VExtComponent {
 public:
-	VBaseCombobox(XmlNode *node);
+	VBaseComboBox(XmlNode *node);
 	virtual void openPopup();
 	virtual void closePopup();
 protected:
 	virtual bool onMouseEvent(Msg *m);
+	VPopup *getPopup();
+	bool checkPopup();
+	virtual void onPopupClosed(Msg *m);
 protected:
 	VPopup *mPopup;
 	XImage *mArrowImg[2]; // normal & push down
 	int mArrowWidth;
+	class PopupListener;
 };
 
-class VComboBox : public VBaseCombobox {
+class VComboBox : public VBaseComboBox {
 public:
 	VComboBox(XmlNode *node);
 	virtual void openPopup();
@@ -534,4 +538,5 @@ protected:
 	virtual void onPaint(Msg *m);
 protected:
 	VList *mList;
+	class ListListener;
 };

@@ -1,11 +1,11 @@
 #################### main-page ############
-<Window text = "Test VApp" rect = "0 0 800 600"  bgcolor="#FFB6C1" bgimage="file://skin/a.bmp"  >
-	<default class="Button" normalImage="file://skin/ext_button.bmp [0 48 75 24] 9patch" hoverImage="file://skin/ext_button.bmp [0 24 75 24] 9patch" pushImage="file://skin/ext_button.bmp [0 0 75 24] 9patch" />
+<Window text = "Test VApp" rect = "0 0 800 600"  bgcolor="#FFB6C1" bgimage="a.bmp"  >
+	<default class="Button" normalImage="ext_button.bmp [0 48 75 24] 9patch" hoverImage="ext_button.bmp [0 24 75 24] 9patch" pushImage="ext_button.bmp [0 0 75 24] 9patch" />
 	<default class="VerScrollBar" rect="0 0 15 100%" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />
-	<default class="Radio" normalImage="file://skin/radio_normal.png" hoverImage="file://skin/radio_normal.png" pushImage="file://skin/radio_normal.png" selectImage="file://skin/radio_select.png" />
+	<default class="Radio" normalImage="radio_normal.png" hoverImage="radio_normal.png" pushImage="radio_normal.png" selectImage="radio_select.png" />
 	
-	<Table id="table" rect="100 150 300 250" bgcolor="#50ddccdd" selRowBgImage="color://#50fab85a" />
+	<ComboBox id="combo" rect="100 100 150 25" bgcolor="#50ddccdd" arrowNormal="ext_combobox_arrow_normal.png stretch" arrowPush="ext_combobox_arrow_down.png stretch" />
 	
 </Window>
 

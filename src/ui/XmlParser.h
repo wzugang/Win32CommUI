@@ -25,6 +25,8 @@ public:
 	Attr* getAttr(int idx);
 	char *getAttrValue(const char *name);
 	void addAttr(char *name, char *val);
+	char *getAttrPathByName(const char *name);
+	char *getAttrPathByVal(char *val);
 
 	void setComponent(XComponent *c);
 	XComponent* getComponent();
@@ -58,6 +60,7 @@ public:
 	bool hasError();
 	char *getError();
 	XmlNode *getRoot();
+
 	XmlParser();
 	~XmlParser();
 protected:
@@ -80,6 +83,7 @@ protected:
 	int mPos;
 	bool mHasError;
 	char mResPath[128];
+	char mResBasePath[128];
 	friend class XmlNode;
 };
 
