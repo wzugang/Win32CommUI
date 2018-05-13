@@ -22,6 +22,7 @@ XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mDefaultNode = NULL;
 	mHasCopyedDefault = false;
 	mSelfAttrNum = 0;
+	mClass = NULL;
 }
 
 char * XmlNode::getName() {
@@ -176,7 +177,7 @@ void XmlNode::copyDefault() {
 		if (node->mDefaultNode == NULL || mName == NULL) {
 			continue;
 		}
-		std::map<std::string, XmlNode*>::iterator it = node->mDefaultNode->find(mName);
+		std::map<std::string, XmlNode*>::iterator it = node->mDefaultNode->find(getClass());
 		if (it == node->mDefaultNode->end()) {
 			continue;
 		}
@@ -189,6 +190,24 @@ void XmlNode::copyDefault() {
 			}
 		}
 	}
+}
+
+char * XmlNode::getClass() {
+	if (mClass == NULL) {
+		for (int i = 0; i < mAttrs.size(); ++i) {
+			const Attr &a = mAttrs.at(i);
+			if (strcmp("class", a.mName) == 0) {
+				mClass = a.mValue;
+				return mClass;
+			}
+		}
+		mClass = mName;
+	}
+	return mClass;
+}
+
+void XmlNode::setClass(char *clazz) {
+	mClass = clazz;
 }
 
 //----------------------------XmlParser---------------------

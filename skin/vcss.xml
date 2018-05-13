@@ -18,6 +18,7 @@
 		visible = "true|false|gone"
 		weight="15"  HLineLayout VLineLayout会用到
 		enable="true | false"
+		class="default class" 指定 default 标签中的class属性，默认是NULL(等于标签名) 
 	/>
 	
 	<VExtComponent

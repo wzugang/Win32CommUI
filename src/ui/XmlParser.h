@@ -38,6 +38,8 @@ public:
 	XmlNode* getRoot();
 	void copyDefault();
 	void print(int step);
+	char *getClass();
+	void setClass(char *clazz);
 	~XmlNode();
 protected:
 	std::vector<XmlNode*> mChildren;
@@ -50,6 +52,7 @@ protected:
 	std::map<std::string, XmlNode*> *mDefaultNode;
 	bool mHasCopyedDefault;
 	int mSelfAttrNum;
+	char *mClass;
 	friend class XmlParser;
 };
 

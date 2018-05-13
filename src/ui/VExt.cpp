@@ -3242,7 +3242,9 @@ protected:
 };
 
 VComboBox::VComboBox(XmlNode *node) : VBaseComboBox(node) {
-	mList = new VList(new XmlNode("List", mPopup->getNode()));
+	XmlNode *ln = new XmlNode("List", mPopup->getNode());
+	ln->setClass("ComboBox_List");
+	mList = new VList(ln);
 	if (mList->getAttrWidth() == 0 || mList->getAttrHeight() == 0) {
 		mList->setAttrWidth(100 | MS_PERCENT);
 		mList->setAttrHeight(100 | MS_PERCENT);
