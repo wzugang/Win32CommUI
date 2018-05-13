@@ -392,6 +392,7 @@ public:
 	void setModel(VListModel *model);
 	VListModel *getModel();
 	void setItemRender(ItemRender *render);
+	ItemRender *getItemRender();
 	int getItemY(int item);
 	int getTrackItem();
 	void setEnableTrack(bool enable);
@@ -509,4 +510,28 @@ class VVLineLayout : public VExtComponent {
 public:
 	VVLineLayout(XmlNode *node);
 	virtual void onLayoutChildren(int width, int height);
+};
+
+class VBaseCombobox : public VExtComponent {
+public:
+	VBaseCombobox(XmlNode *node);
+	virtual void openPopup();
+	virtual void closePopup();
+protected:
+	virtual bool onMouseEvent(Msg *m);
+protected:
+	VPopup *mPopup;
+	XImage *mArrowImg[2]; // normal & push down
+	int mArrowWidth;
+};
+
+class VComboBox : public VBaseCombobox {
+public:
+	VComboBox(XmlNode *node);
+	virtual void openPopup();
+	VList* getList();
+protected:
+	virtual void onPaint(Msg *m);
+protected:
+	VList *mList;
 };

@@ -2493,6 +2493,10 @@ void VList::setItemRender( ItemRender *render ) {
 	mItemRender = render;
 }
 
+VList::ItemRender *VList::getItemRender() {
+	return mItemRender;
+}
+
 int VList::findItem( int x, int y ) {
 	if (mModel == NULL || x < 0 || y < 0) {
 		return -1;
@@ -2550,6 +2554,14 @@ int VList::getTrackItem() {
 
 void VList::setEnableTrack(bool enable) {
 	mEnableTrack = enable;
+}
+
+void VList::setSelectItem(int item) {
+	mSelectItem = item;
+}
+
+int VList::getSelectItem() {
+	return mSelectItem;
 }
 
 //-------------------------VTreeNode--------------------
@@ -3117,3 +3129,100 @@ void VVLineLayout::onLayoutChildren( int width, int height ) {
 	}
 }
 
+//--------------------------VBaseCombobox--------------------------
+VBaseCombobox::VBaseCombobox(XmlNode *node) : VExtComponent(node) {
+	mArrowImg[0] = XImage::load(node->getAttrValue("arrowNormal"));
+	mArrowImg[1] = XImage::load(node->getAttrValue("arrowPush"));
+	mPopup = new VPopup(new XmlNode("Popup", node));
+	mPopup->setMouseAction(VPopup::MA_CLOSE);
+	mArrowWidth = AttrUtils::parseInt(node->getAttrValue("arrowWidth"));
+	if (mArrowWidth <= 0) {
+		mArrowWidth = 20;
+	}
+}
+
+void VBaseCombobox::openPopup() {
+	/*POINT pt = getDrawPoint();
+	SIZE sz = getPopupSize();
+	p->show(pt.x, pt.y + mHeight, sz.cx, sz.cy);
+	repaint();
+	*/
+}
+
+void VBaseCombobox::closePopup() {
+	mPopup->close();
+	repaint();
+}
+
+bool VBaseCombobox::onMouseEvent(Msg *m) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		if (m->mouse.x >= mWidth - mArrowWidth) {
+			// press in arrow
+			openPopup();
+			return true;
+		}
+	}
+	return VExtComponent::onMouseEvent(m);
+}
+
+//-----------VComboBox------------------------------------
+class VBoxRender : public VList::ItemRender {
+public:
+	VBoxRender(VList *list) {
+		mList = list;
+	}
+	virtual void onDrawItem(HDC dc, int item, int x, int y, int w, int h) {
+		if (item < 0) {
+			return;
+		}
+		VListModel *model = mList->getModel();
+		VListModel::ItemData *data = model->getItemData(item);
+		if (data != NULL && data->mText != NULL) {
+			RECT r = {x + 10, y, x + w - 10, y + h};
+			DrawText(dc, data->mText, strlen(data->mText), &r, DT_SINGLELINE | DT_VCENTER);
+		}
+	}
+	VList *mList;
+};
+
+VComboBox::VComboBox(XmlNode *node) : VBaseCombobox(node) {
+	mList = new VList(new XmlNode("List", mPopup->getNode()));
+	mList->setAttrWidth(100 | MS_PERCENT);
+	mList->setAttrHeight(100 | MS_PERCENT);
+	mList->setItemRender(new VBoxRender(mList));
+	mPopup->getNode()->addChild(mList->getNode());
+
+}
+
+void VComboBox::openPopup() {
+	int cy = 0;
+	POINT pt = getDrawPoint();
+	VListModel *model = mList->getModel();
+	if (model == NULL || model->getItemCount() == 0) {
+		cy = 20;
+	} else {
+		int c = model->getItemCount();
+		int h = model->getItemHeight(0);
+		cy = h * (c > 15 ? 15 : c); // max show item is 15
+	}
+	mPopup->show(pt.x, pt.y + mHeight, mWidth, cy);
+	repaint();
+}
+
+VList* VComboBox::getList() {
+	return mList;
+}
+
+void VComboBox::onPaint(Msg *m) {
+	eraseBackground(m);
+	VList::ItemRender *rr = mList->getItemRender();
+	if (rr != NULL) {
+		int si = mList->getSelectItem();
+		rr->onDrawItem(m->paint.dc, si, 0, 0, mWidth - mArrowWidth, mHeight);
+	}
+	// draw arrow
+	XImage *arrow = mPopup->isShowing() ? mArrowImg[1] : mArrowImg[0];
+	if (arrow != NULL) {
+		arrow->draw(m->paint.dc, mWidth - mArrowWidth, 0, mArrowWidth, mHeight);
+	}
+}

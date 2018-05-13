@@ -108,6 +108,7 @@ VComponent::VComponent(XmlNode *node) {
 
 	mID = (s_id++) * 10;
 	mNode = node;
+	node->setComponentV(this);
 	mX = mY = mWidth = mHeight = mMesureWidth = mMesureHeight = 0;
 	mAttrX = mAttrY = mAttrWidth = mAttrHeight = 0;
 	memset(mAttrPadding, 0, sizeof(mAttrPadding));
@@ -361,6 +362,14 @@ void VComponent::setAttrX(int attrX) {
 
 void VComponent::setAttrY(int attrY) {
 	mAttrY = attrY;
+}
+
+void VComponent::setAttrWidth(int a) {
+	mAttrWidth = a;
+}
+
+void VComponent::setAttrHeight(int a) {
+	mAttrHeight = a;
 }
 
 int VComponent::getAttrWeight() {
@@ -1299,9 +1308,13 @@ void VDialog::close( int nRet ) {
 //------------VPopup--------------------------------
 VPopup::VPopup(XmlNode *node) : VComponent(node) {
 	mMouseAction = MA_TO_NEXT;
+	mShowing = false;
 }
 
-void VPopup::show(int x, int y) {
+void VPopup::show(int x, int y, int w, int h) {
+	if (mShowing) {
+		return;
+	}
 	VBaseWindow *win = getRoot();
 	if (win == NULL) {
 		return;
@@ -1316,10 +1329,13 @@ void VPopup::show(int x, int y) {
 		return;
 	}
 	win->mPopups[i] = this;
-
-	onMeasure(win->mWidth | MS_ATMOST, win->mHeight | MS_ATMOST);
+	int mw = 0, mh = 0;
+	mw = (w == 0) ? (win->mWidth | MS_ATMOST) : (w | MS_FIX);
+	mh = (h == 0) ? (win->mHeight | MS_ATMOST) : (h | MS_FIX);
+	onMeasure(mw, mh);
 	onLayout(x, y, mMesureWidth, mMesureHeight);
 	repaint(NULL);
+	mShowing = true;
 }
 
 void VPopup::close() {
@@ -1335,6 +1351,7 @@ void VPopup::close() {
 			break;
 		}
 	}
+	mShowing = false;
 }
 
 void VPopup::setMouseAction(MouseAction ma) {
@@ -1353,6 +1370,10 @@ bool VPopup::onMouseActionWhenOut(Msg *m) {
 		return false;
 	}
 	return true;
+}
+
+bool VPopup::isShowing() {
+	return mShowing;
 }
 
 

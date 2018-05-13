@@ -58,9 +58,9 @@ public:
 	bool hasError();
 	char *getError();
 	XmlNode *getRoot();
-protected:
 	XmlParser();
 	~XmlParser();
+protected:
 	void reset();
 	void doParse();
 	XmlNode* parseNode(XmlNode *parent);

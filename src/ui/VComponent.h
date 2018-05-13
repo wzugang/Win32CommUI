@@ -56,7 +56,8 @@ struct Msg {
 
 		HSCROLL, VSCROLL,
 
-		SELECT_ITEM,
+		SELECT_ITEM, 
+		CLOSED, // component closed
 	};
 	struct VKeys {
 		bool ctrl;
@@ -123,6 +124,8 @@ public:
 	int getAttrY();
 	void setAttrX(int attrX);
 	void setAttrY(int attrY);
+	void setAttrWidth(int attrWidth);
+	void setAttrHeight(int attrHeight);
 	int getAttrWeight();
 	void setAttrWeight(int weight);
 	int *getAttrMargin();
@@ -267,14 +270,15 @@ public:
 		MA_TO_NEXT,   // 下发到下一层
 		MA_CLOSE      // 关闭自己
 	};
-	// node's parent should be a VBaseWindow
 	VPopup(XmlNode *node);
-	virtual void show(int x, int y);
+	// w & h is 0 means measure&layout is relative to Root Window
+	virtual void show(int x, int y, int w = 0, int h = 0);
 	virtual void close();
 	void setMouseAction(MouseAction ma);
+	bool isShowing();
 protected:
 	virtual bool onMouseActionWhenOut(Msg *m);
-
+	bool mShowing;
 	MouseAction mMouseAction;
 	friend class VBaseWindow;
 };

@@ -50,6 +50,7 @@
 	<MaskEdit mask="" placeHolder="_" case="none|upper|lower"  />  继承自 LineEdit 
 	<Password  />  继承自 LineEdit 
 	
+	<VBaseCombobox arrowNormal="image" arrowPush="image" arrowWidth="20" />
 	
 	
 	<TreeNode>
