@@ -3305,3 +3305,55 @@ void VComboBox::onPaint(Msg *m) {
 		arrow->draw(m->paint.dc, mWidth - mArrowWidth, 0, mArrowWidth, mHeight);
 	}
 }
+
+//-----------VTitleBar------------------------------------
+VTitleBar::VTitleBar(XmlNode *node) : VExtComponent(node) {
+	mPressX = mPressY = 0;
+}
+
+bool VTitleBar::onMouseEvent(Msg *m) {
+	if (m->mId == Msg::LBUTTONDOWN) {
+		setCapture();
+		mMouseDown = true;
+		mPressX = m->mouse.x;
+		mPressY = m->mouse.y;
+		return true;
+	} else if (m->mId == Msg::LBUTTONUP) {
+		releaseCapture();
+		mMouseDown = false;
+		return true;
+	} else if (m->mId == Msg::MOUSE_CANCEL) {
+		releaseCapture();
+		mMouseDown = false;
+		return true;
+	} else if (m->mId == Msg::MOUSE_MOVE) {
+		if (mMouseDown) {
+			int dx = m->mouse.x - mPressX;
+			int dy = m->mouse.y - mPressY;
+			RECT r;
+			HWND wnd = getWnd();
+			GetWindowRect(wnd, &r);
+			OffsetRect(&r, dx, dy);
+			MoveWindow(wnd, r.left, r.top, r.right-r.left, r.bottom-r.top, TRUE);
+			return true;
+		}
+	} else if (m->mId == Msg::DBCLICK) {
+		VBaseWindow *root = getRoot();
+		if (root->isMaxable()) {
+			HWND wnd = getWnd();
+			RECT desk = {0};
+			SystemParametersInfo(SPI_GETWORKAREA, 0, &desk, 0);
+
+			if (IsZoomed(wnd)) {
+				SendMessage(wnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+			} else {
+				SendMessage(wnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+				MoveWindow(wnd, desk.left, desk.top, desk.right-desk.left, desk.bottom-desk.top, TRUE);
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+

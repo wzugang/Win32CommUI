@@ -541,3 +541,12 @@ protected:
 	VList *mList;
 	class ListListener;
 };
+
+class VTitleBar : public VExtComponent {
+public:
+	VTitleBar(XmlNode *node);
+protected:
+	virtual bool onMouseEvent(Msg *m);
+protected:
+	int mPressX, mPressY;
+};

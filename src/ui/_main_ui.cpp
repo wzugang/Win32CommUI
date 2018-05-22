@@ -87,7 +87,7 @@ public:
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
-	AllocConsole();
+	// AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
 	char path[256];
 	GetModuleFileName(NULL, path, 256);

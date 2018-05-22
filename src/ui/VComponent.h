@@ -216,6 +216,7 @@ public:
 	virtual void notifyLayout();
 	void startTimer(VComponent *src, DWORD timerId, int elapse);
 	void killTimer(VComponent *src, DWORD timerId);
+	bool isMaxable();
 protected:
 	virtual RECT getClientRect();
 	virtual bool dispatchMessage(Msg *msg);
@@ -228,6 +229,7 @@ protected:
 	virtual DWORD getStyle(DWORD def);
 protected:
 	HWND mWnd;
+	bool mMaxable;
 	VComponent *mCapture, *mFocus;
 	VComponent *mLastMouseAt;
 	enum {

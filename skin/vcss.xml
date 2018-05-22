@@ -26,7 +26,12 @@
 		normalImage="" hoverImage="" pushImage="" disableImage="" focusImage=""
 	/>
 	
-	<VBaseWindow style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" />
+	<VBaseWindow 
+		style="caption | sys-menu | thick-frame | dlg-frame | border | min-box | max-box | popup" 
+		resizable="true | false"  调整大小
+		maxable="true | false"  最大化
+		/>
+		
 	<Window text="" icon="file://xxx.ico | res://xab | xbin://abc.ico" /> 继承自VBaseWindow
 	<Dialog text=""  />  继承自VBaseWindow
 	

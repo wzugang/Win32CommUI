@@ -924,6 +924,7 @@ VBaseWindow::VBaseWindow(XmlNode *node) : VComponent(node) {
 	mFocus = NULL;
 	mLastMouseAt = NULL;
 	memset(mPopups, 0, sizeof(mPopups));
+	mMaxable = AttrUtils::parseBool(node->getAttrValue("maxable"), true);
 }
 
 void VBaseWindow::onLayoutChildren(int width, int height) {
@@ -1186,6 +1187,10 @@ void VBaseWindow::killTimer(VComponent *src, DWORD timerId) {
 			break;
 		}
 	}
+}
+
+bool VBaseWindow::isMaxable() {
+	return mMaxable;
 }
 
 //--------------------------------------------------------
