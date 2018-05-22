@@ -2112,8 +2112,10 @@ void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
 		y2 += mModel->getRowHeight(i);
 	}
 	SetBkMode(dc, TRANSPARENT);
+	SelectObject(dc, getFont());
 	int ry = y2;
-	for (int i = from; i <= to; ++i) {
+	int count = mModel == NULL ? 0 : mModel->getRowCount();
+	for (int i = from; i <= to && i < count; ++i) {
 		int x2 = -mHorBar->getPos();
 		drawRow(dc, i, x + x2, y + y2, w - (x + x2), mModel->getRowHeight(i));
 		y2 += mModel->getRowHeight(i);
@@ -2310,6 +2312,15 @@ int VTable::findCell( int x, int y, int *col ) {
 }
 
 VTable::~VTable() {
+}
+
+void VTable::notifyModelChanged() {
+	if (mMesureWidth == 0 || mMesureHeight == 0) {
+		return;
+	}
+	onMeasure(mMesureWidth | MS_FIX, mMesureHeight | MS_FIX);
+	onLayout(mX, mY, mWidth, mHeight);
+	repaint();
 }
 
 
@@ -3267,7 +3278,7 @@ void VComboBox::openPopup() {
 	} else {
 		int c = model->getItemCount();
 		int h = model->getItemHeight(0);
-		cy = h * (c > 10 ? 10 : c); // max show item is 15
+		cy = h * (c > 10 ? 10 : c); // max show item is 10
 	}
 	mPopup->show(pt.x, pt.y + mHeight, mWidth, cy);
 	repaint();

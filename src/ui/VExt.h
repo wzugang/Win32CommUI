@@ -338,6 +338,7 @@ public:
 	VTable(XmlNode *node);
 	void setModel(VTableModel *model);
 	void setRender(Render *render);
+	void notifyModelChanged();
 	virtual ~VTable();
 protected:
 	virtual void onPaint(Msg *m);
