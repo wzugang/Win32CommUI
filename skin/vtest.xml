@@ -6,7 +6,7 @@
 	<default class="Radio" normalImage="radio_normal.png" hoverImage="radio_normal.png" pushImage="radio_normal.png" selectImage="radio_select.png" />
 	<default class="ComboBox_List" bgcolor="#30fab85a" />
 	
-	<TitleBar rect="0 0 100% 35" bgimage="color://#80F0E68C" />
+	<WindowBar rect="0 0 100% 35" bgimage="color://#80F0E68C" />
 	
 	<ComboBox id="combo" rect="100 100 150 25" bgcolor="#50ddccdd" arrowNormal="ext_combobox_arrow_normal.png stretch" arrowPush="ext_combobox_arrow_down.png stretch" />
 	

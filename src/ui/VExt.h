@@ -542,9 +542,9 @@ protected:
 	class ListListener;
 };
 
-class VTitleBar : public VExtComponent {
+class VWindowBar : public VExtComponent {
 public:
-	VTitleBar(XmlNode *node);
+	VWindowBar(XmlNode *node);
 protected:
 	virtual bool onMouseEvent(Msg *m);
 protected:

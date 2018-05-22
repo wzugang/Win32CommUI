@@ -34,6 +34,7 @@
 		
 	<Window text="" icon="file://xxx.ico | res://xab | xbin://abc.ico" /> 继承自VBaseWindow
 	<Dialog text=""  />  继承自VBaseWindow
+	<WindowBar />
 	
 	<AbsLayout />
 	<HLineLayout />

@@ -3307,11 +3307,11 @@ void VComboBox::onPaint(Msg *m) {
 }
 
 //-----------VTitleBar------------------------------------
-VTitleBar::VTitleBar(XmlNode *node) : VExtComponent(node) {
+VWindowBar::VWindowBar(XmlNode *node) : VExtComponent(node) {
 	mPressX = mPressY = 0;
 }
 
-bool VTitleBar::onMouseEvent(Msg *m) {
+bool VWindowBar::onMouseEvent(Msg *m) {
 	if (m->mId == Msg::LBUTTONDOWN) {
 		setCapture();
 		mMouseDown = true;

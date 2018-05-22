@@ -962,7 +962,7 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 	if (strcmp(name, "Password") == 0) return new VPassword(n);
 
 	if (strcmp(name, "ComboBox") == 0) return new VComboBox(n);
-	if (strcmp(name, "TitleBar") == 0) return new VTitleBar(n);
+	if (strcmp(name, "WindowBar") == 0) return new VWindowBar(n);
 	
 	return NULL;
 }
