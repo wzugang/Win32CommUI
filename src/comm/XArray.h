@@ -4,11 +4,12 @@
 template <typename T>  
 class XArray {
 public:
-	XArray() {
+	XArray(int initialCapacity = 0) {
 		mNum = 0;
-		mCapacity = 20;
+		mCapacity = initialCapacity > 0 ? initialCapacity : 20;
 		mElems = (T*)malloc(sizeof(T) * mCapacity);
 	}
+
 	XArray(const XArray<T> &a) {
 		mNum = a.mNum;
 		mCapacity = a.mCapacity;
