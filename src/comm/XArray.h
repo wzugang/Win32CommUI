@@ -120,6 +120,7 @@ protected:
 			for (int i = 0; i < mNum; ++i) {
 				new (newElems + i) T(mElems[i]);
 			}
+			clear();
 			free(mElems);
 			mElems = newElems;
 		}

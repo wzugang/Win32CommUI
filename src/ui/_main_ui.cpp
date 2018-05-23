@@ -112,8 +112,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
 
-
-
 	XArray<Temp> arr;
 	Temp t1(10, "Hello");
 	arr.add(t1);
