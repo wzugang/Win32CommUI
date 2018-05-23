@@ -882,6 +882,34 @@ bool AttrUtils::parseBool( char *str, bool valueForNULL) {
 	return strcmp(str, "true") == 0;
 }
 
+int *AttrUtils::parseBorder(char *str) {
+	static int style[3];
+	style[0] = style[1] = style[2] = 0;
+	if (str == NULL) return style;
+	str = trim(str);
+	if (strstr(str, "solid") != NULL) style[0] = PS_SOLID;
+	if (strstr(str, "dot") != NULL) style[0] = PS_DOT;
+	if (strstr(str, "dash") != NULL) style[0] = PS_DASH;
+	if (strstr(str, "dashdot") != NULL) style[0] = PS_DASHDOT;
+	// skip to space
+	while (*str && *str != ' ') ++str;
+	if (*str != ' ') return style;
+	while (*str == ' ') ++str;
+	char *n = str;
+	while (*n >= '0' && *n <= '9') ++n;
+	if (n == str) return style;
+	while (*n == ' ') ++n; // skip space
+	if (n[0] != 'p' || n[1] != 'x') return style;
+	style[1] = atoi(str);
+	str = n + 2;
+	str = strchr(str, '#');
+	if (str == NULL) return style;
+	COLORREF color = 0;
+	if (parseColor(str, &color)) style[2] = color;
+
+	return style;
+}
+
 ResPath::ResPath() {
 	mPath[0] = 0;
 	mX = mY = mWidth = mHeight = 0;

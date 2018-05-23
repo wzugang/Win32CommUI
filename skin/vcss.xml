@@ -19,6 +19,7 @@
 		weight="15"  HLineLayout VLineLayout会用到
 		enable="true | false"
 		class="default class" 指定 default 标签中的class属性，默认是NULL(等于标签名) 
+		border="solid|dot|dash|dashdot  4px  #rrggbb"
 	/>
 	
 	<VExtComponent

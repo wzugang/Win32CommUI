@@ -145,4 +145,5 @@ public:
 	static bool parseColor(const char *color, COLORREF *colorOut);
 	static std::vector<char*> splitBy( char *data, char splitChar);
 	static bool parseBool(char *str, bool valueForNULL = false);
+	static int *parseBorder(char *str);
 };

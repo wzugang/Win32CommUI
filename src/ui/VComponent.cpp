@@ -121,6 +121,8 @@ VComponent::VComponent(XmlNode *node) {
 	mEnableFocus = false;
 	mHasFocus = false;
 	mEnable = true;
+	mBorderStyle = mBorderWidth = mBorderColor = 0;
+	mBorderPen = NULL;
 
 	mDirty = true;
 	mHasDirtyChild = true;
@@ -160,8 +162,8 @@ void VComponent::onLayoutChildren( int width, int height ) {
 	height -= mAttrPadding[1] + mAttrPadding[3];
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
 		VComponent *child = mNode->getChild(i)->getComponentV();
-		int x = calcSize(child->getAttrX(), width | MS_ATMOST);
-		int y = calcSize(child->getAttrY(), height | MS_ATMOST);
+		int x = calcSize(child->getAttrX(), width | MS_ATMOST) + mAttrPadding[0];
+		int y = calcSize(child->getAttrY(), height | MS_ATMOST) + mAttrPadding[1];
 		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
 	}
 }
@@ -229,6 +231,11 @@ void VComponent::parseAttrs() {
 			mVisible = AttrUtils::parseBool(attr->mValue, false);
 		} else if (strcmp(attr->mName, "enable") == 0) {
 			mEnable = AttrUtils::parseBool(attr->mValue, false);
+		} else if (strcmp(attr->mName, "border") == 0) {
+			int *border = AttrUtils::parseBorder(attr->mValue);
+			mBorderStyle = border[0];
+			mBorderWidth = border[1];
+			mBorderColor = border[2];
 		}
 	}
 }
@@ -631,7 +638,37 @@ void VComponent::eraseBackground(Msg *m) {
 	if (mBgImage != NULL) {
 		mBgImage->draw(dc, 0, 0, mWidth, mHeight);
 	}
+	drawBorder(m);
 }
+
+
+void VComponent::drawBorder(Msg *m) {
+	HDC dc = m->paint.dc;
+	if (mBorderWidth == 0 || mBorderColor == 0) {
+		return;
+	}
+	if (mBorderPen == NULL) {
+		mBorderPen = CreatePen(mBorderStyle, mBorderWidth, mBorderColor & 0xffffff);
+	}
+	HGDIOBJ old = SelectObject(dc, mBorderPen);
+	RECT r = getClientRect();
+	int w = r.right-r.left;
+	int h = r.bottom - r.top;
+
+	MoveToEx(dc, 0, mBorderWidth/2, NULL);
+	LineTo(dc, w, mBorderWidth/2);
+
+	MoveToEx(dc, w-(mBorderWidth+1)/2, 0, NULL);
+	LineTo(dc, w-(mBorderWidth+1)/2, mHeight);
+
+	MoveToEx(dc, w, h-(mBorderWidth+1)/2, NULL);
+	LineTo(dc, 0, h-(mBorderWidth+1)/2);
+
+	MoveToEx(dc, mBorderWidth/2, h, NULL);
+	LineTo(dc, mBorderWidth/2, 0);
+	SelectObject(dc, old);
+}
+
 
 void VComponent::repaint(XRect *dirtyRect) {
 	XRect rect;
@@ -753,6 +790,11 @@ int VComponent::getTranslateY() {
 POINT VComponent::getChildPointForDispatch(DispatchAction da, int idx, VComponent *child) {
 	POINT pt = {child->mX, child->mY};
 	return pt;
+}
+
+RECT VComponent::getClientRect() {
+	RECT r = {0, 0, mWidth, mHeight};
+	return r;
 }
 
 //----------------------------------------------------------

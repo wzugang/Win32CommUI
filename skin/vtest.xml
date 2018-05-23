@@ -1,5 +1,5 @@
 #################### main-page ############
-<Window text = "Test VApp" rect = "0 0 800 600" style="popup sys-menu min-box" bgcolor="#FFB6C1" bgimage="a.bmp"  >
+<Window text = "Test VApp" rect = "0 0 800 600" style="popup sys-menu min-box" bgcolor="#FFB6C1" bgimage="a.bmp" padding="1 1 1 1" border="solid 2px #3A5FCD" >
 	<default class="Button" normalImage="ext_button.bmp [0 48 75 24] 9patch" hoverImage="ext_button.bmp [0 24 75 24] 9patch" pushImage="ext_button.bmp [0 0 75 24] 9patch" />
 	<default class="VerScrollBar" rect="0 0 15 100%" track="color://#99aabbcc" thumb="color://#ffbbcc" />
 	<default class="HorScrollBar" rect="0 0 100% 15" track="color://#99aabbcc" thumb="color://#ffbbcc" />

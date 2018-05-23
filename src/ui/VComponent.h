@@ -165,6 +165,7 @@ public:
 
 	virtual void drawCache(HDC dc);
 	virtual void eraseBackground(Msg *m);
+	virtual void drawBorder(Msg *m);
 	virtual void repaint(XRect *dirtyRect = NULL);
 	void updateWindow();
 	virtual void setCapture();
@@ -175,6 +176,7 @@ public:
 	bool hasBackground();
 	virtual POINT getDrawPoint();
 	RECT getDrawRect();
+	virtual RECT getClientRect();
 
 	virtual ~VComponent();
 protected:
@@ -191,6 +193,8 @@ protected:
 	int mTranslateX, mTranslateY; // always >= 0
 	bool mEnableFocus, mHasFocus;
 	bool mEnable;
+	int mBorderStyle, mBorderWidth, mBorderColor;
+	HPEN mBorderPen;
 
 	XImage *mBgImage;
 	VListener *mListener;
