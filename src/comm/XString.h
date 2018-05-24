@@ -10,7 +10,7 @@ public:
 	enum Charset {
 		GBK, UTF8, UNICODE
 	};
-	XTString(int capacity);
+	explicit XTString(int capacity);
 	XTString(const T *str = NULL);
 	// copy of string [beginIdx, endIdx)
 	XTString(const T *str, int beginIdx, int endIdx);

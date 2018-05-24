@@ -6,7 +6,9 @@
 #include <atlimage.h>
 #include "VComponent.h"
 #include "VExt.h"
-#include "../comm/XArray.h"
+#include "../comm/Array.h"
+#include "../comm/XString.h"
+#include "../comm/LinkList.h"
 
 VWindow *win;
 
@@ -89,12 +91,17 @@ public:
 
 class Temp {
 public:
+	// Temp() {mInt = 0; mStr = NULL;}
+
 	Temp(int a, const char *s) {
 		mInt = a;
 		mStr = s;
 	}
 	~Temp() {
 		printf("~Temp %d\n", mInt);
+	}
+	bool operator==(const Temp &a) {
+		return mInt == a.mInt;
 	}
 	int mInt;
 	const char *mStr;
@@ -112,14 +119,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
 
-	XArray<Temp> arr;
+	LinkList<Temp> arr;
 	Temp t1(10, "Hello");
 	arr.add(t1);
 	arr.add(Temp(12, "World"));
 	arr.add(Temp(320, "yes"));
 	arr.add(Temp(55, "Fu"));
 	printf("----A-------\n");
-	arr.remove(0, 2);
+	arr.remove(t1);
 	for (int i = 0; i < arr.size(); ++i) {
 		Temp &t = arr.get(i);
 		printf("%d [%s] \n", t.mInt, t.mStr);

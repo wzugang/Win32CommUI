@@ -2,21 +2,21 @@
 #include <stdlib.h>
 
 template <typename T>  
-class XArray {
+class Array {
 public:
-	XArray(int initialCapacity = 0) {
+	Array(int initialCapacity = 0) {
 		mNum = 0;
 		mCapacity = initialCapacity > 0 ? initialCapacity : 20;
 		mElems = (T*)malloc(sizeof(T) * mCapacity);
 	}
 
-	XArray(const XArray<T> &a) {
-		mNum = a.mNum;
-		mCapacity = a.mCapacity;
-		mElems = (T*)malloc(sizeof(T) * mCapacity);
-		for (int i = 0; i < mNum; ++i) {
-			new (mElems + i) T(a.mElems[i]);
-		}
+	Array(const Array<T> &a) {
+		copy(a);
+	}
+
+	Array &operator=(const Array<T> &a) {
+		copy(a);
+		return *this;
 	}
 
 	void add(const T &e) {
@@ -102,12 +102,21 @@ public:
 		return mElems;
 	}
 
-	~XArray() {
+	~Array() {
 		clear();
 		free(mElems);
 	}
 
 protected:
+	void copy(const Array &a) {
+		mNum = a.mNum;
+		mCapacity = a.mCapacity;
+		mElems = (T*)malloc(sizeof(T) * mCapacity);
+		for (int i = 0; i < mNum; ++i) {
+			new (mElems + i) T(a.mElems[i]);
+		}
+	}
+
 	void ensureMem(int n) {
 		if (n <= mCapacity) {
 			return;
