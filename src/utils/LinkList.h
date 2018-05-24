@@ -1,8 +1,18 @@
 #pragma once
+#include "Iterator.h"
 
 template <typename T>
 class LinkList {
 public:
+	struct Node {
+		Node(Node *prev, Node *next, const T &data) : mData(data) {
+			mPrev = prev;
+			mNext = next;
+		}
+		Node *mPrev, *mNext;
+		T mData;
+	};
+
 	LinkList() {
 		mFirst = NULL;
 		mLast = NULL;
@@ -14,6 +24,7 @@ public:
 	}
 
 	LinkList &operator=(const LinkList<T> &a) {
+		clear();
 		copy(a);
 		return *this;
 	}
@@ -65,8 +76,18 @@ public:
 		return get(mSize - 1);
 	}
 
+	Node *getNode(int idx) {
+		return node(idx);
+	}
+
 	void remove(int index) {
 		Node *n = node(index);
+		if (n != NULL) {
+			unlink(n);
+		}
+	}
+
+	void remove(Node *n) {
 		if (n != NULL) {
 			unlink(n);
 		}
@@ -81,16 +102,18 @@ public:
 		}
 	}
 
-protected:
-	struct Node {
-		Node(Node *prev, Node *next, const T &data) : mData(data) {
-			mPrev = prev;
-			mNext = next;
+	void clear() {
+		Node *f = mFirst;
+		Node *next = NULL;
+		while (f != NULL) {
+			next = f->mNext;
+			delete f;
+			f = next;
 		}
-		Node *mPrev, *mNext;
-		T mData;
-	};
+		mSize = 0;
+	}
 
+protected:
 	void copy(const LinkList<T> &a) {
 		mSize = a.mSize;
 		mFirst = mLast = NULL;

@@ -6,9 +6,8 @@
 #include <atlimage.h>
 #include "VComponent.h"
 #include "VExt.h"
-#include "../comm/Array.h"
-#include "../comm/XString.h"
-#include "../comm/LinkList.h"
+#include "XString.h"
+#include "Thread.h"
 
 VWindow *win;
 
@@ -88,23 +87,17 @@ public:
 	}
 };
 
-
-class Temp {
+class MyRun : public Runnable {
 public:
-	// Temp() {mInt = 0; mStr = NULL;}
-
-	Temp(int a, const char *s) {
-		mInt = a;
-		mStr = s;
+	MyRun() {mCount = 0;}
+	int mCount;
+	virtual void onRun() {
+		while (mCount < 10) {
+			printf("count : %d \n", mCount);
+			++mCount;
+			Sleep(1000);
+		}
 	}
-	~Temp() {
-		printf("~Temp %d\n", mInt);
-	}
-	bool operator==(const Temp &a) {
-		return mInt == a.mInt;
-	}
-	int mInt;
-	const char *mStr;
 };
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
@@ -118,20 +111,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// strcpy(path, "D:\\CPP\\WinUI\\WinUI\\");
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
-
-	LinkList<Temp> arr;
-	Temp t1(10, "Hello");
-	arr.add(t1);
-	arr.add(Temp(12, "World"));
-	arr.add(Temp(320, "yes"));
-	arr.add(Temp(55, "Fu"));
-	printf("----A-------\n");
-	arr.remove(t1);
-	for (int i = 0; i < arr.size(); ++i) {
-		Temp &t = arr.get(i);
-		printf("%d [%s] \n", t.mInt, t.mStr);
-	}
-	printf("---B--------\n");
 
 #if 0
 	UIFactory::init();
