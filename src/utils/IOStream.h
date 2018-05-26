@@ -11,7 +11,7 @@ public:
 	// return real read number bytes, 0 is reached the end of stream
 	virtual int read(void *buf, int len) = 0;
 
-	virtual void close() = 0;
+	virtual void close() {}
 
 	virtual ~InputStream() {}
 };
@@ -25,23 +25,40 @@ public:
 	virtual int write(void *buf, int len) = 0;
 
 	// Flushes this output stream and forces any buffered output bytes to be written out
-	virtual void flush() = 0;
+	virtual void flush() {}
 
 	//  Closes this output stream and free any system resources
-	virtual void close() = 0;
+	virtual void close() {}
 
 	virtual ~OutputStream() {}
 };
 
-class BufferOutputStream : public OutputStream {
+class IOBuffer {
 public:
-	BufferOutputStream(int capacity = 512);
-	virtual int write(void *buf, int len);
-	virtual void flush();
-	virtual void close();
-	virtual ~BufferOutputStream();
+	IOBuffer(int initCapacity);
+	void *getBuffer();
+	int getSize();
+	void append(void *data, int len);
+	virtual ~IOBuffer();
 protected:
-	char *mBuf;
+	void ensure(int n);
+protected:
+	void *mBuf;
+	int mSize;
 	int mCapacity;
-	int mLen;
+};
+
+class BufferOutputStream : public OutputStream, public IOBuffer {
+public:
+	BufferOutputStream();
+	virtual int write(void *buf, int len);
+};
+
+class BufferInputStream : public InputStream, public IOBuffer {
+public:
+	BufferInputStream();
+	virtual int available();
+	virtual int read(void *buf, int len);
+protected:
+	int mReadNum;
 };
