@@ -34,8 +34,8 @@ public:
 	int lastIndexOf(const T *str, int fromIndex);
 
 	// sub string [beginIndex, endIndex)
-	XTString<T> subString(int beginIndex, int endIndex);
-	void append(const XTString<T> &str);
+	XTString<T> subString(int beginIndex, int endIndex = -1);
+	XTString<T> &append(const XTString<T> &str);
 	void replace(T oldChar, T newChar);
 	// replace string [start, end) to str
 	void replace(int start, int end, const XTString<T>& str);
@@ -274,13 +274,17 @@ bool XTString<T>::startWith(const T *prefix) {
 
 template <class T>
 XTString<T> XTString<T>::subString(int beginIndex, int endIndex) {
+	if (endIndex == -1) {
+		endIndex = mLen;
+	}
 	return XTString<T>(mBuffer, beginIndex, endIndex);
 }
 
 template <class T>
-void XTString<T>::append(const XTString<T> &str) {
+XTString<T> &XTString<T>::append(const XTString<T> &str) {
 	needBuffer(str.mLen + mLen);
 	memcpy(mBuffer + mLen, str.mBuffer, sizeof(T) * (str.mLen + 1));
+	return *this;
 }
 
 template <class T>

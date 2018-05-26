@@ -1,12 +1,12 @@
 #pragma once
 #include "XString.h"
 
-class XFile {
+class File {
 public:
-	XFile(const char *path);
+	File(const char *path);
 	XString getString();
 	XString getParent();
-	XFile *getParentFile();
+	File *getParentFile();
 	XString getPath();
 	bool isAbsolute();
 	XString getAbsolutePath();

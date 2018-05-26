@@ -8,6 +8,7 @@
 #include "VExt.h"
 #include "XString.h"
 #include "Thread.h"
+#include "Http.h"
 
 VWindow *win;
 
@@ -111,6 +112,17 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// strcpy(path, "D:\\CPP\\WinUI\\WinUI\\");
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
+
+	//--------begin test------------
+	HttpConnection con("https://www.zhihu.com/question/20615748", "GET");
+	bool ok = con.connect();
+	int rc = con.getResponseCode();
+	const int N =  1024 * 1024 * 4;
+	char *buf = new char[1024 * 1024 * 4];
+	memset(buf, 0, N);
+	int len = con.getContentLength();
+	int rlen = con.read(buf, 1024 * 1024 * 4);
+	char *gbk = (char *)String::toBytes(buf, String::UTF8, String::GBK);
 
 #if 0
 	UIFactory::init();

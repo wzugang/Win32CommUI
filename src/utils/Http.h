@@ -1,60 +1,61 @@
 #pragma once
-#include <windows.h>
-#include <winhttp.h>
+#include "XString.h"
+#include "IOStream.h"
+#include "Array.h"
 
-class HttpRequest;
-
-class HttpSession {
+class HttpConnection {
 public:
-	enum Method {GET, POST};
-	enum Protocal {HTTP, HTTPS};
+	/************************************************************************/
+	/* @param url http[s]://www.dd.com:port/aa.jsp
+	/* @param method  is GET or POST
+	/************************************************************************/
+	HttpConnection(const char *url, const char *method);
 
-	HttpSession(const wchar_t *host, int port);
-	HttpSession(const char *host, int port);
-	
-	void connect();
+	// @return connect whether ok
+	bool connect();
 
-	HttpRequest *createRequest(const wchar_t *path, Method m = GET, Protocal pro = HTTP);
-	HttpRequest *createRequest(const char *path, Method m = GET, Protocal pro = HTTP);
-	
-	void close();
-	~HttpSession();
-protected:
-protected:
-	HINTERNET mSession;
-	HINTERNET mConnection;
-	wchar_t *mHost;
-	int mPort;
-};
+	void setConnectTimeout(int timeout);
 
-class HttpRequest {
-public:
-	enum Encode {
-		UNKNOW, GBK, UTF8
-	};
-	// split every header by \r\n
-	bool setReqHeaders(const wchar_t *headers);
+	void setReadTimeout(int timeout);
 
-	bool sendRequest(void *body = NULL, int len = 0, int totalLen = 0);
+	int getResponseCode();
 
-	int getAvailableBytes();
+	String getStatesLine();
+
 	int getContentLength();
-	int getStatusCode();
-	// free your-self
-	wchar_t *getResHeaders();
-	wchar_t *getResHeader(const wchar_t *name);
-	char *getContentType();
-	Encode getEncode();
-	// return read len
-	int read(void *buf, int bufLen);
-	int write(void *data, int dataLen);
-	bool close();
-protected:
-	HttpRequest(HINTERNET req);
-protected:
-	HINTERNET mRequest;
-	bool mRecevied;
-	friend class HttpSession;
-};
 
+	String getContentType();
+
+	// return UTF8, GBK, ...
+	String getContentEncoding();
+
+	String getResponseHeader(const char *name);
+
+	bool setRequestHeader(const char *name, const char *val);
+
+	int read(void *buf, int len);
+
+	// must call this before write(), if has write data
+	void setWriteDataLen(int len);
+
+	// write request params for POST 
+	int write(void *buf, int len);
+
+	void close();
+
+protected:
+	enum Status {S_NONE, S_CONNECTED, S_SEND_REQUESTED, S_RECEVICED, S_CLOSED};
+	void send();
+	void recieve();
+	void recieveHeader();
+protected:
+	void *mConnection;
+	void *mRequest;
+	String mUrl;
+	String mMethod;
+	Status mStatus;
+	int mWriteDataLen;
+	char *mRawResHeaders;
+	Array<char*> mResHeaders;
+};
 

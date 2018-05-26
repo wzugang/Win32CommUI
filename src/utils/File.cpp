@@ -1,10 +1,10 @@
-#include "XFile.h"
+#include "File.h"
 #include <sys\stat.h>
 #include <windows.h>
 
 static const char SEP_CHAR = '/';
 
-XFile::XFile(const char *path) {
+File::File(const char *path) {
 	mPath.append(path);
 	mPath.replace('\\', SEP_CHAR);
 	mPrefixLen = 0;
@@ -23,7 +23,7 @@ XFile::XFile(const char *path) {
 	}
 }
 
-XString XFile::getString() {
+XString File::getString() {
 	int index = mPath.lastIndexOf(SEP_CHAR, mPath.length() - 1);
 	if (index < mPrefixLen) {
 		return mPath.subString(mPrefixLen, mPath.length());
@@ -31,7 +31,7 @@ XString XFile::getString() {
 	return mPath.subString(index + 1, mPath.length());
 }
 
-XString XFile::getParent() {
+XString File::getParent() {
 	int index = mPath.lastIndexOf(SEP_CHAR, mPath.length() - 1);
 	if (index < mPrefixLen) {
 		return "";
@@ -39,23 +39,23 @@ XString XFile::getParent() {
 	return mPath.subString(0, index);
 }
 
-XFile * XFile::getParentFile() {
+File * File::getParentFile() {
 	XString pf = getParent();
 	if (pf.length() == 0) {
 		return NULL;
 	}
-	return new XFile(pf.str());
+	return new File(pf.str());
 }
 
-XString XFile::getPath() {
+XString File::getPath() {
 	return mPath;
 }
 
-bool XFile::isAbsolute() {
+bool File::isAbsolute() {
 	return mPrefixLen > 0;
 }
 
-XString XFile::getAbsolutePath() {
+XString File::getAbsolutePath() {
 	if (isAbsolute()) {
 		return mPath;
 	}
@@ -66,28 +66,28 @@ XString XFile::getAbsolutePath() {
 	return p;
 }
 
-bool XFile::exists() {
+bool File::exists() {
 	DWORD dwAttrib = GetFileAttributes(mPath.str());
 	return dwAttrib != INVALID_FILE_ATTRIBUTES;
 }
 
-bool XFile::isDirectory() {
+bool File::isDirectory() {
 	DWORD dwAttrib = GetFileAttributes(mPath.str());
 	return dwAttrib != INVALID_FILE_ATTRIBUTES && ((dwAttrib & FILE_ATTRIBUTE_DIRECTORY) != 0);
 }
 
-bool XFile::isFile() {
+bool File::isFile() {
 	DWORD dwAttrib = GetFileAttributes(mPath.str());
 	return dwAttrib != INVALID_FILE_ATTRIBUTES&& ((dwAttrib & FILE_ATTRIBUTE_DIRECTORY) == 0);
 }
 
-int XFile::length() {
+int File::length() {
 	struct _stat s;
 	_stat(mPath.str(), &s);
 	return s.st_size;
 }
 
-bool XFile::del() {
+bool File::del() {
 	if (! exists()) {
 		return true;
 	}
@@ -97,20 +97,20 @@ bool XFile::del() {
 	return DeleteFile(mPath.str());
 }
 
-bool XFile::rename(const char *path) {
+bool File::rename(const char *path) {
 	return MoveFile(mPath.str(), path);
 }
 
-bool XFile::mkdir() {
+bool File::mkdir() {
 	// CreateDirectory()
 	return true;
 }
 
-bool XFile::mkdirs() {
+bool File::mkdirs() {
 	return true;
 }
 
-XString* XFile::list(int &num) {
+XString* File::list(int &num) {
 	return NULL;
 }
 
