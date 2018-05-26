@@ -286,7 +286,7 @@ void HttpConnection::recieve() {
 	}
 }
 
-void HttpConnection::setWriteDataLen(int len) {
+void HttpConnection::setWriteTotalLength(int len) {
 	if (mStatus <= S_CONNECTED) {
 		mWriteDataLen = len;
 	}

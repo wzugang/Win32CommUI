@@ -36,9 +36,9 @@ public:
 	int read(void *buf, int len);
 
 	// must call this before write(), if has write data
-	void setWriteDataLen(int len);
+	void setWriteTotalLength(int total);
 
-	// write request params for POST 
+	// write request params for POST
 	int write(void *buf, int len);
 
 	void close();
