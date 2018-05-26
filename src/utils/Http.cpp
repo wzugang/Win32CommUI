@@ -6,105 +6,6 @@
 
 static HINTERNET s_session;
 
-#if 0
-
-int HttpRequest::getAvailableBytes() {
-	int n = 0;
-	bool ok = WinHttpQueryDataAvailable(mRequest, (LPDWORD)&n);
-	return ok ? n : -1;
-}
-
-wchar_t * HttpRequest::getResHeaders() {
-	DWORD len = 0;
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF, 
-									WINHTTP_HEADER_NAME_BY_INDEX, NULL, &len, WINHTTP_NO_HEADER_INDEX);
-	wchar_t *buf = (wchar_t *)malloc(len + 2);
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF, NULL, buf, &len, NULL);
-	return buf;
-}
-
-int HttpRequest::getContentLength() {
-	wchar_t tmp[24] = {0};
-	char tmp2[24] = {0};
-	DWORD len = sizeof(tmp);
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_CONTENT_LENGTH, NULL, tmp, &len, NULL);
-	wchar_t *s = tmp;
-	char *d = tmp2;
-	while (*s != 0) {
-		*d = (char)*s;
-		d++;
-		s++;
-	}
-	return atoi(tmp2);
-}
-
-wchar_t * HttpRequest::getResHeader(const wchar_t *name) {
-	DWORD len = 0;
-	// WINHTTP_QUERY_CONTENT_TRANSFER_ENCODING
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_CUSTOM, name, NULL, &len, NULL);
-	if (len <= 0) {
-		return NULL;
-	}
-	wchar_t *buf = (wchar_t *)malloc(len);
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_CUSTOM, name, buf, &len, NULL);
-	return buf;
-}
-
-int HttpRequest::getStatusCode() {
-	wchar_t tmp[8] = {0};
-	DWORD len = sizeof(tmp);
-	WinHttpQueryHeaders(mRequest, WINHTTP_QUERY_STATUS_CODE, WINHTTP_HEADER_NAME_BY_INDEX, tmp, &len, NULL);
-	char tmp2[8];
-	for (int i = 0; i < 8; ++i) {
-		tmp2[i] = (char)tmp[i];
-	}
-	return atoi(tmp2);
-}
-
-char *HttpRequest::getContentType() {
-	wchar_t *ct = getResHeader(L"Content-Type");
-	char *cc = (char *)XString::toBytes((void *)ct, XString::UNICODE, XString::GBK);
-	if (ct != NULL) {
-		free(ct);
-	}
-	return cc;
-}
-
-HttpRequest::Encode HttpRequest::getEncode() {
-	Encode e = UNKNOW;
-	char *ct = getContentType();
-	if (ct == NULL) {
-		return UNKNOW;
-	}
-	char *p = ct;
-	while (*p) {
-		*p = toupper(*p);
-		++p;
-	}
-	p = strstr(ct, "CHARSET");
-	if (p == NULL) {
-		goto _end;
-	}
-	while (*p != '=' && *p != 0) {
-		++p;
-	}
-	if (*p == '=') ++p;
-	while (*p != 0 && (*p == ' ' || *p == '\t')) {
-		++p;
-	}
-	if (memcmp(p, "GBK", 3) == 0) {
-		e = GBK;
-	} else if (memcmp(p, "UTF8", 3) == 0 || memcmp(p, "UTF-8", 4) == 0) {
-		e = UTF8;
-	}
-
-	_end:
-	free(ct);
-	return e;
-}
-
-#endif
-
 HttpConnection::HttpConnection(const char *url, const char *method) {
 	mUrl = url;
 	mMethod = method;
@@ -295,6 +196,7 @@ void HttpConnection::setWriteTotalLength(int len) {
 void HttpConnection::close() {
 	WinHttpCloseHandle(mRequest);
 	WinHttpCloseHandle(mConnection);
+	mStatus = S_CLOSED;
 }
 
 void HttpConnection::recieveHeader() {
