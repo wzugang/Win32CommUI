@@ -523,3 +523,6 @@ template class XTString<wchar_t>;
 
 typedef XTString<char> XString;
 typedef XTString<wchar_t> XWideString;
+
+typedef XTString<char> String;
+typedef XTString<wchar_t> WString;
