@@ -117,3 +117,65 @@ XString* File::list(int &num) {
 
 
 
+
+FileMonitor::FileMonitor( const char *path ) {
+	mHandle = INVALID_HANDLE_VALUE;
+	if (path != NULL) {
+		mHandle = CreateFile(path, GENERIC_READ | GENERIC_WRITE | FILE_LIST_DIRECTORY,
+			FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
+			FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	}
+	mBuffer = (char *)malloc(1024);
+	mListenStatus = false;
+}
+
+bool FileMonitor::listen(int flags) {
+	mListenStatus = false;
+	if (mHandle == INVALID_HANDLE_VALUE) {
+		return false;
+	}
+	DWORD rb = 0;
+	memset(mBuffer, 0, 1024);
+	mListenStatus = ReadDirectoryChangesW(mHandle, mBuffer, 1024, true, flags, &rb, NULL, NULL);
+	return mListenStatus;
+}
+
+int FileMonitor::getNotifyNum() {
+	if (! mListenStatus) {
+		return 0;
+	}
+	FILE_NOTIFY_INFORMATION *notify = (FILE_NOTIFY_INFORMATION*)mBuffer;
+	int num = 1;
+	while (notify->NextEntryOffset != 0 && notify->FileNameLength > 0) {
+		char *p = (char *)notify;
+		notify = (FILE_NOTIFY_INFORMATION *)(p + notify->NextEntryOffset);
+		num++;
+	}
+	return num;
+}
+
+FileMonitor::FileAction FileMonitor::getNotify( int idx, char *fileName ) {
+	static char path[256];
+	FILE_NOTIFY_INFORMATION *notify = (FILE_NOTIFY_INFORMATION*)mBuffer;
+	while (idx > 0) {
+		char *p = (char *)notify;
+		notify = (FILE_NOTIFY_INFORMATION *)(p + notify->NextEntryOffset);
+		--idx;
+	}
+	if (fileName != NULL) {
+		WideCharToMultiByte(CP_ACP, 0, notify->FileName, 
+			notify->FileNameLength/2, path, sizeof(path), NULL, NULL);
+		strcpy(fileName, path);
+	}
+	return (FileAction)notify->Action;
+}
+
+FileMonitor::~FileMonitor() {
+	if (mHandle != INVALID_HANDLE_VALUE) {
+		CloseHandle(mHandle);
+	}
+	free(mBuffer);
+}
+
+
+

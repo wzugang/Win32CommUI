@@ -1,14 +1,14 @@
-#include "UIFactory.h"
+#include "ui/UIFactory.h"
 #include <Windows.h>
 #include <CommCtrl.h>
 #include "XmlParser.h"
-#include "XExt.h"
+#include "ui/XExt.h"
 #include <atlimage.h>
-#include "VComponent.h"
-#include "VExt.h"
-#include "XString.h"
-#include "Thread.h"
-#include "Http.h"
+#include "ui/VComponent.h"
+#include "ui/VExt.h"
+#include "utils/XString.h"
+#include "utils/Thread.h"
+#include "utils/Http.h"
 
 VWindow *win;
 
@@ -101,7 +101,7 @@ public:
 	}
 };
 
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
+int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
 	AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
