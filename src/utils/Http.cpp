@@ -25,7 +25,7 @@ bool HttpConnection::connect() {
 	}
 
 	// 1.connect to server
-	String u, path;
+	XString u, path;
 	bool https = false;
 	if (mUrl.startWith("http://")) {
 		https = false;
@@ -42,16 +42,16 @@ bool HttpConnection::connect() {
 	if (i == 0) {
 		return false;
 	}
-	String host = i > 0 ? u.subString(0, i) : u;
+	XString host = i > 0 ? u.subString(0, i) : u;
 	path = u.subString(i);
 	i = host.indexOf(':', 0);
 	int port = https ? 443 : 80;
 	if (i > 0) {
-		String sp = host.subString(i);
+		XString sp = host.subString(i);
 		port = atoi(sp.str());
 		host = host.subString(0, i);
 	}
-	wchar_t *whost = (wchar_t *)String::toBytes(host.str(), String::GBK, String::UNICODE);
+	wchar_t *whost = (wchar_t *)XString::toBytes(host.str(), XString::GBK, XString::UNICODE);
 	mConnection = WinHttpConnect(s_session, whost, (INTERNET_PORT) port, 0);
 	free(whost);
 
@@ -65,8 +65,8 @@ bool HttpConnection::connect() {
 		flags |= WINHTTP_FLAG_SECURE;
 	}
 	const wchar_t *acceptTypes[] = {L"*/*", NULL};
-	wchar_t *method = (wchar_t *)String::toBytes(mMethod.str(), String::GBK, String::UNICODE);
-	wchar_t *wpath = (wchar_t *)String::toBytes(path.str(), String::GBK, String::UNICODE);
+	wchar_t *method = (wchar_t *)XString::toBytes(mMethod.str(), XString::GBK, XString::UNICODE);
+	wchar_t *wpath = (wchar_t *)XString::toBytes(path.str(), XString::GBK, XString::UNICODE);
 	HINTERNET req = WinHttpOpenRequest(mConnection, method, wpath, NULL, NULL, acceptTypes, flags);
 	free(method);
 	free(wpath);
@@ -103,7 +103,7 @@ void HttpConnection::setReadTimeout(int timeout) {
 }
 
 int HttpConnection::getResponseCode() {
-	String sl = getStatesLine();
+	XString sl = getStatesLine();
 	if (sl.length() == 0) {
 		return 0;
 	}
@@ -112,22 +112,22 @@ int HttpConnection::getResponseCode() {
 	return atoi(p + 1);
 }
 
-String HttpConnection::getStatesLine() {
+XString HttpConnection::getStatesLine() {
 	recieveHeader();
 	return mRawResHeaders;
 }
 
 int HttpConnection::getContentLength() {
-	String cl = getResponseHeader("Content-Length");
+	XString cl = getResponseHeader("Content-Length");
 	return atoi(cl.str());
 }
 
-String HttpConnection::getContentType() {
+XString HttpConnection::getContentType() {
 	return getResponseHeader("Content-Type");
 }
 
-String HttpConnection::getContentEncoding() {
-	String ct = getResponseHeader("Content-Type");
+XString HttpConnection::getContentEncoding() {
+	XString ct = getResponseHeader("Content-Type");
 	ct.toUpperCase();
 	int idx = ct.indexOf("CHARSET=", 0);
 	if (idx > 0) {
@@ -142,9 +142,9 @@ bool HttpConnection::setRequestHeader(const char *name, const char *val) {
 	if (name == NULL || mRequest == NULL || mStatus != S_CONNECTED) {
 		return false;
 	}
-	String nv(name);
+	XString nv(name);
 	nv.append(": ").append(val).append("\r\n");
-	wchar_t *hd = (wchar_t *)String::toBytes(nv.str(), String::GBK, String::UNICODE);
+	wchar_t *hd = (wchar_t *)XString::toBytes(nv.str(), XString::GBK, XString::UNICODE);
 	int len = wcslen(hd);
 	return WinHttpAddRequestHeaders((HINTERNET)mRequest, hd, len, 
 		WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE) == TRUE;
@@ -215,7 +215,7 @@ void HttpConnection::recieveHeader() {
 		free(whd);
 		return;
 	}
-	mRawResHeaders = (char *)String::toBytes(whd, String::UNICODE, String::GBK);
+	mRawResHeaders = (char *)XString::toBytes(whd, XString::UNICODE, XString::GBK);
 	free(whd);
 
 	// split every row
@@ -249,15 +249,15 @@ void HttpConnection::recieveHeader() {
 	}
 }
 
-String HttpConnection::getResponseHeader(const char *name) {
+XString HttpConnection::getResponseHeader(const char *name) {
 	recieveHeader();
 	if (mRawResHeaders == NULL || name == NULL || *name == 0) {
-		return String();
+		return XString();
 	}
 	for (int i = 0; i < mResHeaders.size(); i += 2) {
 		if (strcmp(mResHeaders.get(i), name) == 0) {
 			return mResHeaders.get(i + 1);
 		}
 	}
-	return String();
+	return XString();
 }

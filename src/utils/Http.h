@@ -1,6 +1,5 @@
 #pragma once
 #include "XString.h"
-#include "IOStream.h"
 #include "Array.h"
 
 class HttpConnection {
@@ -20,16 +19,16 @@ public:
 
 	int getResponseCode();
 
-	String getStatesLine();
+	XString getStatesLine();
 
 	int getContentLength();
 
-	String getContentType();
+	XString getContentType();
 
 	// return UTF8, GBK, ...
-	String getContentEncoding();
+	XString getContentEncoding();
 
-	String getResponseHeader(const char *name);
+	XString getResponseHeader(const char *name);
 
 	bool setRequestHeader(const char *name, const char *val);
 
@@ -51,8 +50,8 @@ protected:
 protected:
 	void *mConnection;
 	void *mRequest;
-	String mUrl;
-	String mMethod;
+	XString mUrl;
+	XString mMethod;
 	Status mStatus;
 	int mWriteDataLen;
 	char *mRawResHeaders;

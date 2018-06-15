@@ -334,7 +334,7 @@ bool MysqlPrepareStatement::exec() {
 	if (ok && mResultColCount > 0) ok = mysql_stmt_bind_result((MYSQL_STMT*)mStmtObj, (MYSQL_BIND*)mResults) == 0;
 	if (ok) ok = mysql_stmt_execute((MYSQL_STMT*)mStmtObj) == 0;
 	if (ok && mResultColCount > 0) ok = mysql_stmt_store_result((MYSQL_STMT*)mStmtObj) == 0; // mysql_stmt_result_metadata((MYSQL_STMT*)mObj) != NULL
-	mNeedReset = false;
+	mNeedReset = true;
 	if (! ok) {
 		mCon->setError(getStmtError());
 	}
@@ -454,6 +454,7 @@ int MysqlPrepareStatement::getParameterType(int paramIdx) {
 void MysqlPrepareStatement::checkReset() {
 	if (mNeedReset) {
 		reset(true);
+		mParamBuf->clear();
 	}
 }
 
@@ -621,9 +622,7 @@ PreparedStatement *MysqlConnection::prepareStatement(const char *sql) {
 
 void MysqlConnection::setAutoCommit(bool autoMode) {
 	my_bool ok = mysql_autocommit((MYSQL*)mMysqlObj, (my_bool)autoMode);
-	if (ok) {
-		mAutoCommit = autoMode;
-	}
+	mAutoCommit = autoMode;
 }
 
 bool MysqlConnection::commit() {

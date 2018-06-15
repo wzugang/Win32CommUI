@@ -126,22 +126,20 @@ protected:
 	}
 
 	void ensureMem(int n) {
-		if (n <= mCapacity) {
+		if (n < mCapacity) {
 			return;
 		}
 		mCapacity *= 2;
 		if (mCapacity < n) {
-			mCapacity = n;
+			mCapacity = n + 1;
 		}
-		T *newElems = (T *)realloc(mElems, sizeof(T) * mCapacity);
-		if (newElems != mElems) {
-			for (int i = 0; i < mNum; ++i) {
-				new (newElems + i) T(mElems[i]);
-			}
-			clear();
-			free(mElems);
-			mElems = newElems;
+		T *newElems = (T *)malloc(sizeof(T) * mCapacity);
+		for (int i = 0; i < mNum; ++i) {
+			new (newElems + i) T(mElems[i]);
 		}
+		clear();
+		free(mElems);
+		mElems = newElems;
 	}
 protected:
 	int mNum;
@@ -258,22 +256,14 @@ protected:
 	}
 
 	void ensureMem(int n) {
-		if (n <= mCapacity) {
+		if (n < mCapacity) {
 			return;
 		}
 		mCapacity *= 2;
 		if (mCapacity < n) {
-			mCapacity = n;
+			mCapacity = n + 1;
 		}
-		T **newElems = (T **)realloc(mElems, sizeof(T*) * mCapacity);
-		if (newElems != mElems) {
-			for (int i = 0; i < mNum; ++i) {
-				newElems[i] = mElems[i];
-			}
-			clear();
-			free(mElems);
-			mElems = newElems;
-		}
+		mElems = (T **)realloc(mElems, sizeof(T*) * mCapacity);
 	}
 protected:
 	int mNum;
