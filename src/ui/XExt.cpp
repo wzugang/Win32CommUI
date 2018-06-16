@@ -2557,10 +2557,16 @@ void XExtMenuManager::messageLoop() {
 				break;
 			}
 			msg.hwnd = mMenus[idx]->getWnd();
-		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL) {
+		} else if (msg.message == WM_MOUSEHWHEEL || msg.message == WM_MOUSEWHEEL 
+			|| msg.message == WM_MOUSEMOVE) {
 			POINT pt = {0};
 			GetCursorPos(&pt);
-			msg.hwnd = WindowFromPoint(pt);
+			int idx = whereIs(pt.x, pt.y);
+			if (idx < 0) { // in other window
+				continue;
+			}
+			msg.hwnd = mMenus[idx]->getWnd();
+			// msg.hwnd = WindowFromPoint(pt);
 		} else if (msg.message == XComponent::MSG_QUIT) {
 			break;
 		}
@@ -2585,12 +2591,12 @@ void XExtMenuManager::closeMenuTo( int idx ) {
 }
 void XExtMenuManager::notifyItemClicked( XExtMenuItem *item ) {
 	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
-	PostMessage(ownerWnd, XComponent::MSG_QUIT, 0, 0);
-	mLooping = false;
 	closeMenuTo(-1);
 	if (mListener != NULL) {
 		mListener->onClickItem(item);
 	}
+	mLooping = false;
+	PostMessage(ownerWnd, XComponent::MSG_QUIT, 0, 0);
 }
 void XExtMenuManager::closeMenu( XExtMenuModel *mlist ) {
 	for (int i = 0; i <= mLevel; ++i) {
