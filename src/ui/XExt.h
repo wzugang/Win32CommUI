@@ -480,6 +480,7 @@ protected:
 	int mLevel;
 	XComponent *mOwner;
 	ItemListener *mListener;
+	bool mLooping;
 };
 
 class XExtTreeNode {

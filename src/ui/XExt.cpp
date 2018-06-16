@@ -2520,6 +2520,7 @@ XExtMenuManager::XExtMenuManager( XExtMenuModel *mlist, XComponent *owner, ItemL
 	mLevel = -1;
 	mListener = listener;
 	memset(mMenus, 0, sizeof(mMenus));
+	mLooping = false;
 }
 void XExtMenuManager::show( int screenX, int screenY ) {
 	if (mMenus[++mLevel] == NULL) {
@@ -2532,7 +2533,8 @@ void XExtMenuManager::show( int screenX, int screenY ) {
 void XExtMenuManager::messageLoop() {
 	MSG msg = {0};
 	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
-	while (TRUE) {
+	mLooping = true;
+	while (mLooping) {
 		if (GetForegroundWindow() != ownerWnd || mLevel < 0) {
 			break;
 		}
@@ -2559,7 +2561,7 @@ void XExtMenuManager::messageLoop() {
 			POINT pt = {0};
 			GetCursorPos(&pt);
 			msg.hwnd = WindowFromPoint(pt);
-		} else if (msg.message == WM_QUIT) {
+		} else if (msg.message == XComponent::MSG_QUIT) {
 			break;
 		}
 		TranslateMessage(&msg);
@@ -2583,7 +2585,9 @@ void XExtMenuManager::closeMenuTo( int idx ) {
 }
 void XExtMenuManager::notifyItemClicked( XExtMenuItem *item ) {
 	HWND ownerWnd = mOwner->getNode()->getRoot()->getComponent()->getWnd();
-	PostMessage(ownerWnd, WM_QUIT, 0, 0);
+	PostMessage(ownerWnd, XComponent::MSG_QUIT, 0, 0);
+	mLooping = false;
+	closeMenuTo(-1);
 	if (mListener != NULL) {
 		mListener->onClickItem(item);
 	}

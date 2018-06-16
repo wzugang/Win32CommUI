@@ -102,8 +102,8 @@ bool File::rename(const char *path) {
 }
 
 bool File::mkdir() {
-	// CreateDirectory()
-	return true;
+	BOOL ok = CreateDirectory(mPath.str(), NULL);
+	return ok == TRUE;
 }
 
 bool File::mkdirs() {
