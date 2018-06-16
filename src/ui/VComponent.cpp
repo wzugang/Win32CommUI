@@ -1,6 +1,6 @@
 #include "VComponent.h"
-#include "../ui/XmlParser.h"
-#include "../ui/UIFactory.h"
+#include "XmlParser.h"
+#include "UIFactory.h"
 #include <stdlib.h>
 #include <vector>
 #include <map>
@@ -108,7 +108,7 @@ VComponent::VComponent(XmlNode *node) {
 
 	mID = (s_id++) * 10;
 	mNode = node;
-	node->setComponentV(this);
+	node->setComponent(this);
 	mX = mY = mWidth = mHeight = mMesureWidth = mMesureHeight = 0;
 	mAttrX = mAttrY = mAttrWidth = mAttrHeight = 0;
 	memset(mAttrPadding, 0, sizeof(mAttrPadding));
@@ -161,7 +161,7 @@ void VComponent::onLayoutChildren( int width, int height ) {
 	width -= mAttrPadding[0] + mAttrPadding[2];
 	height -= mAttrPadding[1] + mAttrPadding[3];
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		int x = calcSize(child->getAttrX(), width | MS_ATMOST) + mAttrPadding[0];
 		int y = calcSize(child->getAttrY(), height | MS_ATMOST) + mAttrPadding[1];
 		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
@@ -261,7 +261,7 @@ int VComponent::calcSize( int selfSizeSpec, int parentSizeSpec ) {
 
 void VComponent::onMeasureChildren( int widthSpec, int heightSpec ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		child->onMeasure(widthSpec, heightSpec);
 	}
 }
@@ -269,14 +269,14 @@ void VComponent::onMeasureChildren( int widthSpec, int heightSpec ) {
 VComponent* VComponent::findById( const char *id ) {
 	XmlNode *n = mNode->findById(id);
 	if (n != NULL) {
-		return n->getComponentV();
+		return n->getComponent();
 	}
 	return NULL;
 }
 
 VComponent* VComponent::getChildById( DWORD id ) {
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		if (child->mID == id) return child;
 	}
 	return NULL;
@@ -285,17 +285,17 @@ VComponent* VComponent::getChildById( DWORD id ) {
 VComponent* VComponent::getChildById( const char *id ) {
 	XmlNode *child = mNode->getChildById(id);
 	if (child != NULL)
-		return child->getComponentV();
+		return child->getComponent();
 	return NULL;
 }
 VComponent* VComponent::getChild(int idx) {
-	return mNode->getChild(idx)->getComponentV();
+	return mNode->getChild(idx)->getComponent();
 }
 
 VComponent* VComponent::getParent() {
 	XmlNode *parent = mNode->getParent();
 	if (parent != NULL) {
-		return parent->getComponentV();
+		return parent->getComponent();
 	}
 	return NULL;
 }
@@ -321,7 +321,7 @@ HFONT VComponent::getFont() {
 		}
 		return font;
 	}
-	return mNode->getParent()->getComponentV()->getFont();
+	return mNode->getParent()->getComponent()->getFont();
 }
 
 HINSTANCE VComponent::getInstance() {
@@ -603,7 +603,7 @@ RECT VComponent::getDrawRect() {
 		if (node == NULL) {
 			break;
 		}
-		cc = node->getComponentV();
+		cc = node->getComponent();
 	}
 	RECT r1, r2, rs;
 	r1.left = r1.right = 0;

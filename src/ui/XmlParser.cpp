@@ -1,8 +1,8 @@
 #include "XmlParser.h"
 #include <string.h>
 #include <ctype.h>
-#include "XComponent.h"
 #include "XBinFile.h"
+#include "VComponent.h"
 
 static char *DupString(const char *str) {
 	if (str != NULL) {
@@ -17,7 +17,7 @@ XmlNode::XmlNode( char *name , XmlNode *parent) {
 	mName = name;
 	mParent = parent;
 	mComponent = NULL;
-	mComponentV = NULL;
+	mComponent = NULL;
 	mParser = NULL;
 	mDefaultNode = NULL;
 	mHasCopyedDefault = false;
@@ -123,20 +123,12 @@ void XmlNode::print(int step) {
 	}
 }
 
-void XmlNode::setComponent( XComponent *c ) {
+void XmlNode::setComponent( VComponent *c ) {
 	mComponent = c;
 }
 
-XComponent* XmlNode::getComponent() {
+VComponent* XmlNode::getComponent() {
 	return mComponent;
-}
-
-void XmlNode::setComponentV( VComponent *c ) {
-	mComponentV = c;
-}
-
-VComponent* XmlNode::getComponentV() {
-	return mComponentV;
 }
 
 XmlNode* XmlNode::findById( const char *id ) {
@@ -782,20 +774,20 @@ int AttrUtils::parseSize(const char *str) {
 	char *ep = NULL;
 	int v = (int)strtod(str, &ep);
 	if (str == ep && strstr(str, "auto") != NULL) {
-		return XComponent::MS_AUTO;
+		return VComponent::MS_AUTO;
 	}
 	if (ep != NULL && *ep == '%') {
 		if (v < 0) v = -v;
-		v = v | XComponent::MS_PERCENT;
+		v = v | VComponent::MS_PERCENT;
 	} else {
-		v = v | XComponent::MS_FIX;
+		v = v | VComponent::MS_FIX;
 	}
 	return v;
 }
 
 void AttrUtils::parseArraySize(const char *str, int *arr, int arrNum) {
 	for (int i = 0; i < arrNum; ++i) {
-		arr[i] = 0 | XComponent::MS_FIX;
+		arr[i] = 0 | VComponent::MS_FIX;
 	}
 	if (str == NULL) return;
 	for (int i = 0; i < arrNum; ++i) {

@@ -3,7 +3,6 @@
 #include <map>
 #include <string>
 #include <windows.h>
-class XComponent;
 class VComponent;
 class XmlParser;
 
@@ -28,10 +27,8 @@ public:
 	char *getAttrPathByName(const char *name);
 	char *getAttrPathByVal(char *val);
 
-	void setComponent(XComponent *c);
-	XComponent* getComponent();
-	void setComponentV(VComponent *c);
-	VComponent* getComponentV();
+	void setComponent(VComponent *c);
+	VComponent* getComponent();
 
 	XmlNode* findById(const char *id);
 	XmlNode* getChildById(const char *id);
@@ -46,8 +43,7 @@ protected:
 	std::vector<Attr> mAttrs;
 	char *mName;
 	XmlNode *mParent;
-	XComponent *mComponent;
-	VComponent *mComponentV;
+	VComponent *mComponent;
 	XmlParser *mParser;
 	std::map<std::string, XmlNode*> *mDefaultNode;
 	bool mHasCopyedDefault;

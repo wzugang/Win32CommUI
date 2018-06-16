@@ -1,8 +1,6 @@
 #include "UIFactory.h"
 #include "XmlParser.h"
-#include "XComponent.h"
 #include "VComponent.h"
-#include "XExt.h"
 #include "VExt.h"
 #include "XBinFile.h"
 #include <string.h>
@@ -101,7 +99,7 @@ XImage * XImage::loadImage( ResPath *info) {
 		GlobalUnlock(m_hMem);
 		pstm->Release();
 	} else if (info->mResType == ResPath::RT_RES) {
-		cimg.LoadFromResource(XComponent::getInstance(), info->mPath);
+		cimg.LoadFromResource(VComponent::getInstance(), info->mPath);
 	}
 	if (cimg.GetWidth() == 0) {
 		return NULL;
@@ -535,7 +533,7 @@ HICON XImage::loadIcon( const char *resPath ) {
 		GlobalUnlock(m_hMem);
 		pstm->Release();
 	} else {
-		cimg.LoadFromResource(XComponent::getInstance(), info.mPath);
+		cimg.LoadFromResource(VComponent::getInstance(), info.mPath);
 	}
 	// HBITMAP bp = cimg; // cimg.operator HBITMAP();
 	return (HICON)cimg.Detach();
@@ -637,18 +635,22 @@ struct NodeCreator {
 static NodeCreator g_creators[64];
 static int g_creatorNum = 0;
 
-XComponent* UIFactory::buildComponent( XmlNode *root) {
-	if (root == NULL) return NULL;
-	Creator c = getCreator(root->getName());
-	if (c == NULL) {
-		printf("UIFactory.buildingTree: node name [%s] has no creator\n", root->getName());
+
+
+//----------------------------UIFactory-------------------------
+
+static UIFactory::Creator g_creatorsV[64];
+static int g_creatorNumV = 0;
+
+VComponent* UIFactory::buildComponent( XmlNode *root) {
+	if (root == NULL) {
 		return NULL;
 	}
-	XComponent *x = c(root);
+	VComponent *x = create(root);
 	root->setComponent(x);
 	for (int i = 0; i < root->getChildCount(); ++i) {
 		XmlNode *child = root->getChild(i);
-		XComponent *ix = buildComponent(child);
+		VComponent *ix = buildComponent(child);
 		child->setComponent(ix);
 	}
 	return x;
@@ -667,203 +669,7 @@ XmlNode* UIFactory::buildNode( const char *resPath, const char *partName ) {
 	return rootNode;
 }
 
-XComponent* UIFactory::fastBuild( const char *resPath, const char *partName, XComponent *parent ) {
-	XmlNode *root = UIFactory::buildNode(resPath, partName);
-	if (root == NULL) return NULL;
-	if (parent) root->setParent(parent->getNode());
-	XComponent *cc = UIFactory::buildComponent(root);
-	cc->createWndTree();
-	return cc;
-}
-
-void UIFactory::registCreator( const char *nodeName, Creator c ) {
-	if (nodeName == NULL || c == NULL)
-		return;
-	strcpy(g_creators[g_creatorNum].mNodeName, nodeName);
-	g_creators[g_creatorNum].mCreator = c;
-	++g_creatorNum;
-}
-
-UIFactory::Creator UIFactory::getCreator( const char *nodeName ) {
-	if (nodeName == NULL) return NULL;
-	for (int i = 0; i < g_creatorNum; ++i) {
-		if (strcmp(nodeName, g_creators[i].mNodeName) == 0)
-			return g_creators[i].mCreator;
-	}
-	printf("Node: [%s] has no Creator\n", nodeName);
-	return NULL;
-}
-
-void UIFactory::destory( XmlNode *root ) {
-	for (int i = 0; i < root->getChildCount(); ++i) {
-		XmlNode *child = root->getChild(i);
-		destory(child);
-	}
-	delete root->getComponent();
-	delete root;
-}
-static void BuildMenu(XExtMenuModel *menu, XmlNode *menuNode) {
-	for (int i = 0; i < menuNode->getChildCount(); ++i) {
-		XmlNode *child = menuNode->getChild(i);
-		XExtMenuItem *item = new XExtMenuItem(NULL, NULL);
-		for (int j = 0; j < child->getAttrsCount(); ++j) {
-			XmlNode::Attr *a = child->getAttr(j);
-			if (strcmp(a->mName, "name") == 0) strcpy(item->mName, a->mValue);
-			else if (strcmp(a->mName, "text") == 0) item->mText = a->mValue;
-			else if (strcmp(a->mName, "active") == 0) item->mActive = AttrUtils::parseBool(a->mValue);
-			else if (strcmp(a->mName, "visible") == 0) item->mVisible = AttrUtils::parseBool(a->mValue);
-			else if (strcmp(a->mName, "checkable") == 0) item->mCheckable = AttrUtils::parseBool(a->mValue);
-			else if (strcmp(a->mName, "checked") == 0) item->mChecked = AttrUtils::parseBool(a->mValue);
-			else if (strcmp(a->mName, "separator") == 0) item->mSeparator = AttrUtils::parseBool(a->mValue);
-		}
-		menu->add(item);
-		if (child->getChildCount() > 0) {
-			XExtMenuModel *sub = new XExtMenuModel();
-			item->mChild = sub;
-			BuildMenu(sub, child);
-		}
-	}
-}
-
-XExtMenuModel * UIFactory::buildMenu( XmlNode *rootMenu ) {
-	if (rootMenu == NULL) return NULL;
-	XExtMenuModel *menu = new XExtMenuModel();
-	BuildMenu(menu, rootMenu);
-	return menu;
-}
-
-XExtMenuModel* UIFactory::fastMenu( const char *resPath, const char *partName ) {
-	XmlNode *root = buildNode(resPath, partName);
-	if (root == NULL) return NULL;
-	XExtMenuModel *cc = buildMenu(root);
-	return cc;
-}
-static void BuildTree(XExtTreeNode *tn, XmlNode *node) {
-	for (int i = 0; i < node->getChildCount(); ++i) {
-		XmlNode *child = node->getChild(i);
-		XExtTreeNode *sub = new XExtTreeNode(child->getAttrValue("text"));
-		sub->setExpand(AttrUtils::parseBool(child->getAttrValue("expand")));
-		sub->setCheckable(AttrUtils::parseBool(child->getAttrValue("checkable")));
-		sub->setChecked(AttrUtils::parseBool(child->getAttrValue("checked")));
-		sub->setUserData(node);
-		tn->insert(-1, sub);
-		if (child->getChildCount() > 0) {
-			BuildTree(sub, child);
-		}
-	}
-}
-XExtTreeNode * UIFactory::buildTree( XmlNode *rootTree ) {
-	if (rootTree == NULL) return NULL;
-	XExtTreeNode *node = new XExtTreeNode("Root");
-	BuildTree(node, rootTree);
-	return node;
-}
-XExtTreeNode* UIFactory::fastTree(const char *resPath, const char *partName) {
-	XmlNode *root = buildNode(resPath, partName);
-	if (root == NULL) return NULL;
-	XExtTreeNode *cc = buildTree(root);
-	return cc;
-}
-
-static XComponent *XExtEmptyComponent_Creator(XmlNode *n) {return new XExtEmptyComponent(n);}
-static XComponent *XAbsLayout_Creator(XmlNode *n) {return new XAbsLayout(n);}
-static XComponent *XHLineLayout_Creator(XmlNode *n) {return new XHLineLayout(n);}
-static XComponent *XVLineLayout_Creator(XmlNode *n) {return new XVLineLayout(n);}
-
-static XComponent *XWindow_Creator(XmlNode *n) {return new XWindow(n);}
-static XComponent *XDialog_Creator(XmlNode *n) {return new XDialog(n);}
-
-static XComponent *XExtButton_Creator(XmlNode *n) {return new XExtButton(n);}
-static XComponent *XExtOption_Creator(XmlNode *n) {return new XExtOption(n);}
-static XComponent *XExtLabel_Creator(XmlNode *n) {return new XExtLabel(n);}
-static XComponent *XExtCheckBox_Creator(XmlNode *n) {return new XExtCheckBox(n);}
-static XComponent *XExtRadio_Creator(XmlNode *n) {return new XExtRadio(n);}
-static XComponent *XExtIconButton_Creator(XmlNode *n) {return new XExtIconButton(n);}
-static XComponent *XExtArrowButton_Creator(XmlNode *n) {return new XExtArrowButton(n);}
-
-static XComponent *XExtPopup_Creator(XmlNode *n) {return new XExtPopup(n);}
-static XComponent *XExtScrollBar_Hor_Creator(XmlNode *n) {return new XExtScrollBar(n, true);}
-static XComponent *XExtScrollBar_Ver_Creator(XmlNode *n) {return new XExtScrollBar(n, false);}
-static XComponent *XExtScroll_Creator(XmlNode *n) {return new XExtScroll(n);}
-static XComponent *XExtTable_Creator(XmlNode *n) {return new XExtTable(n);}
-static XComponent *XExtEdit_Creator(XmlNode *n) {return new XExtLineEdit(n);}
-static XComponent *XExtTextArea_Creator(XmlNode *n) {return new XExtTextArea(n);}
-
-static XComponent *XExtList_Creator(XmlNode *n) {return new XExtList(n);}
-static XComponent *XExtComboBox_Creator(XmlNode *n) {return new XExtComboBox(n);}
-static XComponent *XExtTree_Creator(XmlNode *n) {return new XExtTree(n);}
-static XComponent *XExtCalendar_Creator(XmlNode *n) {return new XExtCalendar(n);}
-static XComponent *XExtMaskEdit_Creator(XmlNode *n) {return new XExtMaskEdit(n);}
-static XComponent *XExtPassword_Creator(XmlNode *n) {return new XExtPassword(n);}
-static XComponent *XExtDatePicker_Creator(XmlNode *n) {return new XExtDatePicker(n);}
-
-static XComponent *XExtWindow_Creator(XmlNode *n) {return new XExtWindow(n);}
-static XComponent *XExtDialog_Creator(XmlNode *n) {return new XExtDialog(n);}
-
-void UIFactory::init() {
-	// INITCOMMONCONTROLSEX cc = {0};
-	// cc.dwSize = sizeof(cc);
-	// InitCommonControlsEx(&cc);
-	UIFactory::registCreator("ExtEmpty", XExtEmptyComponent_Creator);
-	UIFactory::registCreator("AbsLayout", XAbsLayout_Creator);
-	UIFactory::registCreator("HLineLayout", XHLineLayout_Creator);
-	UIFactory::registCreator("VLineLayout", XVLineLayout_Creator);
-	UIFactory::registCreator("Window", XWindow_Creator);
-	UIFactory::registCreator("Dialog", XDialog_Creator);
-
-	UIFactory::registCreator("ExtButton", XExtButton_Creator);
-	UIFactory::registCreator("ExtOption", XExtOption_Creator);
-	UIFactory::registCreator("ExtLabel", XExtLabel_Creator);
-	UIFactory::registCreator("ExtCheckBox", XExtCheckBox_Creator);
-	UIFactory::registCreator("ExtRadio", XExtRadio_Creator);
-	UIFactory::registCreator("ExtIconButton", XExtIconButton_Creator);
-	UIFactory::registCreator("ExtLineEdit", XExtEdit_Creator);
-	UIFactory::registCreator("ExtTextArea", XExtTextArea_Creator);
-
-	UIFactory::registCreator("ExtPopup", XExtPopup_Creator);
-	UIFactory::registCreator("ExtHorScrollBar", XExtScrollBar_Hor_Creator);
-	UIFactory::registCreator("ExtVerScrollBar", XExtScrollBar_Ver_Creator);
-	UIFactory::registCreator("ExtScroll", XExtScroll_Creator);
-	UIFactory::registCreator("ExtTable", XExtTable_Creator);
-	UIFactory::registCreator("ExtList", XExtList_Creator);
-	UIFactory::registCreator("ArrowButton", XExtArrowButton_Creator);
-	UIFactory::registCreator("ExtComboBox", XExtComboBox_Creator);
-	UIFactory::registCreator("ExtTree", XExtTree_Creator);
-	UIFactory::registCreator("ExtCalendar", XExtCalendar_Creator);
-	UIFactory::registCreator("ExtMaskEdit", XExtMaskEdit_Creator);
-	UIFactory::registCreator("ExtPassword", XExtPassword_Creator);
-	UIFactory::registCreator("ExtDatePicker", XExtDatePicker_Creator);
-
-	UIFactory::registCreator("ExtWindow", XExtWindow_Creator);
-	UIFactory::registCreator("ExtDialog", XExtDialog_Creator);
-}
-
-//------------------------------------------------------
-
-//----------------------------UIFactory-------------------------
-
-static UIFactoryV::Creator g_creatorsV[64];
-static int g_creatorNumV = 0;
-
-VComponent* UIFactoryV::buildComponent( XmlNode *root) {
-	if (root == NULL) {
-		return NULL;
-	}
-	VComponent *x = create(root);
-	root->setComponentV(x);
-	for (int i = 0; i < root->getChildCount(); ++i) {
-		XmlNode *child = root->getChild(i);
-		VComponent *ix = buildComponent(child);
-		child->setComponentV(ix);
-	}
-	return x;
-}
-
-XmlNode* UIFactoryV::buildNode( const char *resPath, const char *partName ) {
-	return UIFactory::buildNode(resPath, partName);
-}
-
-VComponent* UIFactoryV::fastBuild( const char *resPath, const char *partName, VComponent *parent ) {
+VComponent* UIFactory::fastBuild( const char *resPath, const char *partName, VComponent *parent ) {
 	XmlNode *root = buildNode(resPath, partName);
 	if (root == NULL) {
 		return NULL;
@@ -872,7 +678,6 @@ VComponent* UIFactoryV::fastBuild( const char *resPath, const char *partName, VC
 		root->setParent(parent->getNode());
 	}
 	VComponent *cc = buildComponent(root);
-	// cc->createWndTree();
 	return cc;
 }
 
@@ -890,7 +695,7 @@ static void BuildTreeV(VTreeNode *tn, XmlNode *node) {
 		}
 	}
 }
-VTreeNode * UIFactoryV::buildTreeNode( XmlNode *rootTree ) {
+VTreeNode * UIFactory::buildTreeNode( XmlNode *rootTree ) {
 	if (rootTree == NULL) {
 		return NULL;
 	}
@@ -900,23 +705,23 @@ VTreeNode * UIFactoryV::buildTreeNode( XmlNode *rootTree ) {
 }
 
 
-void UIFactoryV::registCreator(Creator c ) {
+void UIFactory::registCreator(Creator c ) {
 	if (c == NULL)
 		return;
 	g_creatorsV[g_creatorNumV] = c;
 	++g_creatorNumV;
 }
 
-void UIFactoryV::destory( XmlNode *root ) {
+void UIFactory::destory( XmlNode *root ) {
 	for (int i = 0; i < root->getChildCount(); ++i) {
 		XmlNode *child = root->getChild(i);
 		destory(child);
 	}
-	delete root->getComponentV();
+	delete root->getComponent();
 	delete root;
 }
 
-VComponent * UIFactoryV::create(XmlNode *node) {
+VComponent * UIFactory::create(XmlNode *node) {
 	if (node == NULL) {
 		return NULL;
 	}
@@ -967,6 +772,6 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 	return NULL;
 }
 
-void UIFactoryV::init() {
+void UIFactory::init() {
 	registCreator(UIFactoryV_Creator);
 }

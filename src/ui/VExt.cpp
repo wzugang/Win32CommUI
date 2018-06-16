@@ -299,7 +299,7 @@ void VRadio::unselectOthers() {
 	if (groupName == NULL) return;
 	XmlNode *parent = mNode->getParent();
 	for (int i = 0; parent != NULL && i < parent->getChildCount(); ++i) {
-		VRadio *child = dynamic_cast<VRadio*>(parent->getComponentV()->getChild(i));
+		VRadio *child = dynamic_cast<VRadio*>(parent->getComponent()->getChild(i));
 		if (child == NULL || child == this) continue;
 		if (child->mSelected && strcmp(groupName, child->getNode()->getAttrValue("group")) == 0) {
 			child->setSelect(false);
@@ -978,7 +978,7 @@ void VTextArea::onMeasure( int widthSpec, int heightSpec ) {
 		XmlNode *node = new XmlNode("VerScrollBar", mNode);
 		mVerBar = new VScrollBar(node);
 		mVerBar->setOrientation(false);
-		node->setComponentV(mVerBar);
+		node->setComponent(mVerBar);
 		mVerBar->setVisible(false);
 		mNode->addChild(node);
 		mVerBar->setListener(new TextAreaLisener(this));
@@ -1433,8 +1433,8 @@ VScroll::VScroll( XmlNode *node ) : VExtComponent(node) {
 	mVerBar = new VScrollBar(verNode);
 	mHorBar->setOrientation(true);
 	mVerBar->setOrientation(false);
-	horNode->setComponentV(mHorBar);
-	verNode->setComponentV(mVerBar);
+	horNode->setComponent(mHorBar);
+	verNode->setComponent(mVerBar);
 	mHorBar->setVisible(false);
 	mVerBar->setVisible(false);
 	VScrollListener *vl = new VScrollListener(this);
@@ -1471,7 +1471,7 @@ SIZE VScroll::calcDataSize() {
 	int mw = mMesureWidth - mAttrPadding[0] - mAttrPadding[2];
 	int mh = mMesureHeight - mAttrPadding[1] - mAttrPadding[3];
 	for (int i = mNode->getChildCount() - 1; i >= 0; --i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		if (! child->isVisible()) {
 			continue;
 		}
@@ -1490,7 +1490,7 @@ void VScroll::onLayoutChildren( int width, int height ) {
 	int mw = width - mAttrPadding[0] - mAttrPadding[2];
 	int mh = height - mAttrPadding[1] - mAttrPadding[3];
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		int x = calcSize(child->getAttrX(), mw | MS_ATMOST);
 		int y  = calcSize(child->getAttrY(), mh | MS_ATMOST);
 		child->onLayout(x, y, child->getMesureWidth(), child->getMesureHeight());
@@ -3082,7 +3082,7 @@ void VHLineLayout::onLayoutChildren( int width, int height ) {
 	height -= mAttrPadding[1] + mAttrPadding[3];
 	int x = mAttrPadding[0], weightAll = 0, childWidths = 0, lessWidth = width;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		weightAll += child->getAttrWeight();
 		childWidths += child->getMesureWidth() + child->getAttrMargin()[0] + child->getAttrMargin()[2];
 	}
@@ -3092,7 +3092,7 @@ void VHLineLayout::onLayoutChildren( int width, int height ) {
 		perWeight = lessWidth / weightAll;
 	}
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		int hh = height - child->getAttrMargin()[1] - child->getAttrMargin()[3];
 		int y  = calcSize(child->getAttrY(), (hh > 0 ? hh : 0) | MS_ATMOST);
 		y += mAttrPadding[1] + child->getAttrMargin()[1];
@@ -3114,7 +3114,7 @@ void VVLineLayout::onLayoutChildren( int width, int height ) {
 	height -= mAttrPadding[1] - mAttrPadding[3];
 	int y = mAttrPadding[1], weightAll = 0, childHeights = 0, lessHeight = height;
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		weightAll += child->getAttrWeight();
 		childHeights += child->getMesureHeight() + child->getAttrMargin()[1] + child->getAttrMargin()[3];
 	}
@@ -3124,7 +3124,7 @@ void VVLineLayout::onLayoutChildren( int width, int height ) {
 		perWeight = lessHeight / weightAll;
 	}
 	for (int i = 0; i < mNode->getChildCount(); ++i) {
-		VComponent *child = mNode->getChild(i)->getComponentV();
+		VComponent *child = mNode->getChild(i)->getComponent();
 		int ww = width - child->getAttrMargin()[0] - child->getAttrMargin()[2];
 		int x = calcSize(child->getAttrX(), (ww > 0 ? ww : 0) | MS_ATMOST);
 		x += mAttrPadding[0] + child->getAttrMargin()[0];

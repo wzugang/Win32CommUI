@@ -2,7 +2,6 @@
 #include <Windows.h>
 #include <CommCtrl.h>
 #include "XmlParser.h"
-#include "ui/XExt.h"
 #include <atlimage.h>
 #include "ui/VComponent.h"
 #include "ui/VExt.h"
@@ -16,7 +15,7 @@ class BtnListener : public VListener {
 public:
 	virtual bool onEvent(VComponent *src, Msg *msg) {
 		if (msg->mId == Msg::CLICK) {
-			VPopup *pp = (VPopup *) UIFactoryV::fastBuild("file://skin/vtest.xml", "my-popup", win);
+			VPopup *pp = (VPopup *) UIFactory::fastBuild("file://skin/vtest.xml", "my-popup", win);
 			pp->setMouseAction(VPopup::MA_INTERREPT);
 			pp->show(VComponent::getSpecSize(pp->getAttrX()), 
 				VComponent::getSpecSize(pp->getAttrY()));
@@ -121,8 +120,8 @@ int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 	xwin->show(nCmdShow);
 	xwin->messageLoop();
 #else
-	UIFactoryV::init();
-	win = (VWindow *) UIFactoryV::fastBuild("file://skin/vtest.xml", "main-page", NULL);
+	UIFactory::init();
+	win = (VWindow *) UIFactory::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
 	// win->findById("ext_btn_1")->setListener(new BtnListener());
 	// VList *list = (VList *)(win->findById("list"));
@@ -135,7 +134,7 @@ int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 	win->createWnd();
 	win->show();
 	win->msgLoop();
-	UIFactoryV::destory(win->getNode());
+	UIFactory::destory(win->getNode());
 #endif
 	return 0;
 }
