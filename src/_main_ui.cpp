@@ -100,7 +100,7 @@ public:
 	}
 };
 
-int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
 	AllocConsole();
 	freopen("CONOUT$", "wb", stdout);
@@ -113,13 +113,6 @@ int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 	GetCurrentDirectory(240, path);
 
 	//--------begin test------------
-	
-#if 0
-	UIFactory::init();
-	XWindow *xwin = (XWindow *) UIFactory::fastBuild("file://skin/base.xml", "main-page", NULL);
-	xwin->show(nCmdShow);
-	xwin->messageLoop();
-#else
 	UIFactory::init();
 	win = (VWindow *) UIFactory::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
@@ -135,6 +128,6 @@ int APIENTRY WinMain__A(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpC
 	win->show();
 	win->msgLoop();
 	UIFactory::destory(win->getNode());
-#endif
+
 	return 0;
 }
