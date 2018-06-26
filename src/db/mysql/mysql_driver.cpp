@@ -50,7 +50,28 @@ MysqlResultSetMetaData::~MysqlResultSetMetaData() {
 }
 
 SqlType MysqlResultSetMetaData::getColumnType(int column) {
-	// TODO:
+	MYSQL_FIELD *field = mysql_fetch_field_direct((MYSQL_RES*)mResObj, column);
+	enum_field_types t = field->type;
+	switch (t) {
+	case MYSQL_TYPE_DECIMAL:
+	case MYSQL_TYPE_DOUBLE:
+		return SQL_TYPE_DOUBLE;
+	case MYSQL_TYPE_TINY:
+	case MYSQL_TYPE_SHORT:
+	case MYSQL_TYPE_LONG:
+	case MYSQL_TYPE_INT24:
+		return SQL_TYPE_INT;
+	case MYSQL_TYPE_FLOAT:
+		return SQL_TYPE_FLOAT;
+	case MYSQL_TYPE_LONGLONG:
+		return SQL_TYPE_INT64;
+	case MYSQL_TYPE_VARCHAR:
+	case MYSQL_TYPE_STRING:
+	case MYSQL_TYPE_VAR_STRING:
+		return SQL_TYPE_CHAR;
+	case MYSQL_TYPE_BLOB:
+		return SQL_TYPE_BLOB;
+	}
 	return SQL_TYPE_NONE;
 }
 
