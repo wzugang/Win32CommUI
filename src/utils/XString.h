@@ -49,6 +49,8 @@ public:
 	// need free yourself
 	static void *toBytes(void *str, Charset from, Charset to);
 	static void *dup(void *str, Charset ch);
+	static char *dups(const char *str);
+	static wchar_t *dupws(const wchar_t *str);
 	~XTString();
 protected:
 	void needBuffer(int need);
@@ -503,6 +505,16 @@ void * XTString<T>::dup(void *str, Charset ch) {
 		return dd;
 	}
 	return NULL;
+}
+
+template <class T>
+wchar_t * XTString<T>::dupws( const wchar_t *str ) {
+	return (wchar_t *)dup((void *)str, UNICODE);
+}
+
+template <class T>
+char * XTString<T>::dups( const char *str ) {
+	return (char *)dup((void *)str, GBK);
 }
 
 template <class T>
