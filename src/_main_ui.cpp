@@ -15,10 +15,13 @@ class BtnListener : public VListener {
 public:
 	virtual bool onEvent(VComponent *src, Msg *msg) {
 		if (msg->mId == Msg::CLICK) {
-			VPopup *pp = (VPopup *) UIFactory::fastBuild("file://skin/vtest.xml", "my-popup", win);
-			pp->setMouseAction(VPopup::MA_INTERREPT);
-			pp->show(VComponent::getSpecSize(pp->getAttrX()), 
-				VComponent::getSpecSize(pp->getAttrY()));
+			XmlNode *node = UIFactory::buildNode("file://skin/vtest.xml", "my-menu");
+			VMenuModel *model = UIFactory::buildMenuModel(node);
+
+			VPopupMenu *pp = (VPopupMenu *)UIFactory::fastBuild("file://skin/vtest.xml", "my-popmenu", win);
+			pp->setModel(model);
+			pp->setMouseAction(VPopup::MA_CLOSE);
+			pp->show(50, 50);
 			return true;
 		}
 		return false;
@@ -116,7 +119,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	UIFactory::init();
 	win = (VWindow *) UIFactory::fastBuild("file://skin/vtest.xml", "main-page", NULL);
 
-	// win->findById("ext_btn_1")->setListener(new BtnListener());
+	win->findById("ext_btn_1")->setListener(new BtnListener());
 	// VList *list = (VList *)(win->findById("list"));
 	// list->setModel(new ListModel());
 	// VTree *tree = (VTree *)(win->findById("tree"));

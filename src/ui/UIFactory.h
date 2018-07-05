@@ -5,6 +5,7 @@ class VComponent;
 class XmlNode;
 class ResPath;
 class VTreeNode;
+class VMenuModel;
 struct XRect;
 
 class XImage {
@@ -82,6 +83,7 @@ public:
 	static VComponent* buildComponent(XmlNode *root);
 	static VComponent* fastBuild(const char *resPath, const char *partName, VComponent *parent);
 	static VTreeNode *buildTreeNode( XmlNode *rootTree );
+	static VMenuModel *buildMenuModel( XmlNode *rootMenuItem );
 	
 	static void destory(XmlNode *root);
 	static void registCreator(Creator c);

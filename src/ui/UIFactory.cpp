@@ -695,6 +695,7 @@ static void BuildTreeV(VTreeNode *tn, XmlNode *node) {
 		}
 	}
 }
+
 VTreeNode * UIFactory::buildTreeNode( XmlNode *rootTree ) {
 	if (rootTree == NULL) {
 		return NULL;
@@ -704,6 +705,34 @@ VTreeNode * UIFactory::buildTreeNode( XmlNode *rootTree ) {
 	return node;
 }
 
+static void BuildMenuV(VMenuModel *tn, XmlNode *node) {
+	for (int i = 0; i < node->getChildCount(); ++i) {
+		XmlNode *child = node->getChild(i);
+		VMenuItem *item = new VMenuItem(child->getAttrValue("name"), 
+			child->getAttrValue("text"),
+			AttrUtils::parseBool(child->getAttrValue("active"), true),
+			AttrUtils::parseBool(child->getAttrValue("visible"), true),
+			AttrUtils::parseBool(child->getAttrValue("separator"), false),
+			AttrUtils::parseBool(child->getAttrValue("checkable"), false),
+			AttrUtils::parseBool(child->getAttrValue("checked"), false));
+		tn->addMenuItem(item);
+		if (child->getChildCount() > 0) {
+			VMenuModel *sv = new VMenuModel();
+			item->mChild = sv;
+			sv->setParent(tn);
+			BuildMenuV(sv, child);
+		}
+	}
+}
+
+VMenuModel * UIFactory::buildMenuModel(XmlNode *rootMenuItem) {
+	if (rootMenuItem == NULL) {
+		return NULL;
+	}
+	VMenuModel *menu = new VMenuModel();
+	BuildMenuV(menu, rootMenuItem);
+	return menu;
+}
 
 void UIFactory::registCreator(Creator c ) {
 	if (c == NULL)
@@ -768,7 +797,7 @@ static VComponent *UIFactoryV_Creator(XmlNode *n) {
 
 	if (strcmp(name, "ComboBox") == 0) return new VComboBox(n);
 	if (strcmp(name, "WindowBar") == 0) return new VWindowBar(n);
-	
+	if (strcmp(name, "PopupMenu") == 0) return new VPopupMenu(n);
 	return NULL;
 }
 

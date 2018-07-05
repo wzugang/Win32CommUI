@@ -8,6 +8,8 @@
 	
 	<WindowBar rect="0 0 100% 35" bgimage="color://#80F0E68C" />
 	
+	<Button id="ext_btn_1" rect="20 20 100 25" text="A Button" />
+	
 	<ComboBox id="combo" rect="100 100 150 25" bgcolor="#50ddccdd" arrowNormal="ext_combobox_arrow_normal.png stretch" arrowPush="ext_combobox_arrow_down.png stretch" />
 	
 </Window>
@@ -17,6 +19,10 @@
 	
 </Popup>
 
+#################### my-popmenu ############
+<PopupMenu font="size:14;">
+	
+</PopupMenu>
 
 #################### my-tree ############
 <TreeNode>
@@ -44,3 +50,19 @@
 		</TreeNode>
 	</TreeNode>
 </TreeNode>
+
+#################### my-menu ############
+<MenuItem>
+	<MenuItem name="A" text="AAAAA"    />
+	<MenuItem name="B" text="BBBBBB"   />
+	<MenuItem separator="true"  />
+	<MenuItem name="C" text="ĞÕ±ğ"  >
+		<MenuItem name="C1" text="ÄĞ" checkable="true"  />
+		<MenuItem  name="C2" text="Å®" checkable="true" >
+			<MenuItem name="A1" text="Old Woman"    />
+			<MenuItem name="B1" text="Yong Woman"   />
+		</MenuItem>
+	</MenuItem>
+	<MenuItem separator="true"  />
+	<MenuItem name="D" text="DDDD"   />
+</MenuItem>

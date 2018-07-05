@@ -1386,8 +1386,14 @@ void VPopup::show(int x, int y, int w, int h) {
 	}
 	win->mPopups[i] = this;
 	int mw = 0, mh = 0;
-	mw = (w == 0) ? (win->mWidth | MS_ATMOST) : (w | MS_FIX);
-	mh = (h == 0) ? (win->mHeight | MS_ATMOST) : (h | MS_FIX);
+	if (w == 0) {
+		w = win->mWidth - x;
+	}
+	if (h == 0) {
+		h = win->mHeight - y;
+	}
+	mw = w | MS_FIX;
+	mh = h | MS_FIX;
 	onMeasure(mw, mh);
 	onLayout(x, y, mMesureWidth, mMesureHeight);
 	repaint(NULL);

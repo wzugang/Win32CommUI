@@ -65,9 +65,14 @@
 	<VBaseCombobox arrowNormal="image" arrowPush="image" arrowWidth="20" />
 	
 	
-	<TreeNode>
+	<TreeNode text="" checkable="true|false" checked="true|false" expand="true|false">
 		... sub TreeNode here
 	</TreeNode>
+	
+	<MenuItem name="" text="" active="true" visible="true" separator="true" checkable="true" checked="true">
+		active/visible default is true;  checkable/checked default is false
+		... sub TreeNode here
+	</MenuItem>
 	
 	
 	

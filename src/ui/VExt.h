@@ -1,7 +1,7 @@
 #pragma once
 #include "VComponent.h"
 #include "XText.h"
-
+class VMenuModel;
 
 class VExtComponent : public VComponent {
 public:
@@ -549,4 +549,63 @@ protected:
 	virtual bool onMouseEvent(Msg *m);
 protected:
 	int mPressX, mPressY;
+};
+
+
+class VMenuItem {
+public:
+	VMenuItem(const char *name, const char *text, bool active = true, 
+		bool visible = true, bool separator = false, bool checkable = false, bool checked = false);
+
+	char *mName;
+	char *mText;
+	bool mActive;
+	bool mVisible;
+	bool mSeparator;
+	bool mCheckale;
+	bool mChecked;
+
+	// Bellow not set value
+	VMenuModel *mChild;
+	VMenuModel *mOwner;
+	bool mSelect;
+};
+
+class VMenuModel {
+public:
+	VMenuModel();
+	VMenuItem *addMenuItem(const char *name, const char *text, bool active = true, 
+		bool visible = true, bool checkable = false, bool checked = false);
+	void addMenuItem(VMenuItem *item);
+	void addSeparator();
+	int getMenuCount();
+	VMenuItem* getMenuItem(int idx);
+	VMenuModel *getParent();
+	void setParent(VMenuModel *parent);
+protected:
+	VMenuItem **mItems;
+	VMenuModel *mParent;
+	int mCount;
+};
+
+// send SELECT_ITEM msg when click menu item
+// msg.def.wParam = a VMenuItem pointer;
+class VPopupMenu : public VPopup {
+public:
+	VPopupMenu(XmlNode *node);
+	VMenuModel *getModel();
+	void setModel(VMenuModel *model);
+	virtual void show(int x, int y);
+protected:
+	virtual bool onMouseEvent(Msg *m);
+	virtual void onPaint(Msg *m);
+	virtual void drawMenu(VMenuModel *model, Msg *m);
+	RECT getMenuRect(VMenuModel *m);
+	void unselectAll(VMenuModel *m);
+	VMenuItem *findMouseAt(int x, int y);
+	VMenuItem *getSelectMenuItem(VMenuModel *m);
+	int getSelectItemY(VMenuModel *m);
+protected:
+	VMenuModel *mModel;
+	VMenuModel *mLastModel;
 };

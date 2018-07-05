@@ -6,6 +6,7 @@
 #include "VComponent.h"
 #include "XmlParser.h"
 #include "UIFactory.h"
+#include "../utils/XString.h"
 
 // AlphaBlend function in here
 #pragma   comment(lib, "msimg32.lib")
@@ -3357,3 +3358,252 @@ bool VWindowBar::onMouseEvent(Msg *m) {
 }
 
 
+VMenuItem::VMenuItem(const char *name, const char *text, bool active /*= true*/, bool visible /*= true*/, bool separator /*= false*/, bool checkable /*= false*/, bool checked /*= false*/) {
+	mName = XString::dups(name == NULL ? "" : name);
+	mText = XString::dups(text == NULL ? "" : text);
+	mActive = active;
+	mVisible = visible;
+	mSeparator = separator;
+	mCheckale = checkable;
+	mChecked = checked;
+	mChild = NULL;
+	mOwner = NULL;
+	mSelect = false;
+}
+
+VMenuModel::VMenuModel() {
+	mItems = (VMenuItem **)malloc(sizeof(VMenuItem*) * 50);
+	mCount = 0;
+	mParent = NULL;
+}
+
+VMenuItem * VMenuModel::addMenuItem(const char *name, const char *text, bool active /*= true*/, bool visible /*= true*/, bool checkable /*= false*/, bool checked /*= false*/) {
+	VMenuItem *item = new VMenuItem(name, text, active, visible, false, checkable, checked);
+	item->mOwner = this;
+	mItems[mCount] = item;
+	++mCount;
+	return item;
+}
+
+void VMenuModel::addMenuItem(VMenuItem *item) {
+	if (item == NULL) {
+		return;
+	}
+	item->mOwner = this;
+	mItems[mCount] = item;
+	++mCount;
+}
+
+void VMenuModel::addSeparator() {
+	VMenuItem *item = new VMenuItem(NULL, NULL, false, true, true, false, false);
+	item->mOwner = this;
+	mItems[mCount] = item;
+	++mCount;
+}
+
+int VMenuModel::getMenuCount() {
+	return mCount;
+}
+
+VMenuItem* VMenuModel::getMenuItem(int idx) {
+	if (idx >= mCount) {
+		return NULL;
+	}
+	return mItems[idx];
+}
+
+VMenuModel * VMenuModel::getParent() {
+	return mParent;
+}
+
+void VMenuModel::setParent(VMenuModel *parent) {
+	mParent = parent;
+}
+
+static const int MENU_ITEM_WIDTH = 150;
+static const int MENU_ITEM_HEIGHT = 25;
+static const int MENU_SEP_HEIGHT = 5;
+
+VPopupMenu::VPopupMenu(XmlNode *node) : VPopup(node) {
+	mModel = NULL;
+	mLastModel = NULL;
+}
+
+VMenuModel * VPopupMenu::getModel() {
+	return mModel;
+}
+
+void VPopupMenu::setModel(VMenuModel *model) {
+	mModel = model;
+	mLastModel = model;
+}
+
+bool VPopupMenu::onMouseEvent(Msg *m) {
+	if (m->mId == Msg::MOUSE_MOVE) {
+		VMenuItem *item = findMouseAt(m->mouse.x, m->mouse.y);
+		if (item == NULL) {
+			return true;
+		}
+		if (item->mActive && getSelectMenuItem(item->mOwner) != item) {
+			if (item->mChild != NULL) {
+				mLastModel = item->mChild;
+			} else {
+				mLastModel = item->mOwner;
+			}
+			unselectAll(mLastModel);
+			unselectAll(item->mOwner);
+			item->mSelect = true;
+			repaint();
+			return true;
+		}
+	} else if (m->mId == Msg::LBUTTONDOWN) {
+		VMenuItem *item = findMouseAt(m->mouse.x, m->mouse.y);
+		close();
+		if (item != NULL && !item->mSeparator && item->mActive) {
+			if (mListener != NULL) {
+				Msg msg;
+				msg.mId == Msg::SELECT_ITEM;
+				msg.def.wParam = (WPARAM)item;
+				mListener->onEvent(this, &msg);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+void VPopupMenu::onPaint(Msg *m) {
+	if (mModel == NULL || mModel->getMenuCount() == 0) {
+		return;
+	}
+	SelectObject(m->paint.dc, getFont());
+	SetBkMode(m->paint.dc, TRANSPARENT);
+	for (VMenuModel *p = mLastModel; p != NULL; p = p->getParent()) {
+		drawMenu(p, m);
+	}
+}
+
+void VPopupMenu::drawMenu(VMenuModel *model, Msg *msg) {
+	static HBRUSH BG_BRUSH = CreateSolidBrush(RGB(0xBC, 0xD2, 0xEE));
+	static HBRUSH SEL_BRUSH = CreateSolidBrush(RGB(0x87, 0xCE, 0xFF));
+	RECT r = getMenuRect(model);
+	HDC dc = msg->paint.dc;
+	FillRect(dc, &r, BG_BRUSH);
+	int h = 0;
+	for (int i = 0; i < model->getMenuCount(); ++i) {
+		VMenuItem *item = model->getMenuItem(i);
+		if (item->mSeparator) {
+			MoveToEx(dc, r.left + 5, r.top + h + MENU_SEP_HEIGHT / 2, NULL);
+			LineTo(dc, r.left + MENU_ITEM_WIDTH - 5, r.top + h + MENU_SEP_HEIGHT / 2);
+			h += MENU_SEP_HEIGHT;
+		} else {
+			if (item->mSelect) {
+				RECT rs = {r.left, r.top + h, r.left + MENU_ITEM_WIDTH, r.top + h + MENU_ITEM_HEIGHT};
+				FillRect(dc, &rs, SEL_BRUSH);
+			}
+			RECT itemRect = {r.left + 15, r.top + h, r.left + MENU_ITEM_WIDTH - 15, r.top + h + MENU_ITEM_HEIGHT};
+			DrawText(dc, item->mText, strlen(item->mText), &itemRect, DT_SINGLELINE|DT_VCENTER);
+			h += MENU_ITEM_HEIGHT;
+		}
+	}
+}
+
+RECT VPopupMenu::getMenuRect(VMenuModel *m) {
+	int pn = 0;
+	VMenuModel *models[20];
+	for (VMenuModel *p = m->getParent(); p != NULL; p = p->getParent()) {
+		models[pn] = p;
+		++pn;
+	}
+	RECT r = {0};
+	r.left = pn * MENU_ITEM_WIDTH;
+	r.right = r.left + MENU_ITEM_WIDTH;
+
+	int y = 0;
+	for (int i = pn - 1; i >= 0; --i) {
+		y += getSelectItemY(models[i]);
+	}
+	r.top = y;
+
+	int h = 0;
+	for (int i = 0; i < m->getMenuCount(); ++i) {
+		VMenuItem *item = m->getMenuItem(i);
+		if (! item->mVisible) {
+			continue;
+		}
+		if (item->mSeparator) {
+			h += MENU_SEP_HEIGHT;
+		} else {
+			h += MENU_ITEM_HEIGHT;
+		}
+	}
+	r.bottom = r.top + h;
+	return r;
+}
+
+void VPopupMenu::unselectAll(VMenuModel *m) {
+	for (int i = 0; i < m->getMenuCount(); ++i) {
+		VMenuItem *item = m->getMenuItem(i);
+		item->mSelect = false;
+	}
+}
+
+void VPopupMenu::show(int x, int y) {
+	mLastModel = mModel;
+	VPopup::show(x, y, 0, 0);
+}
+
+VMenuItem * VPopupMenu::findMouseAt(int x, int y) {
+	for (VMenuModel *m = mLastModel; m != NULL; m = m->getParent()) {
+		RECT r = getMenuRect(m);
+		if (x >= r.left && x < r.right && y >= r.top && y < r.bottom) {
+			int h = r.top;
+			for (int i = 0; i < m->getMenuCount(); ++i) {
+				VMenuItem *item = m->getMenuItem(i);
+				if (! item->mVisible) {
+					continue;
+				}
+				if (item->mSeparator) {
+					if (y >= h && y < h + MENU_SEP_HEIGHT) {
+						return item;
+					}
+					h += MENU_SEP_HEIGHT;
+				} else {
+					if (y >= h && y < h + MENU_ITEM_HEIGHT) {
+						return item;
+					}
+					h += MENU_ITEM_HEIGHT;
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+VMenuItem * VPopupMenu::getSelectMenuItem(VMenuModel *m) {
+	for (int i = 0; i < m->getMenuCount(); ++i) {
+		VMenuItem *item = m->getMenuItem(i);
+		if (! item->mVisible) {
+			continue;
+		}
+		if (item->mSelect) {
+			return item;
+		}
+	}
+	return NULL;
+}
+
+int VPopupMenu::getSelectItemY(VMenuModel *m) {
+	int y = 0;
+	for (int i = 0; i < m->getMenuCount(); ++i) {
+		VMenuItem *item = m->getMenuItem(i);
+		if (! item->mVisible) {
+			continue;
+		}
+		if (item->mSelect) {
+			return y;
+		}
+		y += item->mSeparator ? MENU_SEP_HEIGHT : MENU_ITEM_HEIGHT;
+	}
+	return 0;
+}

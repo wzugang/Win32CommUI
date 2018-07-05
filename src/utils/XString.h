@@ -509,12 +509,12 @@ void * XTString<T>::dup(void *str, Charset ch) {
 
 template <class T>
 wchar_t * XTString<T>::dupws( const wchar_t *str ) {
-	return (wchar_t *)dup((void *)str, UNICODE);
+	return (wchar_t *)dup((void *)str, XTString<T>::UNICODE);
 }
 
 template <class T>
 char * XTString<T>::dups( const char *str ) {
-	return (char *)dup((void *)str, GBK);
+	return (char *)dup((void *)str, XTString<T>::GBK);
 }
 
 template <class T>
