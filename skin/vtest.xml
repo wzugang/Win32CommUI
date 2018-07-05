@@ -10,7 +10,7 @@
 	
 	<Button id="ext_btn_1" rect="20 20 100 25" text="A Button" />
 	
-	<ComboBox id="combo" rect="100 100 150 25" bgcolor="#50ddccdd" arrowNormal="ext_combobox_arrow_normal.png stretch" arrowPush="ext_combobox_arrow_down.png stretch" />
+	<ComboBox id="combo" rect="150 150 150 25" bgcolor="#50ddccdd" arrowNormal="ext_combobox_arrow_normal.png stretch" arrowPush="ext_combobox_arrow_down.png stretch" />
 	
 </Window>
 

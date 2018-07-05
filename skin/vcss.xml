@@ -64,6 +64,7 @@
 	
 	<VBaseCombobox arrowNormal="image" arrowPush="image" arrowWidth="20" />
 	
+	<PopupMenu bgimage="" selItemBgImage="" />
 	
 	<TreeNode text="" checkable="true|false" checked="true|false" expand="true|false">
 		... sub TreeNode here

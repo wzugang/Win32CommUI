@@ -3427,6 +3427,17 @@ static const int MENU_SEP_HEIGHT = 5;
 VPopupMenu::VPopupMenu(XmlNode *node) : VPopup(node) {
 	mModel = NULL;
 	mLastModel = NULL;
+	mSelItemBgImage = XImage::load(node->getAttrValue("selItemBgImage"));
+	if (mBgImage == NULL) {
+		mBgImage = XImage::create(1, 1, 32);
+		mBgImage->mStretch = true;
+		mBgImage->fillColor(0xffB2DFEE);
+	}
+	if (mSelItemBgImage == NULL) {
+		mSelItemBgImage = XImage::create(1, 1, 32);
+		mSelItemBgImage->mStretch = true;
+		mSelItemBgImage->fillColor(0xff87CEFF);
+	}
 }
 
 VMenuModel * VPopupMenu::getModel() {
@@ -3484,12 +3495,10 @@ void VPopupMenu::onPaint(Msg *m) {
 }
 
 void VPopupMenu::drawMenu(VMenuModel *model, Msg *msg) {
-	static HBRUSH BG_BRUSH = CreateSolidBrush(RGB(0xBC, 0xD2, 0xEE));
-	static HBRUSH SEL_BRUSH = CreateSolidBrush(RGB(0x87, 0xCE, 0xFF));
 	RECT r = getMenuRect(model);
 	HDC dc = msg->paint.dc;
-	FillRect(dc, &r, BG_BRUSH);
 	int h = 0;
+	mBgImage->draw(dc, r.left, r.top, r.right-r.left, r.bottom-r.top);
 	for (int i = 0; i < model->getMenuCount(); ++i) {
 		VMenuItem *item = model->getMenuItem(i);
 		if (item->mSeparator) {
@@ -3499,7 +3508,7 @@ void VPopupMenu::drawMenu(VMenuModel *model, Msg *msg) {
 		} else {
 			if (item->mSelect) {
 				RECT rs = {r.left, r.top + h, r.left + MENU_ITEM_WIDTH, r.top + h + MENU_ITEM_HEIGHT};
-				FillRect(dc, &rs, SEL_BRUSH);
+				mSelItemBgImage->draw(dc, rs.left, rs.top, rs.right-rs.left, rs.bottom-rs.top);
 			}
 			RECT itemRect = {r.left + 15, r.top + h, r.left + MENU_ITEM_WIDTH - 15, r.top + h + MENU_ITEM_HEIGHT};
 			DrawText(dc, item->mText, strlen(item->mText), &itemRect, DT_SINGLELINE|DT_VCENTER);

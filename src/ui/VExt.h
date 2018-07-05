@@ -608,4 +608,5 @@ protected:
 protected:
 	VMenuModel *mModel;
 	VMenuModel *mLastModel;
+	XImage *mSelItemBgImage;
 };
