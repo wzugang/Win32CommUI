@@ -66,11 +66,6 @@ public:
 	virtual HeaderData *getHeaderData(int col) {
 		static HeaderData hd;
 		static char buf[80];
-		if (hd.mBgImage == NULL) {
-			hd.mBgImage = XImage::create(1, 1);
-			hd.mBgImage->mStretch = true;
-			hd.mBgImage->fillColor(0xffaabbcc);
-		}
 		sprintf(buf, "Head %d", col);
 		hd.mText = buf;
 		return &hd;

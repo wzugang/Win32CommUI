@@ -1,0 +1,19 @@
+#################### default-css ############
+<default>
+<default class="TabItem_Top" desc="用于Option元素" normalImage="default/tab_item.png [0 0 75 30] 9patch" hoverImage="default/tab_item.png [0 0 75 30] 9patch" pushImage="default/tab_item.png [0 0 75 30] 9patch" selectImage="default/tab_item.png [75 0 75 30] 9patch" />
+<default class="TabItem_Bottom" desc="用于Option元素" normalImage="default/tab_item.png [75 35 75 30] 9patch" hoverImage="default/tab_item.png [75 35 75 30] 9patch" pushImage="default/tab_item.png [75 35 75 30] 9patch" selectImage="default/tab_item.png [0 35 75 30] 9patch" />
+<default class="TabItem_Left" desc="用于Option元素" normalImage="default/tab_item.png [0 70 150 35] 9patch" hoverImage="default/tab_item.png [0 70 150 35] 9patch" pushImage="default/tab_item.png [0 70 150 35] 9patch" selectImage="default/tab_item.png [0 105 150 35] 9patch" />
+<default class="TabItem_Right" desc="用于Option元素" normalImage="default/tab_item.png [0 180 150 35] 9patch" hoverImage="default/tab_item.png [0 180 150 35] 9patch" pushImage="default/tab_item.png [0 180 150 35] 9patch" selectImage="default/tab_item.png [0 145 150 35] 9patch" />
+<default class="Table" selRowBgImage="color://#EAF2FF"  horLineColor="#1E90FF"  verLineColor="#1E90FF" rowHeaderImage="" columnHeaderImage="default/table_column.png [0 1 60 26] 9patch"/>
+<default class="Button" normalImage="default/button.png [0 26 50 26] 9patch" hoverImage="default/button.png [0 0 50 26] 9patch" pushImage="default/button.png [0 0 50 26] 9patch" />
+<default class="Input" desc="用于各种输入框" normalImage="default/input.png [0 0 60 30] 9patch" focusImage="default/input.png [0 30 60 30] 9patch" />
+<default class="HorScrollBar" track="color://#cccccc" thumb="color://#999999" />
+<default class="VerScrollBar" track="color://#cccccc" thumb="color://#999999" />
+<default class="List" selBgImage="color://#95B8E7" trackBgImage="color://#E2EDFF" />
+<default class="Tree" lineColor="#E6EFFF" checkBoxColor="#E6EFFF" selBgColor="#95B8E7" whenSelect="dbclick" />
+<default class="PopupMenu" bgimage="color://#E6EFFF" selItemBgImage="color://#95B8E7" />
+
+
+<default class="ComboBox"  arrowNormal="image" arrowPush="image" arrowWidth="20" />
+
+</default>

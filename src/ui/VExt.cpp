@@ -1098,6 +1098,23 @@ int VTextArea::getRealY( int y ) {
 	return y - getScrollY() + mAttrPadding[1];
 }
 
+void VTextArea::eraseBackground(Msg *m) {
+	// VExtComponent::eraseBackground(m);
+	HDC dc = m->paint.dc;
+	if (mBgImage != NULL) {
+		mBgImage->draw(dc, 0, 0, mWidth, mHeight);
+	}
+	if (mHasFocus) {
+		if (mStateImages[STATE_IMG_FOCUS] != NULL) {
+			mStateImages[STATE_IMG_FOCUS]->draw(dc, 0, 0, mWidth, mHeight);
+		}
+	} else {
+		if (mStateImages[STATE_IMG_NORMAL] != NULL) {
+			mStateImages[STATE_IMG_NORMAL]->draw(dc, 0, 0, mWidth, mHeight);
+		}
+	}
+}
+
 //------------------------VLineEdit--------------------
 VLineEdit::VLineEdit(XmlNode *node) : VTextArea(node) {
 	mAutoNewLine = false;
@@ -2006,6 +2023,8 @@ VTable::VTable( XmlNode *node ) : VScroll(node) {
 	mModel = NULL;
 	mRender = NULL;
 	mSelectBgImage = XImage::load(mNode->getAttrPathByName("selRowBgImage"));
+	mRowHeaderImage = XImage::load(mNode->getAttrPathByName("rowHeaderImage"));
+	mColumnHeaderImage = XImage::load(mNode->getAttrPathByName("columnHeaderImage"));
 	COLORREF color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("horLineColor"), &color);
 	mHorLinePen = CreatePen(PS_SOLID, 1, color);
@@ -2054,9 +2073,8 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 		return;
 	}
 
-	XImage *bg = mModel->getHeaderBgImage();
-	if (bg != NULL) {
-		bg->draw(dc, 0, 0, mWidth, h);
+	if (mColumnHeaderImage != NULL) {
+		mColumnHeaderImage->draw(dc, 0, 0, mWidth, h);
 	}
 
 	int sid = SaveDC(dc);
@@ -2097,9 +2115,6 @@ void VTable::drawColumn(HDC dc, int col, int x, int y, int w, int h) {
 		return;
 	}
 	RECT r = {x, y, x + w, y + h};
-	if (hd->mBgImage != NULL) {
-		hd->mBgImage->draw(dc, x, y, w, h);
-	}
 	if (hd->mText != NULL) {
 		DrawText(dc, hd->mText, strlen(hd->mText), &r, DT_VCENTER|DT_CENTER|DT_SINGLELINE);
 	}

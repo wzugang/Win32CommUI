@@ -53,7 +53,7 @@
 	<VerScrollBar  />
 	
 	<Scroll />
-	<Table selRowBgImage="" horLineColor="#rrggbb" verLineColor="#rrggbb"/>  继承自Scroll
+	<Table selRowBgImage="" horLineColor="#rrggbb" verLineColor="#rrggbb" rowHeaderImage="" columnHeaderImage=""/>  继承自Scroll
 	<List selBgImage="" trackBgImage="" />
 	<Tree lineColor="" checkBoxColor="" selBgColor="" whenSelect="click | dbclick" />
 	
@@ -63,6 +63,7 @@
 	<Password  />  继承自 LineEdit 
 	
 	<VBaseCombobox arrowNormal="image" arrowPush="image" arrowWidth="20" />
+	<ComboBox /> 继承自 VBaseCombobox
 	
 	<PopupMenu bgimage="" selItemBgImage="" />
 	

@@ -139,6 +139,7 @@ public:
 	virtual void onLayoutChildren( int width, int height );
 	virtual HFONT getTextFont();
 protected:
+	virtual void eraseBackground(Msg *m);
 	virtual void notifyChanged();
 	virtual bool dispatchMessage(Msg *msg);
 	virtual bool onMouseEvent(Msg *m);
@@ -308,7 +309,6 @@ class VTableModel {
 public:
 	struct HeaderData {
 		char *mText;
-		XImage *mBgImage;
 	};
 
 	struct CellData {
@@ -362,7 +362,7 @@ protected:
 	VTableModel *mModel;
 	HPEN mHorLinePen, mVerLinePen;
 	int mSelectedRow;
-	XImage *mSelectBgImage;
+	XImage *mSelectBgImage, *mRowHeaderImage, *mColumnHeaderImage;
 	Render *mRender;
 };
 
