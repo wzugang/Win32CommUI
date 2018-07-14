@@ -330,6 +330,8 @@ void MysqlPrepareStatement::setResult(int colIdx, ColumnType ct, int maxLen) {
 	b->buffer_type = enum_field_types(ct);
 	b->length = (unsigned long *)mResBuf->appendLen(sizeof(unsigned long *));
 	b->buffer_length = maxLen;
+	b->is_null = (my_bool *)mResBuf->appendLen(sizeof(my_bool *));
+	*b->is_null = 0;
 	b->buffer = mResBuf->appendLen(maxLen + 2);
 }
 
@@ -370,7 +372,7 @@ char *MysqlPrepareStatement::getString(int columnIndex) {
 	static char empty[4] = {0};
 	*empty = 0;
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
-	if (b->is_null_value)
+	if (b->is_null_value || *b->is_null)
 		return empty;
 	if (b->buffer_type == MYSQL_TYPE_VAR_STRING || b->buffer_type == MYSQL_TYPE_STRING) {
 		char *p = (char*)b->buffer;
