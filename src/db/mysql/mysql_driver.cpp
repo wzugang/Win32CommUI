@@ -372,7 +372,7 @@ char *MysqlPrepareStatement::getString(int columnIndex) {
 	static char empty[4] = {0};
 	*empty = 0;
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
-	if (b->is_null_value || *b->is_null)
+	if (*b->is_null)
 		return empty;
 	if (b->buffer_type == MYSQL_TYPE_VAR_STRING || b->buffer_type == MYSQL_TYPE_STRING) {
 		char *p = (char*)b->buffer;
@@ -384,7 +384,7 @@ char *MysqlPrepareStatement::getString(int columnIndex) {
 }
 int MysqlPrepareStatement::getInt(int columnIndex) {
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
-	if (b->is_null_value)
+	if (*b->is_null)
 		return 0;
 	if (b->buffer_type == MYSQL_TYPE_LONG)
 		return *(int*)(b->buffer);
@@ -398,7 +398,7 @@ int MysqlPrepareStatement::getInt(int columnIndex) {
 }
 long long MysqlPrepareStatement::getInt64(int columnIndex) {
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
-	if (b->is_null_value)
+	if (*b->is_null)
 		return 0;
 	if (b->buffer_type == MYSQL_TYPE_LONGLONG)
 		return *(long long*)(b->buffer);
@@ -406,7 +406,7 @@ long long MysqlPrepareStatement::getInt64(int columnIndex) {
 }
 double MysqlPrepareStatement::getDouble(int columnIndex) {
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
-	if (b->is_null_value)
+	if (*b->is_null)
 		return 0;
 	if (b->buffer_type == MYSQL_TYPE_DOUBLE)
 		return *(double*)(b->buffer);
@@ -417,7 +417,7 @@ double MysqlPrepareStatement::getDouble(int columnIndex) {
 void * MysqlPrepareStatement::getRow( int columnIndex, int *len) {
 	MYSQL_BIND *b = (MYSQL_BIND*)mResults + columnIndex;
 	if (len) *len = *b->length;
-	if (b->is_null_value)
+	if (*b->is_null)
 		return 0;
 	return b->buffer;
 }
