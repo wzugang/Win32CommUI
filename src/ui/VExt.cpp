@@ -2081,7 +2081,7 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 
 	int x = -mHorBar->getPos();
 	for (int i = 0; i < mModel->getColumnCount(); ++i) {
-		int cw = mModel->getColumnWidth(i, w);
+		int cw = mModel->getColumnWidth(i, w - 1);
 		if (mRender == NULL || !mRender->onDrawColumn(dc, i, x, 0, cw, h)) {
 			drawColumn(dc, i, x, 0, cw, h);
 		}
@@ -2091,17 +2091,19 @@ void VTable::drawHeader( HDC dc, int w, int h) {
 	// draw split line
 	x = -mHorBar->getPos();
 	HGDIOBJ old = SelectObject(dc, mVerLinePen);
-	for (int i = 0; i < mModel->getColumnCount() - 1; ++i) {
-		int cw = mModel->getColumnWidth(i, w);
+	for (int i = 0; i < mModel->getColumnCount(); ++i) {
+		int cw = mModel->getColumnWidth(i, w - 1);
 		x += cw;
 		MoveToEx(dc, x, 2, NULL);
 		LineTo(dc, x, h - 4);
 	}
+	/*
 	if (mVerBar->getMax() > mVerBar->getPage()) {
 		x = mWidth - mVerBar->getMesureWidth();
 		MoveToEx(dc, x, 2, NULL);
 		LineTo(dc, x, h - 4);
 	}
+	*/
 	SelectObject(dc, old);
 	RestoreDC(dc, sid);
 }
@@ -2118,8 +2120,11 @@ void VTable::drawColumn(HDC dc, int col, int x, int y, int w, int h) {
 }
 
 void VTable::drawData( HDC dc, int x, int y,  int w, int h ) {
-	int from = 0, to = 0;
+	int from = -1, to = -1;
 	getVisibleRows(&from, &to);
+	if (from < 0 || to < 0) {
+		return;
+	}
 	int y2 = -mVerBar->getPos();
 	for (int i = 0; i < from; ++i) {
 		y2 += mModel->getRowHeight(i);
@@ -2169,39 +2174,45 @@ void VTable::drawGridLine( HDC dc, int from, int to, int y ) {
 	HGDIOBJ old = SelectObject(dc, mHorLinePen);
 	// draw hor-line
 	int y2 = y;
-	for (int i = from; i <= to; ++i) {
+		for (int i = from; i <= to; ++i) {
 		y2 += mModel->getRowHeight(i);
 		MoveToEx(dc, 0, y2, NULL);
-		LineTo(dc, sz.cx, y2);
+		LineTo(dc, sz.cx - 1, y2);
 	}
 	// draw ver-line
 	SelectObject(dc, mVerLinePen);
 	int x = -mHorBar->getPos();
 	y = mModel->getHeaderHeight();
 	for (int i = 0; i <= mModel->getColumnCount(); ++i) {
-		if (i == mModel->getColumnCount()) --x;
 		MoveToEx(dc, x, y, NULL);
 		LineTo(dc, x, sz.cy + y);
-		x += mModel->getColumnWidth(i, sz.cx);
+		x += mModel->getColumnWidth(i, sz.cx - 1);
 	}
 	SelectObject(dc, old);
 }
 
 void VTable::getVisibleRows( int *from, int *to ) {
-	*from = *to = 0;
-	if (mModel == NULL) return;
+	*from = *to = -1;
+	if (mModel == NULL) {
+		return;
+	}
 	int y = -mVerBar->getPos();
 	SIZE sz = getClientSize();
-	sz.cy -= mModel->getHeaderHeight();
-	for (int i = 0; i < mModel->getRowCount(); ++i) {
+	int rc = mModel->getRowCount();
+
+	for (int i = 0; i < rc; ++i) {
 		y += mModel->getRowHeight(i);
 		if (y > 0) {
 			*from = i;
 			break;
 		}
 	}
-	for (int i = *from + 1; i < mModel->getRowCount(); ++i) {
+	if (*from < 0) {
+		return;
+	}
+	for (int i = *from + 1; i < rc; ++i) {
 		*to = i;
+		y += mModel->getRowHeight(i);
 		if (y >= sz.cy) {
 			break;
 		}

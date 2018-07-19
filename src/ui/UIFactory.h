@@ -17,6 +17,7 @@ public:
 	// res://xxx [x y width height] repeat-x repeat-y stretch 9patch
 	// file://abc/xx.bmp ...
 	// xbin://abc/xx.bmp ...
+	// default is xbin, can ignore xbin://
 	static XImage *load(const char *resPath);
 	static XImage *create(int width, int height, int bitPerPix = 32);
 

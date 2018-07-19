@@ -322,7 +322,6 @@ public:
 	virtual int getHeaderHeight() = 0;
 	virtual HeaderData *getHeaderData(int col) = 0;
 	virtual CellData *getCellData(int row, int col) = 0;
-	virtual XImage *getHeaderBgImage() = 0;
 };
 
 class VTable : public VScroll {

@@ -939,7 +939,7 @@ bool ResPath::parse(const char *resPath) {
 		ps += 8;
 		mResType = RT_COLOR;
 	} else {
-		return false;
+		mResType = RT_XBIN;
 	}
 	strcpy(mPath, ps);
 	if (p == NULL) {
