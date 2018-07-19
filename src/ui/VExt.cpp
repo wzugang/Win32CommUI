@@ -3496,7 +3496,7 @@ bool VPopupMenu::onMouseEvent(Msg *m) {
 		if (item != NULL && !item->mSeparator && item->mActive) {
 			if (mListener != NULL) {
 				Msg msg;
-				msg.mId == Msg::SELECT_ITEM;
+				msg.mId = Msg::SELECT_ITEM;
 				msg.def.wParam = (WPARAM)item;
 				mListener->onEvent(this, &msg);
 			}

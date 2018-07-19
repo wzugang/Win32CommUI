@@ -1,4 +1,5 @@
 #pragma once
+#pragma warning(disable:4996)
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
