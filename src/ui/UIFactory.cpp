@@ -552,9 +552,12 @@ void XImage::fillAlpha(BYTE alpha) {
 }
 
 void XImage::fillColor(COLORREF rgba) {
-	BYTE r = rgba & 0xff, g = (rgba >> 8) & 0xff, b = (rgba >> 16) & 0xff, a = (rgba >> 24) & 0xff;
+	BYTE r = rgba & 0xff;
+	BYTE g = (rgba >> 8) & 0xff;
+	BYTE b = (rgba >> 16) & 0xff;
+	BYTE a = (rgba >> 24) & 0xff;
 	if (mHasAlphaChannel) {
-		rgba = (a << 24) | ((b * a / 255) << 16) | ((g * a / 255) << 8) | (r * a / 255);
+		rgba = (a << 24) | ((r * a / 255) << 16) | ((g * a / 255) << 8) | (b * a / 255);
 		for (int r = 0; r < mHeight; ++r) {
 			DWORD *p = (DWORD *)getRowBits(r);
 			for (int c = 0; c < mWidth; ++c, ++p) {
@@ -562,12 +565,12 @@ void XImage::fillColor(COLORREF rgba) {
 			}
 		}
 	} else {
-		for (int r = 0; r < mHeight; ++r) {
-			BYTE *p = (BYTE *)getRowBits(r);
+		for (int row = 0; row < mHeight; ++row) {
+			BYTE *p = (BYTE *)getRowBits(row);
 			for (int c = 0; c < mWidth; ++c, p += 3) {
-				p[0] = r;
+				p[0] = b;
 				p[1] = g;
-				p[2] = b;
+				p[2] = r;
 			}
 		}
 	}

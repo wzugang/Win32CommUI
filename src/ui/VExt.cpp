@@ -1099,11 +1099,8 @@ int VTextArea::getRealY( int y ) {
 }
 
 void VTextArea::eraseBackground(Msg *m) {
-	// VExtComponent::eraseBackground(m);
+	VExtComponent::eraseBackground(m);
 	HDC dc = m->paint.dc;
-	if (mBgImage != NULL) {
-		mBgImage->draw(dc, 0, 0, mWidth, mHeight);
-	}
 	if (mHasFocus) {
 		if (mStateImages[STATE_IMG_FOCUS] != NULL) {
 			mStateImages[STATE_IMG_FOCUS]->draw(dc, 0, 0, mWidth, mHeight);
