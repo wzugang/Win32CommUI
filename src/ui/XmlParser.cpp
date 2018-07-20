@@ -69,11 +69,9 @@ char *XmlNode::getAttrPathByName(const char *name) {
 
 char * XmlNode::getAttrPathByVal(char *val) {
 	static char path[256];
+	path[0] = 0;
 	if (val == NULL) {
 		return NULL;
-	}
-	if (strstr(val, "://") != NULL) {
-		return val;
 	}
 	if (mParser == NULL) {
 		XmlNode *root = getRoot();
@@ -81,7 +79,9 @@ char * XmlNode::getAttrPathByVal(char *val) {
 			mParser = root->mParser;
 		}
 	}
-	strcpy(path, mParser->mResBasePath);
+	if (strstr(val, mParser->mResBasePath) == NULL && *val != '#') {
+		strcpy(path, mParser->mResBasePath);
+	}
 	strcat(path, val);
 	return path;
 }
@@ -222,16 +222,14 @@ void XmlParser::reset() {
 XmlParser *XmlParser::create(const char *resPath) {
 	XmlParser *p = new XmlParser();
 	strcpy(p->mResPath, resPath);
-	const char *s = strstr(resPath, "://");
-	if (s != NULL) {
-		s += 3;
-		const char *sp = strrchr(s, '/');
-		if (sp != NULL) {
-			memcpy(p->mResBasePath, resPath, sp-resPath);
-			p->mResBasePath[sp-resPath] = 0;
-			strcat(p->mResBasePath, "/");
-		}
+	
+	const char *sp = strrchr(resPath, '/');
+	if (sp != NULL) {
+		memcpy(p->mResBasePath, resPath, sp-resPath);
+		p->mResBasePath[sp-resPath] = 0;
+		strcat(p->mResBasePath, "/");
 	}
+	
 	return p;
 }
 
@@ -609,21 +607,22 @@ XmlPartLoader::XmlPartLoader( const char *filePath ) {
 	mContent = NULL;
 	mPartNum = 0;
 	strcpy(mResPath, filePath);
-	if (memcmp(filePath, "file://", 7) == 0) {
-		mContent = ReadFileContent(filePath + 7, &mContentLen);
-		if (mContent == NULL) {
-			printf("XmlPartLoader load file [%s] fail\n", filePath);
-		}
-	} else if (memcmp(filePath, "xbin://", 7) == 0) {
-		mContent = (char *)XBinFile::getInstance()->find(filePath + 7, &mContentLen);
-		if (mContent == NULL) {
-			printf("XmlPartLoader load xbin [%s] fail\n", filePath);
-		}
-	} else if (memcmp(filePath, "res://", 6) == 0) {
-		HRSRC mm = FindResource(NULL, filePath + 6, "ANY");
+
+	// try load from xbin
+	mContent = (char *)XBinFile::getInstance()->find(filePath, &mContentLen);
+	if (mContent != NULL) {
+		goto _end;
+	}
+	// try load from file
+	mContent = ReadFileContent(filePath, &mContentLen);
+	if (mContent != NULL) {
+		goto _end;
+	}
+	// try load from ANY resource
+	if (strchr(filePath, '.') == NULL && strchr(filePath, '/') == NULL && strchr(filePath, '\\') == NULL) {
+		HRSRC mm = FindResource(NULL, filePath, "ANY");
 		if (mm == NULL) {
-			printf("XmlPartLoader load res [%s] in ANY fail\n", filePath);
-			return;
+			goto _fail;
 		}
 		HGLOBAL hmm = LoadResource(NULL, mm);
 		char *mmDat = (char *)LockResource(hmm);
@@ -632,7 +631,14 @@ XmlPartLoader::XmlPartLoader( const char *filePath ) {
 		memcpy(mContent, mmDat, mmLen);
 		mContent[mmLen] = 0;
 		FreeResource(hmm);
+		goto _end;
 	}
+	
+	_fail:
+	printf("XmlPartLoader load [%s] fail\n", filePath);
+	return;
+
+	_end:
 	doParse();
 }
 
@@ -915,7 +921,9 @@ ResPath::ResPath() {
 
 bool ResPath::parse(const char *resPath) {
 	mValidate = false;
-	if (resPath == NULL) return false;
+	if (resPath == NULL) {
+		return false;
+	}
 	char path[128];
 	strcpy(path, resPath);
 	char *ps = AttrUtils::trim(path);
@@ -926,21 +934,13 @@ bool ResPath::parse(const char *resPath) {
 	}
 	char *p = strchr(ps, ' ');
 	if (p != NULL) *p = 0;
-	if (memcmp(ps, "res://", 6) == 0) {
-		ps += 6;
-		mResType = RT_RES;
-	} else if (memcmp(ps, "file://", 7) == 0) {
-		ps += 7;
-		mResType = RT_FILE;
-	} else if (memcmp(ps, "xbin://", 7) == 0) {
-		ps += 7;
-		mResType = RT_XBIN;
-	} else if (memcmp(ps, "color://", 8) == 0) {
-		ps += 8;
+
+	if (*ps == '#') {
 		mResType = RT_COLOR;
 	} else {
 		mResType = RT_XBIN;
 	}
+
 	strcpy(mPath, ps);
 	if (p == NULL) {
 		mValidate = true;

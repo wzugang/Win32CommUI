@@ -85,9 +85,10 @@ XImage * XImage::loadImage( ResPath *info) {
 	}
 
 	CImage cimg;
-	if (info->mResType == ResPath::RT_FILE) {
-		cimg.Load(info->mPath);
-	} else if (info->mResType == ResPath::RT_XBIN) {
+	// if (info->mResType == ResPath::RT_FILE) {
+	//	cimg.Load(info->mPath);
+	// } else 
+	if (info->mResType == ResPath::RT_XBIN) {
 		int len = 0;
 		void *data = XBinFile::getInstance()->find(info->mPath, &len);
 		HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
@@ -98,9 +99,10 @@ XImage * XImage::loadImage( ResPath *info) {
 		cimg.Load(pstm);
 		GlobalUnlock(m_hMem);
 		pstm->Release();
-	} else if (info->mResType == ResPath::RT_RES) {
-		cimg.LoadFromResource(VComponent::getInstance(), info->mPath);
 	}
+	// else if (info->mResType == ResPath::RT_RES) {
+	//	cimg.LoadFromResource(VComponent::getInstance(), info->mPath);
+	// }
 	if (cimg.GetWidth() == 0) {
 		return NULL;
 	}
@@ -519,9 +521,10 @@ HICON XImage::loadIcon( const char *resPath ) {
 		return NULL;
 	}
 	CImage cimg;
-	if (info.mResType == ResPath::RT_FILE) {
-		cimg.Load(info.mPath);
-	} else if (info.mResType == ResPath::RT_XBIN) {
+	// if (info.mResType == ResPath::RT_FILE) {
+	// 	cimg.Load(info.mPath);
+	// } else 
+	if (info.mResType == ResPath::RT_XBIN) {
 		int len = 0;
 		void *data = XBinFile::getInstance()->find(info.mPath, &len);
 		HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
@@ -532,9 +535,10 @@ HICON XImage::loadIcon( const char *resPath ) {
 		cimg.Load(pstm);
 		GlobalUnlock(m_hMem);
 		pstm->Release();
-	} else {
-		cimg.LoadFromResource(VComponent::getInstance(), info.mPath);
 	}
+	// else {
+	//	cimg.LoadFromResource(VComponent::getInstance(), info.mPath);
+	// }
 	// HBITMAP bp = cimg; // cimg.operator HBITMAP();
 	return (HICON)cimg.Detach();
 }
