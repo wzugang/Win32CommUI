@@ -2024,9 +2024,11 @@ VTable::VTable( XmlNode *node ) : VScroll(node) {
 	mColumnHeaderImage = XImage::load(mNode->getAttrPathByName("columnHeaderImage"));
 	COLORREF color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("horLineColor"), &color);
+	color = color & 0XFFFFFF;
 	mHorLinePen = CreatePen(PS_SOLID, 1, color);
 	color = RGB(110, 120, 250);
 	AttrUtils::parseColor(mNode->getAttrValue("verLineColor"), &color);
+	color = color & 0XFFFFFF;
 	mVerLinePen = CreatePen(PS_SOLID, 1, color);
 }
 
@@ -2728,12 +2730,15 @@ VTree::VTree( XmlNode *node ) : VScroll(node) {
 	mModel = NULL;
 	COLORREF color = RGB(0x3A, 0x9D, 0xF9);
 	AttrUtils::parseColor(mNode->getAttrValue("lineColor"), &color);
+	color = color & 0xFFFFFF;
 	mLinePen = CreatePen(PS_SOLID, 1, color);
 	color = RGB(0x64, 0x95, 0xED);
 	AttrUtils::parseColor(mNode->getAttrValue("checkBoxColor"), &color);
+	color = color & 0xFFFFFF;
 	mCheckPen = CreatePen(PS_SOLID, 1, color);
 	color = 0xE6E0B0;
 	AttrUtils::parseColor(mNode->getAttrValue("selBgColor"), &color);
+	color = color & 0xFFFFFF;
 	mSelectBgBrush = CreateSolidBrush(color);
 	mSelectNode = NULL;
 	mNodeRender = NULL;
