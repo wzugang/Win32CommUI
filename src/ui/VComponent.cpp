@@ -208,6 +208,7 @@ void VComponent::parseAttrs() {
 		} else if (strcmp(attr->mName, "color") == 0) {
 			if (AttrUtils::parseColor(attr->mValue, &mAttrColor)) {
 				mAttrFlags |= AF_COLOR;
+				mAttrColor = mAttrColor & 0xFFFFFF;
 			}
 		} else if (strcmp(attr->mName, "bgcolor") == 0) {
 			if (AttrUtils::parseColor(attr->mValue, &mAttrBgColor)) {
