@@ -286,6 +286,7 @@ template <class T>
 XTString<T> &XTString<T>::append(const XTString<T> &str) {
 	needBuffer(str.mLen + mLen);
 	memcpy(mBuffer + mLen, str.mBuffer, sizeof(T) * (str.mLen + 1));
+	mLen += str.mLen;
 	return *this;
 }
 
