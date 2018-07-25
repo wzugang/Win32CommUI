@@ -8,6 +8,7 @@
 #include "utils/XString.h"
 #include "utils/Thread.h"
 #include "utils/Http.h"
+#include "utils/HttpClient.h"
 
 VWindow *win;
 
@@ -98,6 +99,17 @@ public:
 	}
 };
 
+void test_httpclient() {
+	HttpClient client;
+	HttpRequest req("http://www.ip138.com:8080/search.asp?mobile=1887926&action=mobile", HttpRequest::METHOD_GET);
+	req.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8");
+	req.addHeader("Accept-Language", "zh-CN,zh;q=0.9");
+	req.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36");
+	client.execute(&req);  
+	XString hd = req.getResponseHeader("Set-Cookie");
+	client.close();
+}
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
 	// ---- debug -----
 	AllocConsole();
@@ -109,6 +121,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	// strcpy(path, "D:\\CPP\\WinUI\\WinUI\\");
 	// SetCurrentDirectory(path);
 	GetCurrentDirectory(240, path);
+
+	test_httpclient();
+	return 0;
 
 	//--------begin test------------
 	UIFactory::init();
