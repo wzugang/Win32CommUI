@@ -339,7 +339,7 @@ public:
 	void setRender(Render *render);
 	void notifyModelChanged();
 	virtual ~VTable();
-protected:
+
 	virtual void onPaint(Msg *m);
 	virtual bool onMouseEvent(Msg *msg);
 

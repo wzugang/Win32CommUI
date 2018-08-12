@@ -1,5 +1,6 @@
 #pragma once
 #include "XString.h"
+#include <windows.h>
 
 class Runnable {
 public:

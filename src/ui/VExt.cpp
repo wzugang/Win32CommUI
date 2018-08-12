@@ -122,7 +122,7 @@ bool VExtComponent::onMouseEvent(Msg *m) {
 	if (mEnableState) {
 		return doStateImage(m);
 	}
-	return false;
+	return VComponent::onMouseEvent(m);
 }
 
 void VExtComponent::onPaint(Msg *m) {

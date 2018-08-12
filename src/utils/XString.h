@@ -8,7 +8,7 @@ template <class T>
 class XTString {
 public:
 	enum Charset {
-		GBK, UTF8, UNICODE
+		GBK, UTF8, UNICODE2
 	};
 	explicit XTString(int capacity);
 	XTString(const T *str = NULL);
@@ -46,7 +46,7 @@ public:
 	void toUpperCase();
 	void toLowerCase();
 	void trim();
-	
+
 	// need free yourself
 	static void *toBytes(void *str, Charset from, Charset to);
 	static void *dup(void *str, Charset ch);
@@ -238,7 +238,7 @@ int XTString<T>::lastIndexOf(const T *source, int sourceOffset, int sourceCount,
 	int min = sourceOffset + targetCount - 1;
 	int i = min + fromIndex;
 
-	startSearchForLastChar:
+startSearchForLastChar:
 	while (true) {
 		while (i >= min && source[i] != strLastChar) {
 			i--;
@@ -286,6 +286,7 @@ template <class T>
 XTString<T> &XTString<T>::append(const XTString<T> &str) {
 	needBuffer(str.mLen + mLen);
 	memcpy(mBuffer + mLen, str.mBuffer, sizeof(T) * (str.mLen + 1));
+	mLen += str.mLen;
 	return *this;
 }
 
@@ -372,7 +373,7 @@ XTString<T>::XTString(const T *str, int beginIdx, int endIdx) {
 	if (nn < 0) {
 		nn = 0;
 	}
-	_end:
+_end:
 	mLen = nn;
 	mCapacity = nn;
 	mBuffer = (T *)malloc((mCapacity + 1)* sizeof(T));
@@ -464,14 +465,14 @@ void * XTString<T>::toBytes(void *str, Charset from, Charset to) {
 			return dst;
 		}
 	}
-	if ((from == GBK || from == UTF8) && to == UNICODE) {
+	if ((from == GBK || from == UTF8) && to == UNICODE2) {
 		int cp = from == GBK ? CP_ACP : CP_UTF8;
 		int len = MultiByteToWideChar(cp, 0, (const char *)str, -1, NULL, 0);
 		wchar_t *dst = (wchar_t *)malloc(len * 2 + 2);
 		MultiByteToWideChar(cp, 0, (const char *)str, -1, dst, len);
 		return dst;
 	}
-	if (from == UNICODE && (to == GBK || to == UTF8)) {
+	if (from == UNICODE2 && (to == GBK || to == UTF8)) {
 		int cp = to == GBK ? CP_ACP : CP_UTF8;
 		int len = WideCharToMultiByte(cp, 0, (const wchar_t*)str, -1, NULL, 0, NULL, NULL);
 		char *dst = (char *)malloc(len + 1);
@@ -479,9 +480,9 @@ void * XTString<T>::toBytes(void *str, Charset from, Charset to) {
 		return dst;
 	}
 	// GBK -> UTF8  or UTF8 -> GBK
-	if (from != UNICODE && to != UNICODE) {
-		wchar_t *tmp = (wchar_t *)toBytes(str, from, UNICODE);
-		char *dst = (char *)toBytes(tmp, UNICODE, to);
+	if (from != UNICODE2 && to != UNICODE2) {
+		wchar_t *tmp = (wchar_t *)toBytes(str, from, UNICODE2);
+		char *dst = (char *)toBytes(tmp, UNICODE2, to);
 		free(tmp);
 		return dst;
 	}
@@ -493,7 +494,7 @@ void * XTString<T>::dup(void *str, Charset ch) {
 	if (str == NULL) {
 		return NULL;
 	}
-	if (ch == UNICODE) {
+	if (ch == UNICODE2) {
 		int len = wcslen((wchar_t *)str) + 1;
 		void *dd = malloc(len * sizeof(wchar_t));
 		wcscpy((wchar_t *)dd, (wchar_t *)str);
@@ -510,7 +511,7 @@ void * XTString<T>::dup(void *str, Charset ch) {
 
 template <class T>
 wchar_t * XTString<T>::dupws( const wchar_t *str ) {
-	return (wchar_t *)dup((void *)str, XTString<T>::UNICODE);
+	return (wchar_t *)dup((void *)str, XTString<T>::UNICODE2);
 }
 
 template <class T>

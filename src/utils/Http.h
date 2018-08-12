@@ -63,6 +63,7 @@ Example:
 
 HttpConnection con("https://www.zhihu.com/question/20615748", "GET");
 bool ok = con.connect();
+// set request header here
 int rc = con.getResponseCode();
 const int N =  1024 * 1024 * 4;
 char *buf = new char[1024 * 1024 * 4];

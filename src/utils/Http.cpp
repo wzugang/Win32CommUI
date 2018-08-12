@@ -51,7 +51,7 @@ bool HttpConnection::connect() {
 		port = atoi(sp.str());
 		host = host.subString(0, i);
 	}
-	wchar_t *whost = (wchar_t *)XString::toBytes(host.str(), XString::GBK, XString::UNICODE);
+	wchar_t *whost = (wchar_t *)XString::toBytes(host.str(), XString::GBK, XString::UNICODE2);
 	mConnection = WinHttpConnect(s_session, whost, (INTERNET_PORT) port, 0);
 	free(whost);
 
@@ -65,8 +65,8 @@ bool HttpConnection::connect() {
 		flags |= WINHTTP_FLAG_SECURE;
 	}
 	const wchar_t *acceptTypes[] = {L"*/*", NULL};
-	wchar_t *method = (wchar_t *)XString::toBytes(mMethod.str(), XString::GBK, XString::UNICODE);
-	wchar_t *wpath = (wchar_t *)XString::toBytes(path.str(), XString::GBK, XString::UNICODE);
+	wchar_t *method = (wchar_t *)XString::toBytes(mMethod.str(), XString::GBK, XString::UNICODE2);
+	wchar_t *wpath = (wchar_t *)XString::toBytes(path.str(), XString::GBK, XString::UNICODE2);
 	HINTERNET req = WinHttpOpenRequest(mConnection, method, wpath, NULL, NULL, acceptTypes, flags);
 	free(method);
 	free(wpath);
@@ -144,7 +144,7 @@ bool HttpConnection::setRequestHeader(const char *name, const char *val) {
 	}
 	XString nv(name);
 	nv.append(": ").append(val).append("\r\n");
-	wchar_t *hd = (wchar_t *)XString::toBytes(nv.str(), XString::GBK, XString::UNICODE);
+	wchar_t *hd = (wchar_t *)XString::toBytes(nv.str(), XString::GBK, XString::UNICODE2);
 	int len = wcslen(hd);
 	return WinHttpAddRequestHeaders((HINTERNET)mRequest, hd, len, 
 		WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE) == TRUE;
@@ -215,7 +215,7 @@ void HttpConnection::recieveHeader() {
 		free(whd);
 		return;
 	}
-	mRawResHeaders = (char *)XString::toBytes(whd, XString::UNICODE, XString::GBK);
+	mRawResHeaders = (char *)XString::toBytes(whd, XString::UNICODE2, XString::GBK);
 	free(whd);
 
 	// split every row
